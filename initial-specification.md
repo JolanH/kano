@@ -22,7 +22,7 @@ the categories are : Mandatory (M); Linear (L); Exciter (E); Indifferent (I); Co
 
 > if response to A = 1 and B = 1 		-> D;
 > 
-> if response to A = 1 and B = 2,3,4 	-> A;
+> if response to A = 1 and B = 2,3,4 	-> E;
 > 
 > if response to A = 1 and B = 5 		-> L;
 > 
@@ -68,7 +68,7 @@ Each feature should be displayed with the % value of its dominant category along
 
 The application should be implemented with separate REST API and frontend
 
-The data storage should be performed with a single node mongoDB instance
+The data storage should be performed with a single node PostgreSQL instance
 
 The whole stack should be bootable with docker compose for local use
 
