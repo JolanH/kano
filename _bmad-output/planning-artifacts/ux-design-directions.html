@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kano — Analysis Page Design Directions</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --primary: #E36A2F;
+    --on-primary: #FFFFFF;
+    --surface: #FFFFFF;
+    --surface-bright: #F7F8FA;
+    --surface-variant: #1C1F26;
+    --on-surface: #1A1D23;
+    --on-surface-variant: #6B7280;
+    --on-surface-dark: #FFFFFF;
+    --on-surface-dark-variant: #9AA0AB;
+    --outline: #D1D5DB;
+    --outline-variant: #E5E7EB;
+    --k-must: #1E3A8A;
+    --k-perf: #0D9488;
+    --k-del:  #7C3AED;
+    --k-ind:  #6B7280;
+    --k-rev:  #B45309;
+    --k-que:  #78716C;
+  }
+  body {
+    margin: 0;
+    font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-feature-settings: 'tnum', 'cv11';
+    background: var(--surface-bright);
+    color: var(--on-surface);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page-header {
+    background: var(--surface-variant);
+    color: var(--on-surface-dark);
+    padding: 32px 48px;
+  }
+  .page-header h1 {
+    margin: 0 0 8px;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .page-header p {
+    margin: 0;
+    color: var(--on-surface-dark-variant);
+    font-size: 14px;
+    max-width: 820px;
+  }
+  main {
+    padding: 48px;
+    max-width: 1440px;
+    margin: 0 auto;
+  }
+  .variation {
+    background: var(--surface);
+    border: 1px solid var(--outline-variant);
+    border-radius: 8px;
+    padding: 40px;
+    margin-bottom: 32px;
+  }
+  .variation > h2 {
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .variation > .lede {
+    margin: 0 0 20px;
+    color: var(--on-surface-variant);
+    font-size: 14px;
+    max-width: 820px;
+  }
+  .design-notes {
+    background: var(--surface-bright);
+    border: 1px solid var(--outline-variant);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .design-notes strong {
+    display: block;
+    color: var(--on-surface);
+    margin-bottom: 2px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .design-notes .row + .row { margin-top: 10px; }
+
+  /* Mockup frame */
+  .mockup {
+    border: 1px solid var(--outline);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .browser-bar {
+    background: var(--surface-bright);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--outline-variant);
+    font-size: 12px;
+    color: var(--on-surface-variant);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .app-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--outline-variant);
+    font-size: 13px;
+  }
+  .app-topbar .breadcrumb { color: var(--on-surface-variant); }
+  .app-topbar .breadcrumb strong { color: var(--on-surface); font-weight: 600; }
+  .epoch-selector {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface-bright);
+    border: 1px solid var(--outline-variant);
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: var(--on-surface);
+  }
+  .epoch-selector .chev { color: var(--on-surface-variant); font-size: 10px; }
+  .analysis-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--outline-variant);
+  }
+  .analysis-header h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .analysis-header .meta {
+    margin: 0;
+    color: var(--on-surface-variant);
+    font-size: 13px;
+  }
+  .analysis-header .meta strong {
+    color: var(--on-surface);
+    font-weight: 600;
+  }
+  .analysis-header .meta .dot {
+    display: inline-block;
+    margin: 0 6px;
+    color: var(--outline);
+  }
+  .analysis-content { padding: 24px; }
+
+  /* Shared stacked-bar */
+  .bar {
+    display: flex;
+    height: 12px;
+    border-radius: 2px;
+    overflow: hidden;
+    background: var(--outline-variant);
+  }
+  .bar.large { height: 16px; }
+  .bar.mini  { height: 4px;  border-radius: 1px; }
+  .seg { height: 100%; }
+  .seg.must { background: var(--k-must); }
+  .seg.perf { background: var(--k-perf); }
+  .seg.del  { background: var(--k-del); }
+  .seg.ind  { background: var(--k-ind); }
+  .seg.rev  { background: var(--k-rev); }
+  .seg.que  { background: var(--k-que); }
+
+  /* Category badges */
+  .cat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+  }
+  .cat-badge::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+  }
+  .cat-badge.must::before { background: var(--k-must); }
+  .cat-badge.perf::before { background: var(--k-perf); }
+  .cat-badge.del::before  { background: var(--k-del);  }
+  .cat-badge.ind::before  { background: var(--k-ind);  }
+  .cat-badge.rev::before  { background: var(--k-rev);  }
+  .cat-badge.que::before  { background: var(--k-que);  }
+
+  /* ===== Variation 1 — Card-grid ===== */
+  .v1 .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .v1 .feature-card {
+    border: 1px solid var(--outline-variant);
+    border-radius: 6px;
+    padding: 20px;
+  }
+  .v1 .fname {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .v1 .fdesc {
+    margin: 0 0 16px;
+    color: var(--on-surface-variant);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .v1 .headline {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .v1 .headline .cat {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .v1 .headline .pct {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .v1 .feature-card.tie .headline .pct {
+    font-size: 26px;
+  }
+  .v1 .card-meta {
+    margin: 10px 0 0;
+    color: var(--on-surface-variant);
+    font-size: 12px;
+  }
+
+  /* ===== Variation 2 — Table-row ===== */
+  .v2 .analysis-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .v2 .analysis-table th {
+    text-align: left;
+    font-weight: 500;
+    font-size: 11px;
+    color: var(--on-surface-variant);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--outline-variant);
+    padding: 14px 20px;
+    background: var(--surface-bright);
+  }
+  .v2 .analysis-table td {
+    border-bottom: 1px solid var(--outline-variant);
+    padding: 16px 20px;
+    vertical-align: middle;
+  }
+  .v2 .analysis-table tbody tr:last-child td { border-bottom: 0; }
+  .v2 .analysis-table tbody tr:hover { background: var(--surface-bright); }
+  .v2 .fname {
+    font-weight: 600;
+    margin-bottom: 2px;
+    font-size: 14px;
+  }
+  .v2 .fdesc {
+    color: var(--on-surface-variant);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .v2 .dom-pct {
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .v2 .dom-cat {
+    margin-top: 6px;
+    font-size: 12px;
+  }
+  .v2 .responses {
+    color: var(--on-surface-variant);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .v2 .col-feature { width: 38%; }
+  .v2 .col-dom     { width: 22%; }
+  .v2 .col-bar     { width: 30%; }
+  .v2 .col-n       { width: 10%; text-align: right; }
+
+  /* ===== Variation 3 — Split-view ===== */
+  .v3 .split {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    min-height: 520px;
+  }
+  .v3 .feature-list {
+    border-right: 1px solid var(--outline-variant);
+    padding: 6px 0;
+    background: var(--surface-bright);
+  }
+  .v3 .feature-list .item {
+    padding: 12px 18px;
+    border-left: 3px solid transparent;
+    cursor: pointer;
+    background: var(--surface);
+    border-bottom: 1px solid var(--outline-variant);
+  }
+  .v3 .feature-list .item.active {
+    background: var(--surface);
+    border-left-color: var(--primary);
+  }
+  .v3 .feature-list .item:last-child { border-bottom: 0; }
+  .v3 .feature-list .name {
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .v3 .feature-list .sub {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+    color: var(--on-surface-variant);
+    font-size: 12px;
+  }
+  .v3 .feature-list .sub .pct { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--on-surface); }
+  .v3 .feature-list .mini-bar-wrap { margin-top: 8px; }
+  .v3 .detail { padding: 32px; }
+  .v3 .detail h3 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .v3 .detail .fdesc {
+    margin: 0 0 20px;
+    color: var(--on-surface-variant);
+    font-size: 14px;
+    max-width: 640px;
+  }
+  .v3 .detail .headline {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .v3 .detail .headline .cat {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .v3 .detail .headline .pct {
+    font-size: 40px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    margin-left: auto;
+  }
+  .v3 .detail .pct-note {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--on-surface-variant);
+    margin-left: 6px;
+  }
+  .v3 .tie-explain {
+    margin: 0 0 20px;
+    color: var(--on-surface-variant);
+    font-size: 13px;
+    max-width: 640px;
+  }
+  .v3 .legend {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0 24px;
+    font-size: 13px;
+    margin-top: 20px;
+  }
+  .v3 .legend .leg-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--outline-variant);
+  }
+  .v3 .legend .label { display: inline-flex; align-items: center; gap: 10px; }
+  .v3 .legend .count {
+    color: var(--on-surface-variant);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Recommendation */
+  .recommendation {
+    background: var(--surface);
+    border: 1px solid var(--outline-variant);
+    border-left: 4px solid var(--primary);
+    border-radius: 4px;
+    padding: 20px 24px;
+  }
+  .recommendation h3 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .recommendation p {
+    margin: 0 0 10px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .recommendation p:last-child { margin-bottom: 0; }
+  footer {
+    padding: 32px 48px 64px;
+    color: var(--on-surface-variant);
+    font-size: 13px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<header class="page-header">
+  <h1>kano — Analysis-page design directions</h1>
+  <p>Three compositional variations for the defining interaction (the PM's first scan of the analysis page). Shared across all three: Tixeo Vuetify theme, Kano category palette, same illustrative dataset (6 features, 12 responses, project pinned to version 2). Different: per-feature layout, tie-state rendering, and reading flow.</p>
+</header>
+
+<main>
+
+<!-- ==================== Variation 1: Card-Grid ==================== -->
+<section class="variation">
+  <h2>Direction 1 — Card-Grid</h2>
+  <p class="lede">Each feature is a 50%-width card in a 2-column grid. The dominant category name + percentage sits at the top of each card in large type; the stacked bar underneath is the visual confirmation of the already-resolved claim. Inspired by Linear Insights and Stripe Dashboard headline cards.</p>
+  <div class="design-notes">
+    <div class="row"><strong>Strengths</strong>Scan-first hierarchy: the 32px percentage is the first thing read per feature. Screenshot-friendly unit — one card is a clean quote-copy target. Tie state gets dedicated breathing room.</div>
+    <div class="row"><strong>Tradeoffs</strong>Vertical real estate: 20 features require substantial scrolling. The 2-column composition can read "dashboard-like" (multiple widgets), slightly at odds with Principle 4 ("artifact, not dashboard"). Per-feature weight is uniform — a Must-have 71% and a Questionable 22% look equally visually prominent.</div>
+  </div>
+  <div class="mockup v1">
+    <div class="browser-bar">https://kano.tixeo.internal/app/projects/q3-prio/polls/poll-abc/analysis</div>
+    <div class="app-topbar">
+      <div class="breadcrumb">Projects / <strong>Q3 Feature Prioritization</strong> / Polls / Poll A</div>
+      <div class="epoch-selector">Version 2 <span class="chev">▾</span></div>
+    </div>
+    <div class="analysis-header">
+      <h2>Analysis</h2>
+      <p class="meta">Version 2 · created 2026-04-13 <span class="dot">·</span> <strong>12 of 12 responses</strong> <span class="dot">·</span> expires in 3 days</p>
+    </div>
+    <div class="analysis-content">
+      <div class="feature-grid">
+
+        <div class="feature-card">
+          <h3 class="fname">SSO integration</h3>
+          <p class="fdesc">SAML / OIDC single sign-on for enterprise accounts.</p>
+          <div class="headline">
+            <span class="cat" style="color:var(--k-must)">Must-have</span>
+            <span class="pct" style="color:var(--k-must)">71%</span>
+          </div>
+          <div class="bar">
+            <div class="seg must" style="flex-basis:71%"></div>
+            <div class="seg perf" style="flex-basis:14%"></div>
+            <div class="seg del"  style="flex-basis:7%"></div>
+            <div class="seg ind"  style="flex-basis:4%"></div>
+            <div class="seg rev"  style="flex-basis:2%"></div>
+            <div class="seg que"  style="flex-basis:2%"></div>
+          </div>
+          <p class="card-meta">Based on 12 responses</p>
+        </div>
+
+        <div class="feature-card">
+          <h3 class="fname">Dark mode</h3>
+          <p class="fdesc">Optional dark UI theme across the meeting client.</p>
+          <div class="headline">
+            <span class="cat" style="color:var(--k-ind)">Indifferent</span>
+            <span class="pct" style="color:var(--k-ind)">60%</span>
+          </div>
+          <div class="bar">
+            <div class="seg ind"  style="flex-basis:60%"></div>
+            <div class="seg del"  style="flex-basis:18%"></div>
+            <div class="seg perf" style="flex-basis:10%"></div>
+            <div class="seg must" style="flex-basis:5%"></div>
+            <div class="seg rev"  style="flex-basis:4%"></div>
+            <div class="seg que"  style="flex-basis:3%"></div>
+          </div>
+          <p class="card-meta">Based on 12 responses</p>
+        </div>
+
+        <div class="feature-card tie">
+          <h3 class="fname">Live translation</h3>
+          <p class="fdesc">Real-time meeting caption translation between supported languages.</p>
+          <div class="headline">
+            <span class="cat"><span style="color:var(--k-del)">Delighter</span> <span style="color:var(--on-surface-variant);font-weight:400">/</span> <span style="color:var(--k-perf)">Performance</span></span>
+            <span class="pct" style="color:var(--on-surface)">40%<span style="font-size:14px;font-weight:500;color:var(--on-surface-variant);margin-left:4px">each</span></span>
+          </div>
+          <div class="bar">
+            <div class="seg del"  style="flex-basis:40%"></div>
+            <div class="seg perf" style="flex-basis:40%"></div>
+            <div class="seg must" style="flex-basis:10%"></div>
+            <div class="seg ind"  style="flex-basis:6%"></div>
+            <div class="seg rev"  style="flex-basis:2%"></div>
+            <div class="seg que"  style="flex-basis:2%"></div>
+          </div>
+          <p class="card-meta">Tied dominant — based on 12 responses</p>
+        </div>
+
+        <div class="feature-card">
+          <h3 class="fname">Mobile app parity</h3>
+          <p class="fdesc">Full meeting-host capabilities in the mobile clients.</p>
+          <div class="headline">
+            <span class="cat" style="color:var(--k-perf)">Performance</span>
+            <span class="pct" style="color:var(--k-perf)">55%</span>
+          </div>
+          <div class="bar">
+            <div class="seg perf" style="flex-basis:55%"></div>
+            <div class="seg must" style="flex-basis:22%"></div>
+            <div class="seg del"  style="flex-basis:12%"></div>
+            <div class="seg ind"  style="flex-basis:6%"></div>
+            <div class="seg rev"  style="flex-basis:3%"></div>
+            <div class="seg que"  style="flex-basis:2%"></div>
+          </div>
+          <p class="card-meta">Based on 12 responses</p>
+        </div>
+
+        <div class="feature-card">
+          <h3 class="fname">Granular notification rules</h3>
+          <p class="fdesc">Per-meeting and per-contact notification routing.</p>
+          <div class="headline">
+            <span class="cat" style="color:var(--k-ind)">Indifferent</span>
+            <span class="pct" style="color:var(--k-ind)">42%</span>
+          </div>
+          <div class="bar">
+            <div class="seg ind"  style="flex-basis:42%"></div>
+            <div class="seg must" style="flex-basis:38%"></div>
+            <div class="seg perf" style="flex-basis:10%"></div>
+            <div class="seg del"  style="flex-basis:6%"></div>
+            <div class="seg rev"  style="flex-basis:2%"></div>
+            <div class="seg que"  style="flex-basis:2%"></div>
+          </div>
+          <p class="card-meta">Close second: Must-have (38%) — based on 12 responses</p>
+        </div>
+
+        <div class="feature-card">
+          <h3 class="fname">Automatic timezone detection</h3>
+          <p class="fdesc">Auto-detect the local timezone when scheduling meetings.</p>
+          <div class="headline">
+            <span class="cat" style="color:var(--k-rev)">Reverse</span>
+            <span class="pct" style="color:var(--k-rev)">44%</span>
+          </div>
+          <div class="bar">
+            <div class="seg rev"  style="flex-basis:44%"></div>
+            <div class="seg must" style="flex-basis:20%"></div>
+            <div class="seg perf" style="flex-basis:15%"></div>
+            <div class="seg ind"  style="flex-basis:12%"></div>
+            <div class="seg del"  style="flex-basis:5%"></div>
+            <div class="seg que"  style="flex-basis:4%"></div>
+          </div>
+          <p class="card-meta">Customers actively prefer manual — based on 12 responses</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== Variation 2: Table-Row ==================== -->
+<section class="variation">
+  <h2>Direction 2 — Table-Row</h2>
+  <p class="lede">Each feature is a row in a column-aligned table. Dominant percentage, category badge, stacked bar, and response count on a single horizontal line. Inspired by Linear issue lists and Linear/GitHub insights tables.</p>
+  <div class="design-notes">
+    <div class="row"><strong>Strengths</strong>Dense scan: 20 features fit without significant scrolling. Column alignment makes cross-feature comparison trivial — "which features are Must-have?" reads at a glance. Most artifact-like: screenshots well at any zoom; consistent with the Linear-table pattern already locked for PM home (Sub-problem 2).</div>
+    <div class="row"><strong>Tradeoffs</strong>Less breathing room for tie-state richness (compensated by badges in the dominant column). Less emotionally "weighty" per-feature — a Must-have 71% is just another row rather than a headline-card moment.</div>
+  </div>
+  <div class="mockup v2">
+    <div class="browser-bar">https://kano.tixeo.internal/app/projects/q3-prio/polls/poll-abc/analysis</div>
+    <div class="app-topbar">
+      <div class="breadcrumb">Projects / <strong>Q3 Feature Prioritization</strong> / Polls / Poll A</div>
+      <div class="epoch-selector">Version 2 <span class="chev">▾</span></div>
+    </div>
+    <div class="analysis-header">
+      <h2>Analysis</h2>
+      <p class="meta">Version 2 · created 2026-04-13 <span class="dot">·</span> <strong>12 of 12 responses</strong> <span class="dot">·</span> expires in 3 days</p>
+    </div>
+    <table class="analysis-table">
+      <thead>
+        <tr>
+          <th class="col-feature">Feature</th>
+          <th class="col-dom">Dominant</th>
+          <th class="col-bar">Distribution</th>
+          <th class="col-n">n</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-feature">
+            <div class="fname">SSO integration</div>
+            <div class="fdesc">SAML / OIDC single sign-on for enterprise accounts.</div>
+          </td>
+          <td class="col-dom">
+            <div class="dom-pct" style="color:var(--k-must)">71%</div>
+            <div class="dom-cat"><span class="cat-badge must">Must-have</span></div>
+          </td>
+          <td class="col-bar">
+            <div class="bar">
+              <div class="seg must" style="flex-basis:71%"></div>
+              <div class="seg perf" style="flex-basis:14%"></div>
+              <div class="seg del"  style="flex-basis:7%"></div>
+              <div class="seg ind"  style="flex-basis:4%"></div>
+              <div class="seg rev"  style="flex-basis:2%"></div>
+              <div class="seg que"  style="flex-basis:2%"></div>
+            </div>
+          </td>
+          <td class="col-n"><span class="responses">12</span></td>
+        </tr>
+        <tr>
+          <td class="col-feature">
+            <div class="fname">Dark mode</div>
+            <div class="fdesc">Optional dark UI theme across the meeting client.</div>
+          </td>
+          <td class="col-dom">
+            <div class="dom-pct" style="color:var(--k-ind)">60%</div>
+            <div class="dom-cat"><span class="cat-badge ind">Indifferent</span></div>
+          </td>
+          <td class="col-bar">
+            <div class="bar">
+              <div class="seg ind"  style="flex-basis:60%"></div>
+              <div class="seg del"  style="flex-basis:18%"></div>
+              <div class="seg perf" style="flex-basis:10%"></div>
+              <div class="seg must" style="flex-basis:5%"></div>
+              <div class="seg rev"  style="flex-basis:4%"></div>
+              <div class="seg que"  style="flex-basis:3%"></div>
+            </div>
+          </td>
+          <td class="col-n"><span class="responses">12</span></td>
+        </tr>
+        <tr>
+          <td class="col-feature">
+            <div class="fname">Live translation</div>
+            <div class="fdesc">Real-time meeting caption translation.</div>
+          </td>
+          <td class="col-dom">
+            <div class="dom-pct">40%<span style="font-size:12px;font-weight:500;color:var(--on-surface-variant);margin-left:4px">each</span></div>
+            <div class="dom-cat"><span class="cat-badge del">Delighter</span> <span style="color:var(--on-surface-variant);margin:0 2px">/</span> <span class="cat-badge perf">Performance</span></div>
+          </td>
+          <td class="col-bar">
+            <div class="bar">
+              <div class="seg del"  style="flex-basis:40%"></div>
+              <div class="seg perf" style="flex-basis:40%"></div>
+              <div class="seg must" style="flex-basis:10%"></div>
+              <div class="seg ind"  style="flex-basis:6%"></div>
+              <div class="seg rev"  style="flex-basis:2%"></div>
+              <div class="seg que"  style="flex-basis:2%"></div>
+            </div>
+          </td>
+          <td class="col-n"><span class="responses">12</span></td>
+        </tr>
+        <tr>
+          <td class="col-feature">
+            <div class="fname">Mobile app parity</div>
+            <div class="fdesc">Full meeting-host capabilities in the mobile clients.</div>
+          </td>
+          <td class="col-dom">
+            <div class="dom-pct" style="color:var(--k-perf)">55%</div>
+            <div class="dom-cat"><span class="cat-badge perf">Performance</span></div>
+          </td>
+          <td class="col-bar">
+            <div class="bar">
+              <div class="seg perf" style="flex-basis:55%"></div>
+              <div class="seg must" style="flex-basis:22%"></div>
+              <div class="seg del"  style="flex-basis:12%"></div>
+              <div class="seg ind"  style="flex-basis:6%"></div>
+              <div class="seg rev"  style="flex-basis:3%"></div>
+              <div class="seg que"  style="flex-basis:2%"></div>
+            </div>
+          </td>
+          <td class="col-n"><span class="responses">12</span></td>
+        </tr>
+        <tr>
+          <td class="col-feature">
+            <div class="fname">Granular notification rules</div>
+            <div class="fdesc">Per-meeting and per-contact notification routing.</div>
+          </td>
+          <td class="col-dom">
+            <div class="dom-pct" style="color:var(--k-ind)">42%</div>
+            <div class="dom-cat"><span class="cat-badge ind">Indifferent</span></div>
+          </td>
+          <td class="col-bar">
+            <div class="bar">
+              <div class="seg ind"  style="flex-basis:42%"></div>
+              <div class="seg must" style="flex-basis:38%"></div>
+              <div class="seg perf" style="flex-basis:10%"></div>
+              <div class="seg del"  style="flex-basis:6%"></div>
+              <div class="seg rev"  style="flex-basis:2%"></div>
+              <div class="seg que"  style="flex-basis:2%"></div>
+            </div>
+          </td>
+          <td class="col-n"><span class="responses">12</span></td>
+        </tr>
+        <tr>
+          <td class="col-feature">
+            <div class="fname">Automatic timezone detection</div>
+            <div class="fdesc">Auto-detect local timezone for meeting scheduling.</div>
+          </td>
+          <td class="col-dom">
+            <div class="dom-pct" style="color:var(--k-rev)">44%</div>
+            <div class="dom-cat"><span class="cat-badge rev">Reverse</span></div>
+          </td>
+          <td class="col-bar">
+            <div class="bar">
+              <div class="seg rev"  style="flex-basis:44%"></div>
+              <div class="seg must" style="flex-basis:20%"></div>
+              <div class="seg perf" style="flex-basis:15%"></div>
+              <div class="seg ind"  style="flex-basis:12%"></div>
+              <div class="seg del"  style="flex-basis:5%"></div>
+              <div class="seg que"  style="flex-basis:4%"></div>
+            </div>
+          </td>
+          <td class="col-n"><span class="responses">12</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ==================== Variation 3: Split-View ==================== -->
+<section class="variation">
+  <h2>Direction 3 — Split-View</h2>
+  <p class="lede">Feature list on the left with mini-bars; selected-feature detail panel on the right with rich tie-state rendering, big stacked bar, and per-category legend. Inspired by Apple Mail / iA Writer-style master-detail.</p>
+  <div class="design-notes">
+    <div class="row"><strong>Strengths</strong>Detail-rich per feature: ties get maximum breathing room, full category legend with counts. Scales to long feature lists without layout pressure. Exploration-oriented.</div>
+    <div class="row"><strong>Tradeoffs</strong>Not an artifact — the screenshot-worthy unit is the detail panel alone, not the full page. Forces an interaction (pick a feature) to read each claim, breaking the "scan = reading" mechanic. Structurally at odds with Principle 4 ("the analysis page is the product's artifact, not its dashboard"). Recommend rejecting unless exploration genuinely matters more than quotability.</div>
+  </div>
+  <div class="mockup v3">
+    <div class="browser-bar">https://kano.tixeo.internal/app/projects/q3-prio/polls/poll-abc/analysis</div>
+    <div class="app-topbar">
+      <div class="breadcrumb">Projects / <strong>Q3 Feature Prioritization</strong> / Polls / Poll A</div>
+      <div class="epoch-selector">Version 2 <span class="chev">▾</span></div>
+    </div>
+    <div class="analysis-header">
+      <h2>Analysis</h2>
+      <p class="meta">Version 2 · created 2026-04-13 <span class="dot">·</span> <strong>12 of 12 responses</strong> <span class="dot">·</span> expires in 3 days</p>
+    </div>
+    <div class="split">
+
+      <aside class="feature-list">
+
+        <div class="item">
+          <div class="name">SSO integration</div>
+          <div class="sub"><span class="cat-badge must">Must-have</span><span class="pct">71%</span></div>
+          <div class="mini-bar-wrap">
+            <div class="bar mini">
+              <div class="seg must" style="flex-basis:71%"></div>
+              <div class="seg perf" style="flex-basis:14%"></div>
+              <div class="seg del"  style="flex-basis:7%"></div>
+              <div class="seg ind"  style="flex-basis:4%"></div>
+              <div class="seg rev"  style="flex-basis:2%"></div>
+              <div class="seg que"  style="flex-basis:2%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="name">Dark mode</div>
+          <div class="sub"><span class="cat-badge ind">Indifferent</span><span class="pct">60%</span></div>
+          <div class="mini-bar-wrap">
+            <div class="bar mini">
+              <div class="seg ind"  style="flex-basis:60%"></div>
+              <div class="seg del"  style="flex-basis:18%"></div>
+              <div class="seg perf" style="flex-basis:10%"></div>
+              <div class="seg must" style="flex-basis:5%"></div>
+              <div class="seg rev"  style="flex-basis:4%"></div>
+              <div class="seg que"  style="flex-basis:3%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="item active">
+          <div class="name">Live translation</div>
+          <div class="sub">
+            <span style="display:inline-flex;align-items:center;gap:6px">
+              <span style="color:var(--k-del);font-weight:600">Delighter</span>
+              <span style="color:var(--on-surface-variant)">/</span>
+              <span style="color:var(--k-perf);font-weight:600">Perf.</span>
+            </span>
+            <span class="pct">40%</span>
+          </div>
+          <div class="mini-bar-wrap">
+            <div class="bar mini">
+              <div class="seg del"  style="flex-basis:40%"></div>
+              <div class="seg perf" style="flex-basis:40%"></div>
+              <div class="seg must" style="flex-basis:10%"></div>
+              <div class="seg ind"  style="flex-basis:6%"></div>
+              <div class="seg rev"  style="flex-basis:2%"></div>
+              <div class="seg que"  style="flex-basis:2%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="name">Mobile app parity</div>
+          <div class="sub"><span class="cat-badge perf">Performance</span><span class="pct">55%</span></div>
+          <div class="mini-bar-wrap">
+            <div class="bar mini">
+              <div class="seg perf" style="flex-basis:55%"></div>
+              <div class="seg must" style="flex-basis:22%"></div>
+              <div class="seg del"  style="flex-basis:12%"></div>
+              <div class="seg ind"  style="flex-basis:6%"></div>
+              <div class="seg rev"  style="flex-basis:3%"></div>
+              <div class="seg que"  style="flex-basis:2%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="name">Granular notifications</div>
+          <div class="sub"><span class="cat-badge ind">Indifferent</span><span class="pct">42%</span></div>
+          <div class="mini-bar-wrap">
+            <div class="bar mini">
+              <div class="seg ind"  style="flex-basis:42%"></div>
+              <div class="seg must" style="flex-basis:38%"></div>
+              <div class="seg perf" style="flex-basis:10%"></div>
+              <div class="seg del"  style="flex-basis:6%"></div>
+              <div class="seg rev"  style="flex-basis:2%"></div>
+              <div class="seg que"  style="flex-basis:2%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="name">Auto timezone detection</div>
+          <div class="sub"><span class="cat-badge rev">Reverse</span><span class="pct">44%</span></div>
+          <div class="mini-bar-wrap">
+            <div class="bar mini">
+              <div class="seg rev"  style="flex-basis:44%"></div>
+              <div class="seg must" style="flex-basis:20%"></div>
+              <div class="seg perf" style="flex-basis:15%"></div>
+              <div class="seg ind"  style="flex-basis:12%"></div>
+              <div class="seg del"  style="flex-basis:5%"></div>
+              <div class="seg que"  style="flex-basis:4%"></div>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+      <div class="detail">
+        <h3>Live translation</h3>
+        <p class="fdesc">Real-time meeting caption translation between supported languages.</p>
+        <div class="headline">
+          <span class="cat"><span style="color:var(--k-del)">Delighter</span> <span style="color:var(--on-surface-variant);font-weight:400">/</span> <span style="color:var(--k-perf)">Performance</span></span>
+          <span class="pct" style="color:var(--on-surface)">40%<span class="pct-note">each · tied dominant</span></span>
+        </div>
+        <p class="tie-explain">Customers are evenly split between seeing this as an aspirational differentiator (Delighter) and an expected feature (Performance). Both interpretations carry equal signal — both categories are dominant. Worth scoping as a high-priority investment.</p>
+        <div class="bar large">
+          <div class="seg del"  style="flex-basis:40%"></div>
+          <div class="seg perf" style="flex-basis:40%"></div>
+          <div class="seg must" style="flex-basis:10%"></div>
+          <div class="seg ind"  style="flex-basis:6%"></div>
+          <div class="seg rev"  style="flex-basis:2%"></div>
+          <div class="seg que"  style="flex-basis:2%"></div>
+        </div>
+        <div class="legend">
+          <div class="leg-item"><span class="label"><span class="cat-badge del">Delighter</span></span><span class="count">5 · 40%</span></div>
+          <div class="leg-item"><span class="label"><span class="cat-badge perf">Performance</span></span><span class="count">5 · 40%</span></div>
+          <div class="leg-item"><span class="label"><span class="cat-badge must">Must-have</span></span><span class="count">1 · 10%</span></div>
+          <div class="leg-item"><span class="label"><span class="cat-badge ind">Indifferent</span></span><span class="count">1 · 6%</span></div>
+          <div class="leg-item"><span class="label"><span class="cat-badge rev">Reverse</span></span><span class="count">0 · 2%</span></div>
+          <div class="leg-item"><span class="label"><span class="cat-badge que">Questionable</span></span><span class="count">0 · 2%</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ==================== Recommendation ==================== -->
+<section>
+  <div class="recommendation">
+    <h3>Facilitator recommendation</h3>
+    <p><strong>Direction 2 (Table-Row)</strong> is the closest match to the locked design principles: most artifact-like (screenshots well at any zoom, cross-feature comparison trivial), densest (supports growth to 20-feature polls without scroll pain), and consistent with the Linear-table pattern already committed for the PM home surface (Sub-problem 2 in the inspiration analysis).</p>
+    <p><strong>Direction 1 (Card-Grid)</strong> is a strong fallback if per-feature breathing room and a weightier tie-state presentation matter more than density. Good hybrid candidate if Direction 2's tie-state treatment turns out to feel cramped during prototyping.</p>
+    <p><strong>Direction 3 (Split-View)</strong> is at structural odds with Principle 4 ("artifact, not dashboard") — recommend rejecting unless cross-feature exploration genuinely becomes a v1 requirement.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  kano UX · analysis-page design directions exploration · illustrative data, for evaluation before spec lock.
+</footer>
+</body>
+</html>

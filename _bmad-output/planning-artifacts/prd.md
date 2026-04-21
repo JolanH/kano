@@ -368,7 +368,7 @@ Internal tool — "market" = Tixeo PM adoption.
 - **FR8:** The system automatically increments a project's epoch when any change is made to the project's list of features (addition, edit, or deletion).
 - **FR9:** The system preserves the feature set of every prior epoch unchanged when a new epoch is created.
 - **FR10:** The system retains soft-deleted features in their original epoch so prior polls can still reference them; soft-deleted features do not appear in subsequent epochs.
-- **FR11:** Before applying a feature change that will trigger an epoch bump, the system makes the implication visible to the PM (notably that existing polls remain pinned to the prior epoch).
+- **FR11:** Before applying a feature change that will trigger an epoch bump, the system displays a confirmation dialog stating that existing polls will remain pinned to the prior epoch, and requires explicit PM acknowledgement before proceeding.
 - **FR12:** A PM can view the feature list of any past epoch of a project.
 
 ### Poll Generation & Lifecycle
@@ -377,7 +377,7 @@ Internal tool — "market" = Tixeo PM adoption.
 - **FR14:** The system issues a unique, publicly reachable URL for each poll.
 - **FR15:** A poll URL automatically expires 7 days after the poll is created.
 - **FR16:** The system rejects poll submissions made against an expired URL.
-- **FR17:** A PM can generate multiple polls for the same project, each pinned independently to an epoch.
+- **FR17:** A PM can generate two or more polls for the same project, each pinned independently to an epoch.
 - **FR18:** A PM can view the list of polls associated with a project, including the epoch each poll is pinned to.
 
 ### Poll Participation (Respondent)
@@ -390,7 +390,7 @@ Internal tool — "market" = Tixeo PM adoption.
 - **FR24:** A respondent can submit a completed poll; the system accepts a submission only if all questions for all features have been answered.
 - **FR25:** The system discards any partially-completed submission — incomplete submissions are not persisted.
 - **FR26:** A respondent receives a confirmation page after a successful submission.
-- **FR27:** A respondent visiting an expired poll URL sees a respectful expired-poll page indicating the poll is closed and offering an off-ramp to contact the product team directly.
+- **FR27:** A respondent visiting an expired poll URL sees an expired-poll page indicating the poll is closed and a contact off-ramp link to the product team.
 
 ### Response Categorization
 
@@ -406,7 +406,7 @@ Internal tool — "market" = Tixeo PM adoption.
 - **FR34:** Alongside each feature's stacked bar, the analysis page displays the dominant category and its percentage.
 - **FR35:** When two or more categories are tied for dominance on a feature, the analysis page displays all tied dominant categories together with their shared percentage.
 - **FR36:** The analysis page displays a per-category panel listing the features for which that category is dominant, with each feature annotated by its dominant-category percentage.
-- **FR37:** The analysis page gracefully handles the no-responses-yet state, clearly indicating that no data is available.
+- **FR37:** The analysis page displays a dedicated empty-state message when the poll has zero responses; empty stacked bars and zero-percent dominant categories are not rendered.
 
 ### Guidance & Onboarding
 
@@ -417,7 +417,7 @@ Internal tool — "market" = Tixeo PM adoption.
 
 ### Performance
 
-- **NFR1:** The analysis page loads and renders within **3 seconds** (p95) for projects with up to 20 features and 500 accumulated poll responses.
+- **NFR1:** The analysis page loads and renders within **3 seconds** (p95) for projects with up to 20 features and 500 accumulated poll responses, as measured by Playwright navigation timing in the CI end-to-end suite on a seeded 20-feature × 500-response dataset.
 - **NFR2:** A typical respondent (8-feature poll) completes submission in under **3 minutes** (measured post-first-study; no hard pre-launch target).
 - **NFR3:** The analysis endpoint executes its aggregation in a **single SQL round-trip** regardless of the number of features or responses — no per-feature iteration in the application layer.
 
