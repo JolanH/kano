@@ -1,3 +1,42 @@
+# Environment
+.env
+.env.local
+.env.*.local
+.env.example
+.editorconfig
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.venv/
+venv/
+
+# Node / frontend
+node_modules/
+dist/
+*.local
+.vite/
+coverage/
+playwright-report/
+test-results/
+
+# Database dumps
+*.dump
+*.sql.gz
+
+# IDE / editor
 *.idea
 *.iml
-.venv
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
