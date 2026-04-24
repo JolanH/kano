@@ -1,5 +1,5 @@
 # generated: 2026-04-22
-# last_updated: 2026-04-23
+# last_updated: 2026-04-24
 # project: kano
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-22
-last_updated: 2026-04-23
+last_updated: 2026-04-24
 project: kano
 project_key: NOKEY
 tracking_system: file-system
@@ -74,55 +74,37 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3: Poll Generation & Sharing (with respondent landing stub)
-  epic-3: backlog
-  3-1-poll-sqlalchemy-model-and-pydantic-schemas: backlog
-  3-2-create-poll-endpoint-pinned-to-current-epoch-with-7-day-ttl: backlog
-  3-3-poll-list-endpoints-per-project-and-cross-project: backlog
-  3-4-public-poll-by-uuid-read-endpoint-csrf-exempt: backlog
-  3-5-pollsharepanel-component-with-url-qr-preview-and-one-click-copy: backlog
-  3-6-generate-poll-ui-flow-from-project-detail: backlog
-  3-7-pm-polls-list-view-as-the-pm-home-screen: backlog
-  3-8-respondent-landing-stub-with-expired-page-handling: backlog
+  epic-3: in-progress
+  3-1-poll-sqlalchemy-model-and-pydantic-schemas: ready-for-dev
+  3-2-create-poll-endpoint-pinned-to-current-epoch-with-7-day-ttl: ready-for-dev
+  3-3-poll-list-endpoints-per-project-and-cross-project: ready-for-dev
+  3-4-public-poll-by-uuid-read-endpoint-csrf-exempt: ready-for-dev
+  3-5-pollsharepanel-component-with-url-qr-preview-and-one-click-copy: ready-for-dev
+  3-6-generate-poll-ui-flow-from-project-detail: ready-for-dev
+  3-7-pm-polls-list-view-as-the-pm-home-screen: ready-for-dev
+  3-8-respondent-landing-stub-with-expired-page-handling: ready-for-dev
   epic-3-retrospective: optional
 
   # Epic 4: Respondent Poll Experience & Submission
-  epic-4: backlog
-  4-1-submission-and-response-models-with-pydantic-schemas: backlog
-  4-2-poll-service-record-full-submission-atomic-transaction: backlog
-  4-3-public-poll-submission-endpoint-csrf-exempt: backlog
-  4-4-respondent-landing-page-replacing-the-e3-stub: backlog
-  4-5-kanolikert-component-with-auto-advance-and-keyboard-1-5: backlog
-  4-6-one-question-per-screen-respondent-flow-with-honest-progress: backlog
-  4-7-terminal-submit-with-inline-missing-answer-error-and-thank-you-page: backlog
-  4-8-respondent-flow-accessibility-close-out-and-manual-gates: backlog
+  epic-4: in-progress
+  4-1-submission-and-response-models-with-pydantic-schemas: ready-for-dev
+  4-2-poll-service-record-full-submission-atomic-transaction: ready-for-dev
+  4-3-public-poll-submission-endpoint-csrf-exempt: ready-for-dev
+  4-4-respondent-landing-page-replacing-the-e3-stub: ready-for-dev
+  4-5-kanolikert-component-with-auto-advance-and-keyboard-1-5: ready-for-dev
+  4-6-one-question-per-screen-respondent-flow-with-honest-progress: ready-for-dev
+  4-7-terminal-submit-with-inline-missing-answer-error-and-thank-you-page: ready-for-dev
+  4-8-respondent-flow-accessibility-close-out-and-manual-gates: ready-for-dev
   epic-4-retrospective: optional
 
   # Epic 5: Analysis & Insight
-  epic-5: backlog
-  5-1-services-analysis-build-analysis-with-single-group-by-query: backlog
-  5-2-public-poll-analysis-endpoint: backlog
-  5-3-catbadge-component-for-kano-category-rendering: backlog
-  5-4-kanostackedbar-svg-with-kanostackedbartable-accessible-fallback: backlog
-  5-5-analysis-page-table-composition-with-dominant-tie-empty-state-confidence-beat: backlog
-  5-6-percategorypanels-secondary-cross-index: backlog
-  5-7-category-help-tooltips-on-first-use: backlog
-  5-8-analysis-performance-test-and-accessibility-close-out: backlog
+  epic-5: in-progress
+  5-1-services-analysis-build-analysis-with-single-group-by-query: ready-for-dev
+  5-2-public-poll-analysis-endpoint: ready-for-dev
+  5-3-catbadge-component-for-kano-category-rendering: ready-for-dev
+  5-4-kanostackedbar-svg-with-kanostackedbartable-accessible-fallback: ready-for-dev
+  5-5-analysis-page-table-composition-with-dominant-tie-empty-state-confidence-beat: ready-for-dev
+  5-6-percategorypanels-secondary-cross-index: ready-for-dev
+  5-7-category-help-tooltips-on-first-use: ready-for-dev
+  5-8-analysis-performance-test-and-accessibility-close-out: ready-for-dev
   epic-5-retrospective: optional
-
-  # Epic 6: Data Durability & Operational Readiness
-  epic-6: backlog
-  6-1-backup-service-with-nightly-pg-dump-to-separate-volume-and-14-day-retention: backlog
-  6-2-restore-drill-runbook-with-executed-dry-run: backlog
-  6-3-postgresql-slow-query-log-configuration: backlog
-  6-4-internal-dogfood-study-on-local-stack: backlog
-  epic-6-retrospective: optional
-
-  # Epic 7: Deploy & Launch
-  epic-7: backlog
-  7-1-hetzner-vps-provisioning-and-production-compose-overlay: backlog
-  7-2-caddy-reverse-proxy-with-automatic-tls-and-hsts: backlog
-  7-3-github-actions-cd-pipeline-with-build-push-and-ssh-deploy: backlog
-  7-4-first-production-deploy-with-production-restore-drill: backlog
-  7-5-final-quality-gates-sweep-across-production-routes: backlog
-  7-6-first-pm-study-launch: backlog
-  epic-7-retrospective: optional
