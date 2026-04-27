@@ -1,0 +1,42 @@
+"""Response ORM model — one (Functional, Dysfunctional) Likert pair per feature.
+
+The ``category`` column is the precomputed Kano cell (M / L / E / I / C / D)
+derived from the (fq_answer, dq_answer) pair via the matrix in Story 1.5;
+storing it here keeps analysis queries to a single GROUP BY (Story 5.1).
+"""
+
+from __future__ import annotations
+
+from uuid import UUID
+
+from sqlalchemy import (
+    CHAR,
+    CheckConstraint,
+    ForeignKey,
+    SmallInteger,
+    Uuid,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from kano.db import Base
+
+
+class Response(Base):
+    __tablename__ = "responses"
+
+    submission_id: Mapped[UUID] = mapped_column(
+        Uuid(), ForeignKey("submissions.id"), primary_key=True
+    )
+    feature_id: Mapped[UUID] = mapped_column(Uuid(), ForeignKey("features.id"), primary_key=True)
+    fq_answer: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    dq_answer: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    category: Mapped[str] = mapped_column(CHAR(1), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("fq_answer BETWEEN 1 AND 5", name="fq_answer_range"),
+        CheckConstraint("dq_answer BETWEEN 1 AND 5", name="dq_answer_range"),
+        CheckConstraint(
+            "category IN ('M', 'L', 'E', 'I', 'C', 'D')",
+            name="category_enum",
+        ),
+    )
