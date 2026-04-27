@@ -10,7 +10,9 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build --force",
     "lint": "eslint",
-    "lint:fix": "eslint --fix"
+    "lint:fix": "eslint --fix",
+    "test": "vitest",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@fontsource/roboto": "^5.2.10",

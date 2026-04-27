@@ -1,6 +1,6 @@
 # Story 1.1: Monorepo scaffold with backend and frontend project initialization
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -187,6 +187,28 @@ Note: the `kano-frontend/src/` exact subtree is whatever `create-vuetify` v3.1.6
 **Modified**
 - `.gitignore`
 - `README.md`
+
+### Review Findings
+
+_Code review run on 2026-04-27 against commit `0e26326` (886-line diff, lock files & housekeeping excluded)._
+
+- [x] [Review][Decision] Distribution name `kano` vs `kano-backend` in `pyproject.toml` — **Resolved 2026-04-27: keep `name = "kano"`** (matches the Python import package). [kano-backend/pyproject.toml:2]
+
+- [x] [Review][Patch] **Fixed 2026-04-27** — Removed `.env.example` and `.editorconfig` from `.gitignore` and staged both files (they existed on disk but were ignored and absent from commit `0e26326`, violating AC #4). Note: `poetry.lock` was already tracked in commit `0e26326`; auditor false positive caused by code-review diff filter excluding lock files. [.gitignore:5-6]
+- [x] [Review][Patch] **Fixed 2026-04-27** — Removed redundant `*.idea` glob from `.gitignore`; `.idea/` already covers IntelliJ IDE folders. [.gitignore:35]
+- [x] [Review][Patch] **Fixed 2026-04-27** — Tightened `pyproject.toml` upper bounds: `flask-cors (>=5.0,<6.0)` and `structlog (>=24.1,<25.0)`. [kano-backend/pyproject.toml:14, 18]
+- [x] [Review][Patch] **Fixed 2026-04-27** — Rewrote `src/plugins/index.ts`: removed semicolons, added `{ }` spacing, switched to `@/router` alias, added trailing newline. [kano-frontend/src/plugins/index.ts]
+- [x] [Review][Patch] **Fixed 2026-04-27** — Removed dangling `vite-plugin-vue-layouts-next/client` type reference from `env.d.ts`. [kano-frontend/env.d.ts:2]
+- [x] [Review][Patch] **Fixed 2026-04-27** — Trimmed `tsconfig.node.json` `include` globs (dropped cypress/nightwatch). [kano-frontend/tsconfig.node.json:4-7]
+- [x] [Review][Patch] **Fixed 2026-04-27** — Dropped Vuetify `configFile` option in `vite.config.mts` since `settings.scss` is effectively empty (commented-out `@use`). [kano-frontend/vite.config.mts]
+- [x] [Review][Patch] **Fixed 2026-04-27** — Added `test` and `test:unit` (vitest) scripts to `kano-frontend/package.json`. [kano-frontend/package.json]
+- [x] [Review][Patch] **Fixed 2026-04-27** — Replaced `<title>Welcome to Vuetify 4</title>` with `<title>Kano</title>`. [kano-frontend/index.html:7]
+
+- [x] [Review][Defer] Vuetify scaffolder leftovers in `kano-frontend/src/` — HelloWorld broken text classes (`text-body-medium` etc. are M3 tokens, not Vuetify), remote `cdn.vuetifyjs.com` image, `defaultTheme: 'system'` (Vuetify expects a theme name), empty `<script setup>` blocks, no router catch-all 404, no error boundary, `define: { 'process.env': {} }` shim. Story 1.6 owns the SPA shell restructure per spec "What NOT to do". [kano-frontend/src/*] — deferred to Story 1.6
+- [x] [Review][Defer] `mypy strict = true` will need `[tool.mypy.overrides]` for untyped libs (factory_boy, flask_migrate) when first real Python code lands — pre-existing risk, no usage yet to break. [kano-backend/pyproject.toml:48-51] — deferred to Story 1.3 / 1.5
+- [x] [Review][Defer] Frontend `build` script uses `run-p type-check build-only` — failed type-check may not propagate non-zero exit on all run-p versions; can mask CI failures. [kano-frontend/package.json:7] — deferred to Story 1.10 (CI gate)
+- [x] [Review][Defer] Add `engines: { node: ">=24 <25" }` to `kano-frontend/package.json` — Node 24.x pinning intentionally deferred per Dev Notes ("Story 1.9's Dockerfile and Story 1.10's CI matrix"). [kano-frontend/package.json] — deferred to Story 1.9 / 1.10
+- [x] [Review][Defer] `kano-frontend/README.md` and `src/components/README.md` carry create-vuetify boilerplate (sponsor section, false claim of `unplugin-vue-components` auto-imports). [kano-frontend/README.md, kano-frontend/src/components/README.md] — deferred to Story 1.6 docs pass
 
 ## Change Log
 

@@ -2,8 +2,6 @@
 .env
 .env.local
 .env.*.local
-.env.example
-.editorconfig
 
 # Python
 __pycache__/
@@ -32,7 +30,6 @@ test-results/
 *.sql.gz
 
 # IDE / editor
-*.idea
 *.iml
 .vscode/
 .idea/
