@@ -32,6 +32,11 @@ class Response(Base):
     dq_answer: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     category: Mapped[str] = mapped_column(CHAR(1), nullable=False)
 
+    # The bare ``name=`` here is the ``%(constraint_name)s`` token in
+    # ``kano.db.NAMING_CONVENTION["ck"]`` — SQLAlchemy expands it to e.g.
+    # ``ck_responses_fq_answer_range`` at metadata-bind time, matching the
+    # literal name the migration declares via ``op.f("ck_responses_…")``. Do
+    # NOT add a ``ck_responses_`` prefix here; the convention applies it.
     __table_args__ = (
         CheckConstraint("fq_answer BETWEEN 1 AND 5", name="fq_answer_range"),
         CheckConstraint("dq_answer BETWEEN 1 AND 5", name="dq_answer_range"),

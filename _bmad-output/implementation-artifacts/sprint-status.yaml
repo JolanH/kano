@@ -45,7 +45,7 @@ development_status:
   # Epic 1: Foundation & Bootable Stack
   epic-1: in-progress
   1-1-monorepo-scaffold-with-backend-and-frontend-project-initialization: done
-  1-2-alembic-migration-1-locks-the-five-table-domain-schema: review
+  1-2-alembic-migration-1-locks-the-five-table-domain-schema: done
   1-3-flask-app-factory-with-csrf-cors-request-id-structured-logging-and-problem-details-middleware: ready-for-dev
   1-4-health-and-csrf-token-endpoints: ready-for-dev
   1-5-kano-categorization-matrix-pure-function-module-with-25-cell-parametrized-test: ready-for-dev

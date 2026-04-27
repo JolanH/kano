@@ -36,9 +36,9 @@ def test_alembic_upgrade_head(alembic_config: Config, db_url: str) -> None:
         )
 
         poll_index_names = {ix["name"] for ix in inspector.get_indexes("polls")}
-        assert "ix_polls_expires_at" in poll_index_names, (
-            f"polls missing partial index ix_polls_expires_at; " f"indexes: {poll_index_names}"
-        )
+        assert (
+            "ix_polls_expires_at" in poll_index_names
+        ), f"polls missing index ix_polls_expires_at; indexes: {poll_index_names}"
 
         submission_index_cols = {
             tuple(ix["column_names"]) for ix in inspector.get_indexes("submissions")
@@ -117,29 +117,40 @@ def test_response_check_constraints_block_invalid_data(alembic_config: Config, d
                 {"id": submission_id, "poll": poll_id},
             )
 
-        # fq_answer = 6 violates BETWEEN 1 AND 5
-        with pytest.raises(IntegrityError), engine.begin() as conn:
-            conn.execute(
-                text(
-                    "INSERT INTO responses "
-                    "(submission_id, feature_id, fq_answer, dq_answer, category) "
-                    "VALUES (:s, :f, 6, 3, 'M')"
-                ),
-                {"s": submission_id, "f": feature_id},
-            )
+        # Out-of-range answers — both bounds (0 below, 6 above) and both
+        # columns (fq_answer, dq_answer) must be rejected.
+        invalid_answer_cases = [
+            (0, 3, "M"),  # fq_answer below range
+            (6, 3, "M"),  # fq_answer above range
+            (3, 0, "M"),  # dq_answer below range
+            (3, 6, "M"),  # dq_answer above range
+        ]
+        for fq, dq, cat in invalid_answer_cases:
+            with pytest.raises(IntegrityError), engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "INSERT INTO responses "
+                        "(submission_id, feature_id, fq_answer, dq_answer, category) "
+                        "VALUES (:s, :f, :fq, :dq, :cat)"
+                    ),
+                    {"s": submission_id, "f": feature_id, "fq": fq, "dq": dq, "cat": cat},
+                )
 
-        # category = 'X' violates IN ('M','L','E','I','C','D')
-        with pytest.raises(IntegrityError), engine.begin() as conn:
-            conn.execute(
-                text(
-                    "INSERT INTO responses "
-                    "(submission_id, feature_id, fq_answer, dq_answer, category) "
-                    "VALUES (:s, :f, 3, 3, 'X')"
-                ),
-                {"s": submission_id, "f": feature_id},
-            )
+        # Category enum is case-sensitive; lowercase, unknown letters, and
+        # the empty/space-padded value must all be rejected.
+        invalid_category_cases = ["X", "m", "", " "]
+        for bad_category in invalid_category_cases:
+            with pytest.raises(IntegrityError), engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "INSERT INTO responses "
+                        "(submission_id, feature_id, fq_answer, dq_answer, category) "
+                        "VALUES (:s, :f, 3, 3, :cat)"
+                    ),
+                    {"s": submission_id, "f": feature_id, "cat": bad_category},
+                )
 
-        # A valid row inserts cleanly.
+        # A valid row at the upper boundary inserts cleanly.
         with engine.begin() as conn:
             conn.execute(
                 text(

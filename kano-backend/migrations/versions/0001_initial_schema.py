@@ -122,7 +122,7 @@ def upgrade() -> None:
     # standard idiom for "now()-based" expiry filtering in PG.
     # Authored via op.execute to keep this index name stable across any
     # future autogenerate runs that might rename it.
-    op.execute("CREATE INDEX ix_polls_expires_at ON polls (expires_at)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_polls_expires_at ON polls (expires_at)")
 
     op.create_table(
         "submissions",
@@ -186,12 +186,14 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_table("responses")
-    op.drop_index(op.f("ix_submissions_poll_id"), table_name="submissions")
-    op.drop_table("submissions")
+    # ``if_exists=True`` on every drop so a partial-failure mid-upgrade can be
+    # cleaned up by running ``alembic downgrade base`` without errors.
+    op.drop_table("responses", if_exists=True)
+    op.drop_index(op.f("ix_submissions_poll_id"), table_name="submissions", if_exists=True)
+    op.drop_table("submissions", if_exists=True)
     op.execute("DROP INDEX IF EXISTS ix_polls_expires_at")
-    op.drop_index(op.f("ix_polls_project_id_epoch"), table_name="polls")
-    op.drop_table("polls")
-    op.drop_index(op.f("ix_features_project_id_epoch"), table_name="features")
-    op.drop_table("features")
-    op.drop_table("projects")
+    op.drop_index(op.f("ix_polls_project_id_epoch"), table_name="polls", if_exists=True)
+    op.drop_table("polls", if_exists=True)
+    op.drop_index(op.f("ix_features_project_id_epoch"), table_name="features", if_exists=True)
+    op.drop_table("features", if_exists=True)
+    op.drop_table("projects", if_exists=True)

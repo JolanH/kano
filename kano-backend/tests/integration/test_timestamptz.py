@@ -12,6 +12,11 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import Engine, text
 
+# Every timestamp column across the four domain tables that carry one.
+# ``responses`` is intentionally absent — it is a leaf row whose audit time
+# lives on the parent ``submissions.submitted_at``, so no per-response
+# timestamp is needed. If a future migration adds e.g. ``responses.recorded_at``
+# the entry MUST be added here so this test continues to enforce the contract.
 EXPECTED_TIMESTAMP_COLUMNS: set[tuple[str, str]] = {
     ("projects", "created_at"),
     ("projects", "updated_at"),
