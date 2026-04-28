@@ -1,0 +1,4 @@
+# Baseline screenshots are committed alongside their owning specs (e.g.
+# `theme-audit.spec.ts-snapshots/theme-audit-baseline.png`). This file
+# exists so the directory is tracked even before the first baseline is
+# captured.

@@ -1,0 +1,26 @@
+// Vuetify Material 3 overrides aligned with the Tixeo register:
+// - elevation collapsed to 0 (cards, buttons); use 1px outlines for separation
+// - inputs default to "outlined" variant (matches the Tixeo screenshot density)
+// - tabular-nums utility class for stat-heavy contexts (analysis page percentages)
+// - bump medium-emphasis opacity to 0.78 so list subtitles, captions, and
+//   form helpers hit WCAG AA 4.5:1 against the white surface (Vuetify's 0.6
+//   default lands at ~3.5:1 — flagged by the theme-audit axe-core run)
+
+.v-theme--tixeo {
+  --v-medium-emphasis-opacity: 0.78;
+}
+
+.v-btn {
+  box-shadow: none;
+}
+
+.v-card {
+  box-shadow: none;
+}
+
+// Re-applied utility — Vuetify already has font-weight helpers but no
+// numeric-variant helper. The Analysis page (Epic 5) percentages and the
+// "5 of 12" response counts use this so digits don't jitter in tables.
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

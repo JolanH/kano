@@ -1,0 +1,63 @@
+# Local pre-commit gates mirroring the CI pipeline. Install once with:
+#
+#   pip install pre-commit
+#   pre-commit install
+#
+# Hooks run on staged files. The slow ones (vue-tsc, mypy) are scoped to the
+# package they live in so they pick up the full transitive context — running
+# them on isolated files would miss cross-module type errors.
+
+repos:
+  # ---------------- Python: Ruff (lint) + Black (format) ------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^kano-backend/
+      - id: ruff-format
+        files: ^kano-backend/
+
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 24.10.0
+    hooks:
+      - id: black
+        files: ^kano-backend/
+
+  # ---------------- TypeScript / Vue: ESLint via local poetry hook ---------
+  # ESLint via the project's flat config. `eslint-config-vuetify` is already
+  # installed in `kano-frontend/node_modules`, so we point pre-commit at the
+  # local `npm run lint` script rather than a stale upstream mirror.
+  - repo: local
+    hooks:
+      - id: eslint-frontend
+        name: eslint (kano-frontend)
+        entry: bash -c 'cd kano-frontend && npm run lint -- --fix'
+        language: system
+        files: ^kano-frontend/.+\.(vue|ts|tsx|js|jsx|mjs)$
+        pass_filenames: false
+
+      - id: vue-tsc
+        name: vue-tsc (kano-frontend type-check)
+        entry: bash -c 'cd kano-frontend && npm run type-check'
+        language: system
+        files: ^kano-frontend/.+\.(vue|ts|tsx)$
+        pass_filenames: false
+
+      - id: mypy-backend
+        name: mypy (kano-backend)
+        entry: bash -c 'cd kano-backend && poetry run mypy src tests migrations'
+        language: system
+        files: ^kano-backend/.+\.py$
+        pass_filenames: false
+
+  # ---------------- Generic hygiene -------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key

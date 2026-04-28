@@ -1,0 +1,98 @@
+# Kano local development stack.
+#
+# Boots the four services NFR17 mandates: Vite dev server (`web`), Flask API
+# (`api`), Postgres 17 (`db`), and a placeholder backup container reserving
+# the volume mount point (`backup`).
+#
+# Quickstart:
+#   cp .env.example .env
+#   docker compose up
+#
+# Tear-down (including volumes):
+#   docker compose down -v
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    # NFR16: surface any query taking ≥500 ms in dev (and prod) so slow paths
+    # show up in `docker compose logs db` from day one.
+    command: ["postgres", "-c", "log_min_duration_statement=500"]
+    ports:
+      - "5432:5432"
+
+  api:
+    build:
+      context: ./kano-backend
+      args:
+        KANO_VERSION: ${KANO_VERSION:-dev}
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      FLASK_ENV: development
+      SECRET_KEY: ${SECRET_KEY}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      KANO_VERSION: ${KANO_VERSION:-dev}
+    volumes:
+      # Bind mounts so Flask --debug picks up edits without a container restart.
+      - ./kano-backend/src:/app/src
+      - ./kano-backend/migrations:/app/migrations
+      - ./kano-backend/alembic.ini:/app/alembic.ini:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+
+  web:
+    build:
+      context: ./kano-frontend
+      target: dev
+    environment:
+      # Vite proxies /api/* to this URL during dev. Inside the compose network
+      # the backend is reachable as `api`; outside Docker the SPA defaults to
+      # `http://localhost:5000` (vite.config.mts fallback).
+      VITE_API_PROXY: http://api:5000
+    volumes:
+      # Bind mounts for HMR. `node_modules` is volume-mounted on top so the
+      # host's modules (likely built for the host OS) don't shadow the
+      # container's Linux-built copies.
+      - ./kano-frontend/src:/app/src
+      - ./kano-frontend/index.html:/app/index.html
+      - ./kano-frontend/public:/app/public
+      - ./kano-frontend/vite.config.mts:/app/vite.config.mts:ro
+      - ./kano-frontend/tsconfig.app.json:/app/tsconfig.app.json:ro
+      - ./kano-frontend/tsconfig.json:/app/tsconfig.json:ro
+      - ./kano-frontend/tsconfig.node.json:/app/tsconfig.node.json:ro
+      - ./kano-frontend/env.d.ts:/app/env.d.ts:ro
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - api
+    ports:
+      - "5173:5173"
+
+  backup:
+    build:
+      context: ./ops/backup
+    volumes:
+      - backup_data:/backups
+    # Real backup logic lands in Story 6-1; this service idles in dev so the
+    # named volume comes into existence and downstream stories can hang
+    # `pg_dump` cron jobs off it without bootstrap pain.
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
+  backup_data:
+  frontend_node_modules:

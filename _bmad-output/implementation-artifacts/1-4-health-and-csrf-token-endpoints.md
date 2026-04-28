@@ -1,6 +1,6 @@
 # Story 1.4: Health and CSRF-token endpoints
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,28 +17,28 @@ so that the CI smoke test has a stable assertion target and the PM SPA has a cle
 
 ## Tasks / Subtasks
 
-- [ ] Create health blueprint (AC: #1)
-  - [ ] `src/kano/api/health.py` — `health_bp = Blueprint("health", __name__, url_prefix="/api/v1")`
-  - [ ] `@health_bp.get("/health")` — handler:
+- [x] Create health blueprint (AC: #1)
+  - [x] `src/kano/api/health.py` — `health_bp = Blueprint("health", __name__, url_prefix="/api/v1")`
+  - [x] `@health_bp.get("/health")` — handler:
     - Read `KANO_VERSION` from config/env (falls back to `"unknown"` if unset)
     - Attempt a trivial DB roundtrip: `db.session.execute(text("SELECT 1"))`
     - On success: return `{"status": "ok", "version": version, "db": "connected"}`, 200
     - On `SQLAlchemyError`: return `{"status": "degraded", "db": "unreachable"}`, 503; log a warning via structlog (bound request_id already in context from Story 1.3 middleware)
-  - [ ] Health endpoint must NOT be CSRF-protected (it's a GET, but verify it's not swept into any global `before_request` gate that would reject it pre-app-ready)
-- [ ] Create CSRF-token blueprint (AC: #2)
-  - [ ] `src/kano/api/csrf.py` — `csrf_bp = Blueprint("csrf", __name__, url_prefix="/api/v1")`
-  - [ ] `@csrf_bp.get("/csrf-token")` — handler:
+  - [x] Health endpoint must NOT be CSRF-protected (it's a GET, but verify it's not swept into any global `before_request` gate that would reject it pre-app-ready)
+- [x] Create CSRF-token blueprint (AC: #2)
+  - [x] `src/kano/api/csrf.py` — `csrf_bp = Blueprint("csrf", __name__, url_prefix="/api/v1")`
+  - [x] `@csrf_bp.get("/csrf-token")` — handler:
     - Call `flask_wtf.csrf.generate_csrf()` (this also sets the session CSRF secret if not already on the session)
     - Return `{"csrf_token": token}`, 200
-  - [ ] Endpoint is GET-only; not CSRF-protected (CSRF applies to state-changing requests per Story 1.3 config).
-- [ ] Register blueprints in `create_app()` (AC: #1, #2)
-  - [ ] Extend `src/kano/__init__.py` to import and register both blueprints after middleware init
-- [ ] Integration tests
-  - [ ] `tests/integration/test_health_endpoint.py`:
+  - [x] Endpoint is GET-only; not CSRF-protected (CSRF applies to state-changing requests per Story 1.3 config).
+- [x] Register blueprints in `create_app()` (AC: #1, #2)
+  - [x] Extend `src/kano/__init__.py` to import and register both blueprints after middleware init
+- [x] Integration tests
+  - [x] `tests/integration/test_health_endpoint.py`:
     - Happy path: 200 body with `status=ok`, `db=connected`; `version` key present and equals `KANO_VERSION` env var
     - Degraded path: monkeypatch `db.session.execute` to raise `OperationalError`; assert 503, `status=degraded`, `db=unreachable`
     - Assert `X-Request-ID` header on both responses (verifying middleware integration)
-  - [ ] `tests/integration/test_csrf_token_endpoint.py`:
+  - [x] `tests/integration/test_csrf_token_endpoint.py`:
     - First call: 200, response JSON contains `csrf_token` (non-empty string), `Set-Cookie` header present
     - Second call with the cookie: returns a token that validates on a subsequent CSRF-protected POST (use a one-off protected route registered in the test app, POST with `X-CSRF-Token` header + cookie → expect 200/404 but NOT 400 CSRF rejection)
     - Cookie attributes (from Story 1.3): `HttpOnly` and `SameSite=Lax` present
@@ -97,10 +97,46 @@ Files created:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-opus-4-7 (1M context)
 
 ### Debug Log References
 
+- `poetry run pytest` — 26/26 passed (18 from Stories 1.2/1.3 + 8 new). Total runtime ~2.6 s including testcontainer startup.
+- `poetry run ruff check src tests migrations` — clean across 32 files.
+- `poetry run mypy src tests migrations` — clean. Initial errors: `Value of type variable "T_route" of function cannot be "Callable[[], object]"` on both blueprint handlers (Flask 3.1's `T_route` is constrained to `Callable[..., ResponseReturnValue]`, and `object` is too loose). Fixed by typing both handlers with `Response` (and `tuple[Response, int]` for the two-arm health response). The handlers always return `jsonify(...)` which is a `Response`, so the narrower annotation matches the actual call sites exactly.
+- `poetry run black --check src tests migrations` — clean across 32 files.
+
 ### Completion Notes List
 
+- Both ACs satisfied. 8 new integration tests pass: 4 in `test_health_endpoint.py` (happy 200/`status=ok`/`db=connected`/`version` echo, happy `X-Request-ID` header, degraded 503 with monkeypatched `OperationalError`, degraded `X-Request-ID` header) and 4 in `test_csrf_token_endpoint.py` (token + `Set-Cookie` with `HttpOnly`+`SameSite=Lax`, `X-Request-ID` header, returned token validates on subsequent POST, bootstrap call alone does not bypass CSRF protection on tokenless POSTs).
+- **Wired Flask-SQLAlchemy in `kano.db`.** Story 1.3 explicitly deferred `db.init_app(app)` to "Story 2.1 (the first endpoint that actually needs a session)." Story 1.4 is that endpoint — `/health` runs `db.session.execute(text("SELECT 1"))`. The `kano.db` module now exports a module-level `db = SQLAlchemy(model_class=Base)` alongside the existing `Base` and `metadata`. The `Base` object stays the canonical declarative base for all five domain models (none of which import `db`), so the change is purely additive: every existing `from kano.db import Base` in models, migrations, and `kano.models.__init__` keeps working with the same metadata. `create_app` now calls `db.init_app(app)` after `security.init_app(app)` (engine creation is lazy — non-DB tests like `test_app_factory` don't trigger a connection). Story 2.1 will continue to layer on the first ORM model + Pydantic schemas without re-touching this wiring.
+- **Two new infrastructure blueprints registered in `create_app`.** Story 1.3 said `create_app` "must NOT auto-register any blueprints (those land in Epic 2+)." Story 1.4 registers exactly two — `health_bp` and `csrf_bp` — because both exist for the platform itself rather than any one domain (CI smoke + SPA bootstrap). Future domain blueprints will still be mounted by their own `register_*` helpers per the Story 1.3 architecture pattern; the comment in `create_app` reflects this distinction.
+- **Health endpoint version field reads from `app.config["KANO_VERSION"]`, not directly from `os.environ`.** Story 1.3's `Config` already pulls `KANO_VERSION` out of the environment at import time (defaulting to `"dev"`). Going through `current_app.config` rather than `os.environ` means `TestConfig` subclasses can override `KANO_VERSION` deterministically, and the test asserts the round-trip (the response body's `version` equals `app.config["KANO_VERSION"]`) rather than hard-coding `"dev"`.
+- **Degraded-path test uses `unittest.mock.patch.object(db.session, "execute", ...)`.** SQLAlchemy 2.x `scoped_session` exposes `execute` as a regular method, so a context-manager-scoped patch isolates the failure to a single request without touching the actual DB connection. This lets the degraded test reuse the regular `client` fixture (no testcontainer needed) while the happy-path test uses the new `client_with_db` fixture that points at the live testcontainer. Both paths additionally assert the `X-Request-ID` header on the response, verifying that Story 1.3's middleware is still applied to these new blueprints (per the AC requirement that `/health` works "while the Flask app is running" — i.e. inside the same middleware stack).
+- **New `app_with_db` / `client_with_db` fixtures in `conftest.py`.** Built with a `TestConfig` subclass whose `SQLALCHEMY_DATABASE_URI` is overridden with the running testcontainer URL. No migrations are applied — `SELECT 1` succeeds against an empty schema, which matches the architectural intent (health probe must work pre-migration). Existing tests that don't need a real DB keep using the cheap `app` / `client` fixtures.
+- **CSRF endpoint's `Set-Cookie` carries `HttpOnly`+`SameSite=Lax` automatically.** `generate_csrf()` writes the per-session CSRF secret into Flask's session, which triggers Flask's session-cookie emission with whatever attributes are configured in `app.config` — and Story 1.3 already populated `SESSION_COOKIE_HTTPONLY=True` and `SESSION_COOKIE_SAMESITE="Lax"`. No additional code in the blueprint is needed; the test confirms the attributes flow through transparently.
+- **Subsequent-POST validation test uses `app.test_client()`'s built-in cookie jar.** The Flask test client persists cookies across calls within the same client instance, so `client.get("/api/v1/csrf-token")` followed by `client.post("/test/protected", headers={"X-CSRF-Token": token})` exercises the same cookie-jar continuity the SPA's `useApi` composable will rely on (the SPA uses `credentials: "include"`).
+- Lint/format/type gates: `ruff check` clean, `black --check` clean, `mypy --strict` clean across 32 source files. Full pytest run: 26/26 passing in ~2.6 s.
+- No commits were created — per session policy commits are made only on explicit user request.
+
 ### File List
+
+**Added**
+- `kano-backend/src/kano/api/health.py`
+- `kano-backend/src/kano/api/csrf.py`
+- `kano-backend/tests/integration/test_health_endpoint.py`
+- `kano-backend/tests/integration/test_csrf_token_endpoint.py`
+
+**Modified**
+- `kano-backend/src/kano/__init__.py` — added `db.init_app(app)` and registered `health_bp` + `csrf_bp`.
+- `kano-backend/src/kano/db.py` — added module-level `db = SQLAlchemy(model_class=Base)` Flask-SQLAlchemy extension.
+- `kano-backend/tests/conftest.py` — added `app_with_db` / `client_with_db` fixtures wired to the testcontainer URL.
+
+**Sprint tracking**
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — `1-4-...` flipped `ready-for-dev → in-progress → review`; `last_updated` set to `2026-04-27`.
+
+## Change Log
+
+| Date       | Version | Change                                                                 | Author |
+|------------|---------|------------------------------------------------------------------------|--------|
+| 2026-04-27 | 0.1.0   | Added the two infrastructure endpoints required for CI smoke (`GET /api/v1/health` — returns `status`/`version`/`db` and probes the DB with `SELECT 1`, collapsing to 503 on `SQLAlchemyError`) and SPA bootstrap (`GET /api/v1/csrf-token` — emits a token and the session cookie carrying Story-1.3 attributes). Wired Flask-SQLAlchemy in `kano.db` (module-level `db` instance using the existing `Base`) and called `db.init_app(app)` in `create_app` — picking up the `db.init_app` step that Story 1.3 had deferred. Added `app_with_db` / `client_with_db` fixtures so DB-dependent tests get a live testcontainer URL while DB-free tests stay cheap. 8 new integration tests cover both AC arms; full test suite (26/26) green; ruff, mypy strict, and black all clean. | Amelia (dev agent) |

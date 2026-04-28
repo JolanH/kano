@@ -1,0 +1,24 @@
+# Caddy config for the production Kano SPA container (Story 7.1 consumes this).
+#
+# Two routes:
+# - `/api/*` → reverse-proxied to the `api` service on the docker-compose
+#   network. The Flask app handles CORS / CSRF; Caddy is a transparent proxy.
+# - everything else → SPA fallback (`try_files`) so the Vue router's
+#   client-side history mode works on any deep-link refresh.
+#
+# This file is consumed by `Dockerfile`'s `runtime` stage. Dev does not use
+# Caddy; Vite's dev server proxies `/api` directly (see vite.config.mts).
+
+:80 {
+    encode gzip zstd
+
+    handle /api/* {
+        reverse_proxy api:5000
+    }
+
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}

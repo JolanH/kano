@@ -1,6 +1,6 @@
 # Story 1.8: Theme audit screen as day-zero verification artifact
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -22,32 +22,16 @@ so that the Tixeo theme is verifiably audited rather than assembled, and any fut
 
 ## Tasks / Subtasks
 
-- [ ] Theme audit page component (AC: #1–5)
-  - [ ] `src/routes/dev/ThemeAudit.vue` — a single scrollable page divided into sections, each heading labeled by `useCopy('dev.themeAudit.<section>')`:
-    - **Colors**: 6 Kano swatches (each: 48×48 color tile + hex + category label via `<cat-badge>` or equivalent); primary/surface/surface-variant/semantic swatches
-    - **Typography**: one line per scale entry (Display, H1–H3, Body PM, Body Respondent, Body-large, Label, Caption) showing the Lorem-Ipsum text at that scale + font-family inspection note
-    - **Spacing**: 8 horizontal bars, each labeled with its token and pixel value, with width equal to the token value for visual anchoring
-    - **Buttons**: 3×3 matrix (primary/secondary/tertiary × small/default/large — i.e., 32/40/48px heights per AC #1) — 9 buttons total; states: default / hover (automatic) / disabled (one extra row)
-    - **Inputs**: `v-text-field` outlined variant, `v-textarea` outlined, `v-select` outlined, `v-radio-group` (2–3 options), `v-checkbox` row, `v-switch` row
-    - **Data table**: a `v-data-table` with 3 columns × 4 rows of placeholder data, demonstrating zebra rows, header, density
-    - **Dialogs / menus / tooltips**: a button to open a `v-dialog`; a `v-menu` with 3 items; hover target with `v-tooltip`
-    - **Snackbars**: buttons to trigger `success`, `error`, `info` variants
-    - **Progress / skeleton / alerts**: `v-progress-linear` at 50%, `v-skeleton-loader` (card + list variants), `v-alert` variants for info/success/warning/error
-    - **Lists / tabs**: `v-list` with 3–4 items; `v-tabs` with 3 tabs
-    - **Navigation drawer preview**: render a secondary `v-navigation-drawer` inline (not as the page's primary drawer) with 3 demo items — or a static preview image if the inline approach conflicts with `PmLayout`
-    - **App bar preview**: render a fragment of `v-app-bar` inline
-  - [ ] Dev-only route guard (AC: #6):
-    - In `src/router.ts`, conditionally add the route: `if (import.meta.env.DEV) { routes.push({ path: '/dev/theme-audit', component: () => import('./routes/dev/ThemeAudit.vue'), meta: { layout: 'pm' } }) }`
-    - Verify: a production build (`npm run build`) does not include `ThemeAudit.vue` in any chunk (inspect `dist/` after build)
-- [ ] Tixeo override evidence section (AC: #5)
-  - [ ] Add inline comments on the page (or a collapsible "Override Evidence" section) annotating what's Tixeo-modified vs default Material: "Card elevation 0 (default was 1dp shadow)", "Primary button variant 'flat' (default was elevated)", "Input default variant 'outlined' (default was filled)", "TextField has no floating label (default was filled-label)"
-- [ ] Playwright E2E + axe-core + baseline screenshot (AC: #7)
-  - [ ] `e2e/pm/theme-audit.spec.ts`:
-    - Navigate to `http://localhost:5173/dev/theme-audit` (started via `npm run dev` as Playwright `webServer` config)
-    - Capture console errors via `page.on('console')` listener; assert zero errors after `page.goto` resolves
-    - Run `@axe-core/playwright`: `const results = await new AxeBuilder({ page }).analyze(); expect(results.violations).toEqual([]);`
-    - Take screenshot: `await page.screenshot({ path: 'e2e/screenshots/theme-audit-baseline.png', fullPage: true });` — **commit the PNG** to the repo as the visual-regression anchor
-    - Subsequent runs compare against baseline via `await expect(page).toHaveScreenshot('theme-audit-baseline.png', { maxDiffPixelRatio: 0.01 });`
+- [x] Theme audit page component (AC: #1–5)
+  - [x] `src/pages/dev/ThemeAudit.vue` — single scrollable page divided into sections (Colors, Typography, Spacing, Buttons, Inputs, Data table, Feedback, Progress / skeleton / alerts, Lists & tabs, Override evidence) — section headings labeled by `useCopy('dev.themeAudit.<section>')` keys
+  - [x] Dev-only route guard (AC: #6): `if (import.meta.env.DEV) { routes.push({ path: '/dev/theme-audit', ... }) }` — verified by inspecting `dist/assets/*.js`, no `ThemeAudit` / `theme-audit` / `/dev/` strings present in the production build
+- [x] Tixeo override evidence section (AC: #5)
+  - [x] Final section of the audit page lists six concrete overrides (card elevation 0, primary button flat, input outlined, no floating label, app bar surface color, single light theme) so a reviewer can scan-confirm what's Tixeo vs Material default
+- [x] Playwright E2E + axe-core + baseline screenshot (AC: #7)
+  - [x] `e2e/pm/theme-audit.spec.ts` — two specs: console-errors-and-axe-core (asserts zero console errors and zero `axe-core` violations against `wcag2a + wcag2aa`); visual-regression baseline (`toHaveScreenshot('theme-audit-baseline.png', { fullPage: true, maxDiffPixelRatio: 0.01 })`)
+  - [x] Baseline screenshot committed at `e2e/pm/theme-audit.spec.ts-snapshots/theme-audit-baseline-chromium-linux.png` (auto-generated by `playwright test --update-snapshots`)
+  - [x] `playwright.config.ts` added — chromium-only, default desktop viewport 1440×900, `webServer` boots `npm run dev` and reuses an existing server outside CI
+  - [x] `vitest.config.ts` added so unit-test runner skips `e2e/**` (Vitest had been greedy-collecting the Playwright spec before)
 
 ## Dev Notes
 
@@ -61,22 +45,11 @@ This is **development tooling**, not a user-facing feature. It ships only in dev
 
 Every primitive the product uses (per UX spec §Component Strategy "Adopt directly" list at line 802) must appear on the audit page. If a primitive is added later to the project, add it to the audit page in the same PR.
 
-Primitives to include (full list from AC #1 merged with UX spec §Component Strategy):
-
-- `v-btn` (primary/secondary/tertiary × 3 sizes)
-- `v-text-field`, `v-textarea`
-- `v-radio-group`, `v-checkbox`, `v-switch`, `v-select`
-- `v-data-table`
-- `v-dialog`, `v-menu`, `v-tooltip`, `v-snackbar`
-- `v-progress-linear`, `v-skeleton-loader`
-- `v-alert` (info, success, warning, error)
-- `v-card`, `v-list`, `v-tabs`
-- `v-navigation-drawer`, `v-app-bar`
-- `v-icon` (mdi sample row)
+Primitives included: `v-btn` (primary/secondary/tertiary × 3 sizes + disabled row), `v-text-field`, `v-textarea`, `v-radio-group`, `v-checkbox`, `v-switch`, `v-select`, `v-data-table`, `v-dialog`, `v-menu`, `v-tooltip`, `v-snackbar`, `v-progress-linear`, `v-skeleton-loader`, `v-alert` (info, success, warning, error), `v-card`, `v-list`, `v-tabs`, `v-icon`. (Navigation drawer + app bar are covered by the surrounding `PmLayout` chrome that the audit page renders inside.)
 
 ### Route guard pattern
 
-Using `import.meta.env.DEV` rather than `NODE_ENV` — Vite's recommended idiom, statically tree-shakable. In production, the `if` branch dead-codes and the route import is eliminated entirely.
+Using `import.meta.env.DEV` rather than `NODE_ENV` — Vite's recommended idiom, statically tree-shakable. In production, the `if` branch dead-codes and the route import is eliminated entirely. Verified: a `grep -oh "ThemeAudit\\|theme-audit\\|/dev/" dist/assets/*.js` returns zero matches.
 
 ### Screenshot baseline discipline
 
@@ -88,13 +61,14 @@ AC #7 zero-violations is a strong gate because the audit page intentionally stre
 
 ### Dependencies
 
-- Story 1.6 (theme + layouts + router) must be merged before this can run.
-- Story 1.7 (copy deck) should be merged before or alongside — the audit page uses `useCopy('dev.themeAudit.<section>')` keys. Alternative: hard-code English labels in `ThemeAudit.vue` with a comment saying "dev-only page, exempt from copy-deck rule" and update `.eslintrc.cjs` to exempt `src/routes/dev/**` from `vue/no-bare-strings-in-template`. The **second option is simpler** and recommended.
+- Story 1.6 (theme + layouts + router) merged.
+- Story 1.7 (copy deck) merged. The audit page section labels are sourced from the deck.
+- The dev-page glob (`src/pages/dev/**`) was added as an exempt-from-`vue/no-bare-strings-in-template` block in `eslint.config.js` so the audit page's hex strings, Lorem-ipsum samples, and primitive demo text don't have to be deck-mediated.
 
 ### Not in scope
 
 - No automated theme-token-vs-baseline diff. The Playwright screenshot diff catches visual regressions; token introspection would be overkill.
-- No mobile/responsive testing on the audit page — it's a desktop dev tool. Playwright spec runs at default desktop viewport.
+- No mobile/responsive testing on the audit page — it's a desktop dev tool. Playwright spec runs at default desktop viewport (1440×900).
 
 ### Testing standards
 
@@ -105,11 +79,13 @@ AC #7 zero-violations is a strong gate because the audit page intentionally stre
 ### Project Structure Notes
 
 Files created:
-- `kano-frontend/src/routes/dev/ThemeAudit.vue`
+- `kano-frontend/src/pages/dev/ThemeAudit.vue`
 - `kano-frontend/e2e/pm/theme-audit.spec.ts`
-- `kano-frontend/e2e/screenshots/theme-audit-baseline.png` (committed)
-- Edit `kano-frontend/src/router.ts` to conditionally register the dev route
-- Edit `kano-frontend/.eslintrc.cjs` to exempt `src/routes/dev/**` from `vue/no-bare-strings-in-template` (see Dev Notes)
+- `kano-frontend/e2e/pm/theme-audit.spec.ts-snapshots/theme-audit-baseline-chromium-linux.png` (committed)
+- `kano-frontend/playwright.config.ts`
+- `kano-frontend/vitest.config.ts`
+- Edit `kano-frontend/src/router/index.ts` to conditionally register the dev route
+- Edit `kano-frontend/eslint.config.js` to exempt `src/pages/dev/**` from `vue/no-bare-strings-in-template`
 
 ### References
 
@@ -119,15 +95,62 @@ Files created:
 - [Source: _bmad-output/planning-artifacts/prd.md#NFR9–11] — WCAG 2.1 AA + axe-core gate
 - [Source: _bmad-output/planning-artifacts/epics.md#Story 1.8] — original AC source
 - [Source: _bmad-output/implementation-artifacts/1-6-vue-spa-scaffold-*.md] — theme + layouts + router (hard dependency)
+- [Source: _bmad-output/implementation-artifacts/1-7-copy-deck-scaffold-*.md] — `useCopy` (consumed by section headings)
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-opus-4-7 (1M context)
 
 ### Debug Log References
 
+- `npx playwright test --project=chromium --update-snapshots` — initial run flagged 4 successive axe-core violations as the audit page exposed them: (a) `v-list-item-subtitle` color-contrast 3.5:1 (Vuetify medium-emphasis opacity 0.6), (b) `v-alert` warning variant 2.93:1 (white text on `#CA8A04`), (c) `v-progress-linear` missing aria-label, (d) `v-list role="list"` containing `role="link"` children (Vuetify's `<v-list nav>` rendering). Each was a real product issue, not an audit-page artifact.
+- After four iterations the spec passes — both tests green: console-errors+axe-core, and the visual baseline. Final runtime: ~3.3 s (parallel, 2 workers).
+- `npm run test:unit` (after adding `vitest.config.ts`) — 30/30 unit tests pass; the e2e spec is now correctly excluded from Vitest collection.
+- `npm run type-check` — clean. (vue-router rootDir warning unchanged from prior stories.)
+- `npm run build` — succeeds in ~1.2 s. Bundle output: `pm` 190.64 KB JS / 68.27 KB gzip (the new theme-audit page is dev-only and is NOT in any chunk — verified `grep` against `dist/assets/*.js` returns zero `ThemeAudit` / `theme-audit` / `/dev/` matches), `respondent` 0.77 KB JS / 0.43 KB gzip, `index` 22.29 KB JS / 8.79 KB gzip.
+- Backend `poetry run pytest` — 60/60 still green; no cross-stack regressions.
+
 ### Completion Notes List
 
+- All 7 ACs satisfied. The dev-only `/dev/theme-audit` page renders every Vuetify primitive the product depends on, exposes the Tixeo color tokens / type scale / spacing scale as visual references, and the Playwright spec asserts zero console errors + zero axe-core violations + a 1%-tolerance visual baseline.
+- **Four real Vuetify default issues uncovered + fixed during this story.** These were Vuetify Material defaults that would have failed AA on every screen the product builds — the audit page caught them once, fixed for the whole product:
+  - `--v-medium-emphasis-opacity` bumped from 0.6 to 0.78 in `overrides.scss`. Vuetify's default 0.6 collapses `on-surface` (`#1A1D23`) to ~`#87898C` against white, which is 3.5:1. At 0.78 it lands above 4.5:1.
+  - Theme tokens added: `on-success: '#FFFFFF'`, `on-warning: '#1A1D23'` (the warning amber `#CA8A04` cannot carry white text at AA — paired with near-black text instead, matching a standard caution-sign register), `on-error: '#FFFFFF'`, `on-info: '#FFFFFF'`. These flow through every `v-alert`, `bg-success`, `bg-warning` etc. usage product-wide.
+  - `v-progress-linear` instances now require an `aria-label` — the audit page demonstrates the convention; future progress-bar instances must follow.
+  - **`PmLayout`'s navigation rewritten as plain `<nav><ul>` + `<RouterLink>`.** The original `<v-list nav>` rendered as `<div role="list">` with `<a role="link">` children — axe flagged this as `role="list"` cannot contain `role="link"`. The new markup is fully accessible (`<nav aria-label="Kano">` is a landmark), keeps the dark-sidebar visual through scoped CSS that mirrors Vuetify's nav-list look, and preserves the `router-link-active` highlighting behavior. Net effect: the layout is **more** accessible than the Vuetify default.
+- **Tooltip access pattern uses an explicit child slot.** `<v-tooltip text="...">` doesn't always emit an accessible name correctly; using the default slot (`<span>Tooltip body</span>`) plus `aria-label` on the tooltip itself satisfies axe's `aria-tooltip-name` rule. Documented in the audit page so the same pattern is reused project-wide.
+- **`vitest.config.ts` added** to pin unit-test scope to `tests/unit/**`. Without it, Vitest's default glob picks up the Playwright spec in `e2e/**` and tries to evaluate it as a Vitest suite (fails on the `playwright/test` import). The config also excludes `node_modules/**` and `dist/**` for hygiene.
+- **Baseline screenshot path is Playwright's auto-generated convention.** The story's literal text says `e2e/screenshots/theme-audit-baseline.png`, but Playwright's `toHaveScreenshot` writes to `<spec>-snapshots/<name>-<project>-<os>.png` and rejects custom paths via that API. The committed file is at `e2e/pm/theme-audit.spec.ts-snapshots/theme-audit-baseline-chromium-linux.png`. The empty `e2e/screenshots/.gitkeep` is left as a marker for any future ad-hoc screenshot tooling.
+- **`playwright.config.ts` is chromium-only.** The product targets Chromium, Firefox, and Safari per NFR9, but the visual-regression baseline only needs one browser to detect drift. The "render across all browsers" gate belongs in Story 1.10's CI matrix, not in the per-spec config.
+- **`eslint.config.js` exempt-block for `src/pages/dev/**`.** The audit page legitimately renders raw text (hex codes, Lorem ipsum, primitive demo labels). Without the exemption, `vue/no-bare-strings-in-template` would force every "Primary 32" / "Disabled primary" demo string into the copy deck — defeating the page's purpose as a token-and-primitive reference.
+- Lint still cannot run on Node 20 (pre-existing `Object.groupBy` issue documented in Story 1.6's deferred-work block). Story 1.10 owns the CI Node-version pin; once that lands, the lint pipeline including the new `dev/**` exemption will run end-to-end.
+- No commits were created — per session policy commits are made only on explicit user request.
+
 ### File List
+
+**Added**
+- `kano-frontend/src/pages/dev/ThemeAudit.vue`
+- `kano-frontend/e2e/pm/theme-audit.spec.ts`
+- `kano-frontend/e2e/pm/theme-audit.spec.ts-snapshots/theme-audit-baseline-chromium-linux.png`
+- `kano-frontend/e2e/screenshots/.gitkeep`
+- `kano-frontend/playwright.config.ts`
+- `kano-frontend/vitest.config.ts`
+
+**Modified**
+- `kano-frontend/src/router/index.ts` — added `import.meta.env.DEV`-gated `/dev/theme-audit` route.
+- `kano-frontend/src/copy/en.ts` — added `dev.themeAudit.*` section heading keys.
+- `kano-frontend/src/theme/tixeo.ts` — added `on-success` / `on-warning` / `on-error` / `on-info` text-color tokens (warning text intentionally near-black on amber; the rest white) so axe color-contrast passes on `v-alert` variants product-wide.
+- `kano-frontend/src/theme/overrides.scss` — bumped `--v-medium-emphasis-opacity` from 0.6 to 0.78 so list subtitles, captions, and helper text hit 4.5:1.
+- `kano-frontend/src/layouts/PmLayout.vue` — rewrote sidebar nav from `<v-list nav>` to `<nav><ul>` + `<RouterLink>` with scoped CSS preserving the dark-sidebar look. Eliminates the `role="list"` containing `role="link"` axe violation.
+- `kano-frontend/eslint.config.js` — appended an exempt block disabling `vue/no-bare-strings-in-template` for `src/pages/dev/**`.
+
+**Sprint tracking**
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — `1-8-...` flipped `ready-for-dev → in-progress → review`; `last_updated` set to `2026-04-27`.
+
+## Change Log
+
+| Date       | Version | Change                                                                 | Author |
+|------------|---------|------------------------------------------------------------------------|--------|
+| 2026-04-27 | 0.1.0   | Built the dev-only `/dev/theme-audit` route as the day-zero theme verification artifact: a single scrollable page rendering the Kano color swatches with hex codes, the full type scale, the 4-px spacing tokens, every Vuetify primitive the product uses (buttons × 3 variants × 3 sizes + disabled, text/textarea/select/radio/checkbox/switch, data table, dialog/menu/tooltip/snackbar, progress/skeleton/alert × 4 variants, list/tabs), and an "override evidence" panel listing six concrete Material-3 defaults the Tixeo theme suppresses. Route is gated on `import.meta.env.DEV` and verified absent from production builds via `dist/assets/*.js` grep. Wired Playwright (chromium-only, 1440×900) with two specs: zero console errors + zero axe-core violations, and a 1%-tolerance visual-regression baseline (`theme-audit-baseline-chromium-linux.png`, committed). The audit run uncovered four real Vuetify default a11y issues that were fixed at the theme level (`--v-medium-emphasis-opacity` 0.6 → 0.78; warning alert text contrast via `on-warning` token; `v-progress-linear` aria-label requirement; `<v-list nav>` role-list-containing-role-link rewritten as accessible `<nav><ul>`+`<RouterLink>` in `PmLayout`). All 30 unit tests still green; backend pytest (60/60) regression-free. | Amelia (dev agent) |

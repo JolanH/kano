@@ -9,6 +9,30 @@ The repo is a monorepo with a Python/Flask backend and a Vue/Vuetify frontend.
 
 ## Quickstart
 
+The full local stack — Postgres 17, Flask API (with auto-migrations), Vite
+dev server, and a backup-volume placeholder — boots with one command:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Then open:
+
+- SPA: <http://localhost:5173/>
+- API: <http://localhost:5000/api/v1/health>
+
+Tear down (including volumes):
+
+```bash
+docker compose down -v
+```
+
+Detailed runbook (smoke checklist, log tailing, psql access,
+troubleshooting): [`docs/ops/runbook.md`](docs/ops/runbook.md).
+
+### Without Docker
+
 ```bash
 # Backend (Python 3.12, Poetry)
 cd kano-backend
@@ -19,7 +43,21 @@ cd ../kano-frontend
 npm install
 ```
 
-Full one-command local boot (`docker compose up`) is wired up in Story 1.9.
+### Pre-commit hooks
+
+Local hooks mirror the CI gates (lint + typecheck + format) and block the
+commit on any failure. Install once per clone:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+To run all hooks against the whole tree (useful before opening a PR):
+
+```bash
+pre-commit run --all-files
+```
 
 ## Repository layout
 

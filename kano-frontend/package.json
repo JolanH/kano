@@ -12,9 +12,12 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "test": "vitest",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "size": "size-limit"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.8",
     "@fontsource/roboto": "^5.2.10",
     "@mdi/font": "7.4.47",
     "pinia": "^3.0.4",

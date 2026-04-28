@@ -1,0 +1,258 @@
+name: ci
+
+# Single-workflow CI per architecture D12. Each job is independent and runs
+# in parallel where possible; the slow ones (compose smoke, Playwright) gate
+# behind their own setup so a quick lint/type failure surfaces in <2 minutes.
+#
+# Branch protection on `main` should require every job below to succeed —
+# document the GitHub UI setup steps in `docs/ops/runbook.md`.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
+  POETRY_VERSION: "2.1.4"
+
+jobs:
+  # ----------------------------------------------------------------------
+  # Frontend gates
+  # ----------------------------------------------------------------------
+  lint-frontend:
+    name: lint (frontend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kano-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: kano-frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+
+  typecheck-frontend:
+    name: typecheck (frontend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kano-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: kano-frontend/package-lock.json
+      - run: npm ci
+      - run: npm run type-check
+
+  test-frontend:
+    name: test (frontend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kano-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: kano-frontend/package-lock.json
+      - run: npm ci
+      - run: npm run test:unit
+
+  size-limit:
+    name: size-limit (bundle gate)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kano-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: kano-frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npx size-limit
+
+  e2e-playwright:
+    name: e2e (Playwright + axe-core)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kano-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: kano-frontend/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=chromium
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: kano-frontend/playwright-report
+          retention-days: 7
+
+  # ----------------------------------------------------------------------
+  # Backend gates
+  # ----------------------------------------------------------------------
+  lint-backend:
+    name: lint (backend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kano-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: poetry-${{ runner.os }}-${{ hashFiles('kano-backend/poetry.lock') }}
+      - run: poetry install --with dev --no-interaction
+      - run: poetry run ruff check src tests migrations
+      - run: poetry run black --check src tests migrations
+
+  typecheck-backend:
+    name: typecheck (backend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kano-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: poetry-${{ runner.os }}-${{ hashFiles('kano-backend/poetry.lock') }}
+      - run: poetry install --with dev --no-interaction
+      - run: poetry run mypy src tests migrations
+
+  test-backend:
+    name: test (backend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kano-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: poetry-${{ runner.os }}-${{ hashFiles('kano-backend/poetry.lock') }}
+      - run: poetry install --with dev --no-interaction
+      # Tests use testcontainers, which talks to the Docker socket the runner
+      # already exposes; no service container needed here.
+      - run: poetry run pytest --cov=kano --cov-branch --cov-report=xml
+      # Per PRD Technical Success: 100% line + branch coverage on the
+      # categorization module. As more critical modules land (epoch_service
+      # in Epic 2, poll_expiry in Epic 3), append them to this gate.
+      - name: Enforce 100% coverage on critical modules
+        run: |
+          poetry run coverage report \
+            --include='src/kano/services/kano_matrix.py' \
+            --fail-under=100
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: kano-backend/coverage.xml
+          retention-days: 7
+
+  migration-roundtrip:
+    name: alembic forward + downgrade + upgrade
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kano-backend
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: kano_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+psycopg2://test:test@localhost:5432/kano_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+      - run: poetry install --with dev --no-interaction
+      - run: ./scripts/alembic_roundtrip.sh
+
+  # ----------------------------------------------------------------------
+  # Compose-level smoke
+  # ----------------------------------------------------------------------
+  compose-smoke:
+    name: compose smoke (full stack /health)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage .env from .env.example
+        run: cp .env.example .env
+      - name: Build & boot stack
+        run: docker compose up -d --build --wait
+      - name: Probe /api/v1/health
+        run: |
+          curl --fail --retry 5 --retry-delay 3 --retry-connrefused \
+            -o /tmp/health.json \
+            http://localhost:5000/api/v1/health
+          cat /tmp/health.json | jq -e '.status == "ok" and .db == "connected"'
+      - name: Probe Vite proxy round-trip
+        run: |
+          curl --fail --retry 5 --retry-delay 3 --retry-connrefused \
+            http://localhost:5173/ -o /dev/null -s
+      - if: failure()
+        name: Dump stack logs on failure
+        run: docker compose logs
+      - if: always()
+        name: Tear down stack
+        run: docker compose down -v

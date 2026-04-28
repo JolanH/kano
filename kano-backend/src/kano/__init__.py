@@ -1,11 +1,43 @@
-"""Kano backend package.
+"""Kano backend Flask application factory.
 
-The real Flask app factory lands in Story 1.3. This placeholder exists so
-downstream stories can import ``kano`` and so ``poetry install`` has a valid
-package to point at during scaffolding.
+``create_app`` wires every cross-cutting concern that a future blueprint can
+rely on without per-endpoint boilerplate: request-ID propagation, structlog
+JSON output, CSRF + CORS + session-cookie discipline, the SQLAlchemy session
+extension, and the RFC 7807 ``application/problem+json`` error envelope. Two
+infrastructure blueprints — ``health`` and ``csrf`` — are registered here
+because they exist to support the platform itself (CI smoke-testing and SPA
+bootstrap) rather than any one domain. Domain blueprints (projects, features,
+polls, …) land in Epic 2+ and are mounted by their own helper functions.
 """
 
+from __future__ import annotations
 
-def create_app() -> None:
-    """Placeholder app factory; Story 1.3 replaces this with the real factory."""
-    return None
+from flask import Flask
+
+from kano.api.csrf import csrf_bp
+from kano.api.errors import register_error_handlers
+from kano.api.health import health_bp
+from kano.config import Config
+from kano.db import db
+from kano.middleware import request_id, security, structured_logging
+
+
+def create_app(config_class: type[Config] = Config) -> Flask:
+    """Build, configure, and return the Kano Flask application."""
+
+    app = Flask(__name__)
+    app.config.from_object(config_class)
+
+    request_id.init_app(app)
+    structured_logging.configure_logging(app)
+    security.init_app(app)
+    db.init_app(app)
+    register_error_handlers(app)
+
+    app.register_blueprint(health_bp)
+    app.register_blueprint(csrf_bp)
+
+    return app
+
+
+__all__ = ["create_app"]
