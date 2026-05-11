@@ -17,6 +17,19 @@ const PmLayout = defineAsyncComponent(() => import('@/layouts/PmLayout.vue'))
 const route = useRoute()
 
 const layoutComponent = computed(() => {
-  return route.meta.layout === 'respondent' ? RespondentLayout : PmLayout
+  // Explicit discriminator: every route MUST declare `meta.layout`. The
+  // catch-all 404 route (and any future dev/admin routes) declares `'pm'`
+  // so the layout is always deliberate — there is no silent fallback. A
+  // meta-less route is a misconfiguration: throw in dev so the offender
+  // can't ship; fall through to PmLayout + console error in prod so the
+  // user still sees *something* rather than a blank screen.
+  const layout = route.meta.layout
+  if (layout === 'respondent') return RespondentLayout
+  if (layout === 'pm') return PmLayout
+  const msg = `[App.vue] Route "${String(route.fullPath)}" has no meta.layout — set meta.layout: 'pm' | 'respondent' explicitly.`
+  if (import.meta.env.DEV) throw new Error(msg)
+  // eslint-disable-next-line no-console
+  console.error(msg)
+  return PmLayout
 })
 </script>

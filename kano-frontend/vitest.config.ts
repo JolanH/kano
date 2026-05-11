@@ -1,6 +1,7 @@
 import { fileURLToPath, URL } from 'node:url'
 
 import Vue from '@vitejs/plugin-vue'
+import Vuetify from 'vite-plugin-vuetify'
 import { defineConfig } from 'vitest/config'
 
 /**
@@ -13,12 +14,14 @@ import { defineConfig } from 'vitest/config'
  *
  * We don't import `vite.config.mts` directly (the `.mts` extension would
  * require `allowImportingTsExtensions` in tsconfig); instead we replicate
- * the bare minimum needed for the unit specs: the `@/` path alias and the
- * Vue plugin so `.vue` SFC imports resolve. The full Vite config (proxy,
- * manualChunks, font loading) is irrelevant under Vitest.
+ * the bare minimum needed for the unit specs: the `@/` path alias, the Vue
+ * SFC plugin, and `vite-plugin-vuetify` so any future component-mount test
+ * (e.g. Story 4-5's `<KanoLikert>` spec) can resolve Vuetify auto-imports.
+ * The full Vite config (proxy, manualChunks, font loading) is irrelevant
+ * under Vitest.
  */
 export default defineConfig({
-  plugins: [Vue()],
+  plugins: [Vue(), Vuetify({ autoImport: true })],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('src', import.meta.url)),

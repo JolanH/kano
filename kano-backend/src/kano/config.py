@@ -32,6 +32,14 @@ class Config:
     DATABASE_URL: str = os.environ.get("DATABASE_URL", _DEFAULT_DEV_DB_URL if _IS_DEV else "")
     SQLALCHEMY_DATABASE_URI: str = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
+    # `connect_timeout=5` so a hung Postgres host fails the `/health` probe
+    # quickly instead of pinning a Flask worker for the OS-default ~75 s.
+    # `pool_pre_ping=True` discards stale connections (e.g. after a DB
+    # restart) before they reach a request handler.
+    SQLALCHEMY_ENGINE_OPTIONS: dict[str, object] = {  # noqa: RUF012 - Flask config attribute
+        "pool_pre_ping": True,
+        "connect_args": {"connect_timeout": 5},
+    }
 
     SECRET_KEY: str = os.environ.get("SECRET_KEY", _DEFAULT_DEV_SECRET if _IS_DEV else "")
 

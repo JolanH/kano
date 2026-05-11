@@ -39,10 +39,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     FLASK_APP=kano
 
-RUN apt-get update \
-    && apt-get install --no-install-recommends -y curl \
-    && rm -rf /var/lib/apt/lists/*
-
+# Non-root user. The HEALTHCHECK below uses python's stdlib `urllib.request`
+# rather than curl/wget so we don't have to install (and audit + supply-
+# chain) an extra system package just to read one URL — `python3` is
+# already in the base image, and the dependency hits zero.
 RUN addgroup --system kano && adduser --system --group kano
 
 WORKDIR /app
@@ -67,7 +67,8 @@ EXPOSE 5000
 ARG KANO_VERSION=dev
 ENV KANO_VERSION=${KANO_VERSION}
 
-HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
-    CMD curl --fail --silent http://localhost:5000/api/v1/health || exit 1
+HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=5 \
+    CMD python -c "import urllib.request, sys; \
+sys.exit(0 if urllib.request.urlopen('http://localhost:5000/api/v1/health', timeout=2).status == 200 else 1)"
 
 ENTRYPOINT ["/app/entrypoint.sh"]

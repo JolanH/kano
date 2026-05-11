@@ -1,6 +1,6 @@
 # Story 1.4: Health and CSRF-token endpoints
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -42,6 +42,14 @@ so that the CI smoke test has a stable assertion target and the PM SPA has a cle
     - First call: 200, response JSON contains `csrf_token` (non-empty string), `Set-Cookie` header present
     - Second call with the cookie: returns a token that validates on a subsequent CSRF-protected POST (use a one-off protected route registered in the test app, POST with `X-CSRF-Token` header + cookie → expect 200/404 but NOT 400 CSRF rejection)
     - Cookie attributes (from Story 1.3): `HttpOnly` and `SameSite=Lax` present
+
+### Review Findings
+
+- [x] [Review][Patch] Broaden `except SQLAlchemyError` in health endpoint to catch any probe failure [`kano-backend/src/kano/api/health.py:31`] — non-SA exceptions (RuntimeError, ArgumentError, raw driver errors) currently fall through to the generic 500 handler instead of returning the 503 body AC #1 requires. Resolved: changed to bare `except Exception`; added `test_health_returns_503_when_probe_raises_non_sqlalchemy_exception` exercising a `RuntimeError` path.
+- [x] [Review][Patch] Add `db.session.rollback()` (or use an isolated `db.engine.connect()`) before `SELECT 1` [`kano-backend/src/kano/api/health.py:32`] — if a prior request left the session in a failed-transaction state, the probe raises `PendingRollbackError` and reports a connectivity outage that isn't real. Resolved: probe now calls `db.session.rollback()` immediately before `SELECT 1`.
+- [x] [Review][Patch] Add a `connect_timeout` to the SQLAlchemy engine options in `Config` [`kano-backend/src/kano/config.py`] — without it, `/health` blocks for the OS-default ~75 s when Postgres is reachable at TCP but hung; defeats the `docker compose up --wait` consumer. Resolved: `Config.SQLALCHEMY_ENGINE_OPTIONS` now sets `connect_timeout=5` and `pool_pre_ping=True`.
+- [x] [Review][Patch] Override `SQLALCHEMY_DATABASE_URI` in `TestConfig` to a hermetic value [`kano-backend/tests/conftest.py:30`] — the inherited dev default points at a real `localhost:5432`, so unguarded `client`-fixture tests can silently hit a developer's local Postgres or hang on CI. Resolved: set to `postgresql+psycopg2://nope:nope@127.0.0.1:1/nope` so any unintended call fails loudly.
+- [x] [Review][Patch] Convert `app_with_db` to a `yield`-based fixture that calls `db.session.remove()` + disposes the engine on teardown [`kano-backend/tests/conftest.py:103-114`] — current fixture leaks pooled connections across tests, mirroring the cleanup pattern already in `alembic_head`. Resolved: fixture is now `Iterator[Flask]` with a `finally` block running session-remove + engine-dispose under `app_context`.
 
 ## Dev Notes
 

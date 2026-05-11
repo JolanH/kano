@@ -22,6 +22,12 @@ export const tixeoColors = {
   'on-surface-variant': '#6B7280',
   'on-surface-dark': '#FFFFFF',
   'on-surface-dark-variant': '#9AA0AB',
+  // `outline` is a subtle separator color used by Vuetify card/input
+  // borders. It is intentionally low-contrast (~1.5:1 vs surface) — it is
+  // a *decorative* separator, not an interactive focus ring. Focus rings
+  // pair `primary` against `surface` (3.3:1, listed under largeOrUi).
+  // The `decorativeTokens` list at the bottom of this file pins this
+  // intent and is enforced by `theme-contrast.spec.ts`.
   outline: '#D1D5DB',
   'outline-variant': '#E5E7EB',
   background: '#F7F8FA',
@@ -40,13 +46,19 @@ export const tixeoColors = {
   'on-info': '#FFFFFF',
 
   // Kano categories — must each meet 4.5:1 against `surface` (white) for
-  // the small-text labels that ride next to the swatch.
+  // the small-text labels that ride next to the swatch. Token suffixes
+  // mirror the backend `Category` enum (M, L, E, I, C, D — see
+  // `kano-backend/src/kano/services/kano_matrix.py`): `must`/`perf`/`del`/
+  // `ind`/`cont`/`doub`. Earlier drafts used `rev`/`que` (Reverse/
+  // Questionable) carried over from the UX spec's draft vocabulary; that
+  // diverged from the backend's `Contradictory`/`Doubtful` and was corrected
+  // alongside the story 1-5 (5,1)→D fix so both layers share one vocabulary.
   'category-must': '#1E3A8A',
   'category-perf': '#0D9488',
   'category-del': '#7C3AED',
   'category-ind': '#6B7280',
-  'category-rev': '#B45309',
-  'category-que': '#78716C',
+  'category-cont': '#B45309',
+  'category-doub': '#78716C',
 } as const
 
 export type TixeoColorToken = keyof typeof tixeoColors
@@ -64,6 +76,13 @@ export const contrastPairings = {
     { fg: 'on-surface-variant', bg: 'surface' },
     { fg: 'on-surface-dark', bg: 'surface-variant' },
     { fg: 'on-surface-dark-variant', bg: 'surface-variant' },
+    // Semantic on-X / X pairs — every `<v-alert type="..." />` renders these.
+    // `on-warning` is intentionally near-black (Tixeo amber + white = 2.93:1
+    // and would fail AA — see Story 1-8 audit run for the discovery).
+    { fg: 'on-success', bg: 'success' },
+    { fg: 'on-warning', bg: 'warning' },
+    { fg: 'on-error', bg: 'error' },
+    { fg: 'on-info', bg: 'info' },
   ],
   /**
    * WCAG AA large-text + non-text-UI minimum: 3:1.
@@ -78,8 +97,26 @@ export const contrastPairings = {
     { fg: 'category-perf', bg: 'surface' },
     { fg: 'category-del', bg: 'surface' },
     { fg: 'category-ind', bg: 'surface' },
-    { fg: 'category-rev', bg: 'surface' },
-    { fg: 'category-que', bg: 'surface' },
+    { fg: 'category-cont', bg: 'surface' },
+    { fg: 'category-doub', bg: 'surface' },
     { fg: 'on-primary', bg: 'primary' },
   ],
 } as const
+
+/**
+ * Tokens that are NEVER expected to meet a contrast floor against any
+ * other token. The contrast spec asserts none of these appear as the
+ * foreground of any contrast pair, and treats their presence as evidence
+ * that a contributor mistakenly used a decorative color where an
+ * interactive / text role was intended.
+ *
+ * - `outline` / `outline-variant`: subtle separator borders (~1.5:1).
+ * - `surface-bright` / `background`: page-level fills, never paired against
+ *   a foreground except via the already-tested `on-surface` tokens.
+ */
+export const decorativeTokens = [
+  'outline',
+  'outline-variant',
+  'surface-bright',
+  'background',
+] as const satisfies readonly TixeoColorToken[]

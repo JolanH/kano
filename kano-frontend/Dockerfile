@@ -18,6 +18,9 @@
 # ----------------------------------------------------------------------------
 FROM node:24-alpine AS dev
 
+# `wget` is preinstalled on node:24-alpine and used for the HEALTHCHECK
+# below — no extra apk add layer needed.
+
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -26,6 +29,14 @@ RUN npm ci
 COPY . .
 
 EXPOSE 5173
+
+# Vite dev server returns 200 on `/` once HMR is up; `wget --spider` is a
+# HEAD-only probe so we don't transfer the full page each interval.
+# Long start-period covers cold-start: first `npm ci` + Vite warm-up can
+# take 30+ seconds on a slow machine. Story 1.10's `docker compose --wait`
+# gates on this signal.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=45s --retries=3 \
+    CMD wget --quiet --spider --tries=1 http://localhost:5173/ || exit 1
 
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 

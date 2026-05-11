@@ -33,15 +33,41 @@ troubleshooting): [`docs/ops/runbook.md`](docs/ops/runbook.md).
 
 ### Without Docker
 
+Docker compose is the supported path. If you genuinely need to run the
+stack without containers — e.g. attaching a host-side debugger, profiling
+the Python process, or working on a machine where Docker isn't available —
+this is the recipe. Be aware that nothing in CI exercises this path; if
+something breaks here, file an issue rather than working around it.
+
+**Prerequisites** — Python 3.12 + Poetry 2.x, Node 24.x + npm 11.x, and a
+running Postgres 17 instance you have full credentials for (Docker Desktop
+including a standalone container is fine).
+
 ```bash
-# Backend (Python 3.12, Poetry)
+# 1. Bring up a Postgres 17 instance (skip if you already have one):
+docker run -d --name kano-pg -p 5432:5432 \
+    -e POSTGRES_USER=kano -e POSTGRES_PASSWORD=change-me -e POSTGRES_DB=kano \
+    postgres:17
+
+# 2. Backend
 cd kano-backend
 poetry install
+export DATABASE_URL="postgresql+psycopg2://kano:change-me@localhost:5432/kano"
+export FLASK_ENV=development
+export SECRET_KEY=dev-only-not-for-prod
+export CORS_ALLOWED_ORIGINS=http://localhost:5173
+export KANO_VERSION=0.1.0
+poetry run alembic upgrade head
+poetry run flask --app kano run --host=0.0.0.0 --port=5000 --debug
 
-# Frontend (Node 24.x)
-cd ../kano-frontend
+# 3. Frontend (in a second terminal)
+cd kano-frontend
 npm install
+npm run dev    # serves on http://localhost:5173/, proxies /api to :5000
 ```
+
+To smoke-test: `curl http://localhost:5000/api/v1/health` should return
+`{"status": "ok", ...}`.
 
 ### Pre-commit hooks
 

@@ -40,6 +40,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/poll/RespondentPlaceholder.vue'),
     meta: { layout: 'respondent' },
   },
+  {
+    path: '/:pathMatch(.*)*',
+    component: () => import('@/pages/common/NotFound.vue'),
+    meta: { layout: 'pm' },
+  },
 ]
 
 if (import.meta.env.DEV) {

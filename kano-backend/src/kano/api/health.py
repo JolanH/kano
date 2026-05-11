@@ -5,9 +5,9 @@ The health check probes both the WSGI loop (handler reached) and the database
 container build time as ``KANO_VERSION``; we never compute it at request time
 to keep this endpoint cheap and side-effect-free under load.
 
-Failure mode: any ``SQLAlchemyError`` collapses to a 503 with a generic body —
-exception messages can leak connection strings and are deliberately not
-forwarded to the response.
+Failure mode: any error during the DB probe — SQLAlchemy or otherwise —
+collapses to a 503 with a generic body. Exception messages can leak
+connection strings and are deliberately not forwarded to the response.
 """
 
 from __future__ import annotations
@@ -15,7 +15,6 @@ from __future__ import annotations
 import structlog
 from flask import Blueprint, Response, current_app, jsonify
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
 
 from kano.db import db
 
@@ -29,9 +28,14 @@ def health() -> tuple[Response, int]:
     """Return liveness + DB-connectivity status."""
 
     version = current_app.config.get("KANO_VERSION", "unknown")
+    # Discard any stale transaction state on the request-scoped session before
+    # the probe. Without this, a prior request that left a `PendingRollbackError`
+    # on the session would surface as a fake "DB unreachable" page even when
+    # Postgres is healthy.
     try:
+        db.session.rollback()
         db.session.execute(text("SELECT 1"))
-    except SQLAlchemyError:
+    except Exception:
         _log.warning("health_db_unreachable")
         return jsonify({"status": "degraded", "db": "unreachable"}), 503
     return jsonify({"status": "ok", "version": version, "db": "connected"}), 200

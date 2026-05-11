@@ -7,17 +7,17 @@
         theme="dark"
         width="240"
       >
-        <nav :aria-label="copy('pm.layout.appBar.title')">
+        <nav :aria-label="copy('pm.layout.sidebar.aria')">
           <ul class="pm-nav-list">
             <li>
               <RouterLink class="pm-nav-link" to="/app/projects">
-                <v-icon size="20" class="me-2">mdi-folder-multiple</v-icon>
+                <v-icon icon="mdi-folder-multiple" size="20" class="me-2" aria-hidden="true" />
                 {{ copy('pm.layout.sidebar.projects') }}
               </RouterLink>
             </li>
             <li>
               <RouterLink class="pm-nav-link" to="/app/polls">
-                <v-icon size="20" class="me-2">mdi-poll</v-icon>
+                <v-icon icon="mdi-poll" size="20" class="me-2" aria-hidden="true" />
                 {{ copy('pm.layout.sidebar.polls') }}
               </RouterLink>
             </li>
@@ -42,10 +42,19 @@
           class="d-flex align-center justify-center"
           style="min-height: 100vh; max-width: 480px;"
         >
-          <v-card class="pa-6 text-center" data-testid="unsupported-viewport">
-            <v-icon size="48" color="primary" class="mb-4">mdi-monitor</v-icon>
-            <div class="text-h6 mb-2">{{ copy('common.unsupportedViewport.title') }}</div>
-            <div class="text-body-2 text-on-surface-variant">
+          <v-card
+            class="pa-6 text-center"
+            data-testid="unsupported-viewport"
+            role="alert"
+            aria-live="assertive"
+            :aria-labelledby="`unsupported-viewport-title`"
+            :aria-describedby="`unsupported-viewport-body`"
+          >
+            <v-icon icon="mdi-monitor" size="48" color="primary" class="mb-4" aria-hidden="true" />
+            <div id="unsupported-viewport-title" class="text-h6 mb-2">
+              {{ copy('common.unsupportedViewport.title') }}
+            </div>
+            <div id="unsupported-viewport-body" class="text-body-2 text-on-surface-variant">
               {{ copy('common.unsupportedViewport.body') }}
             </div>
           </v-card>
@@ -66,6 +75,13 @@ const copy = useCopy()
 </script>
 
 <style scoped>
+/* PM body register: 14 px / rem ratio matches the Tixeo screenshot's dense
+ * enterprise typography (UX spec §Typography System). Set on the v-app root
+ * via `:deep` so descendant Vuetify primitives inherit. */
+:deep(.v-application__wrap) {
+  font-size: 0.875rem;
+}
+
 .pm-container {
   max-width: 1440px;
 }

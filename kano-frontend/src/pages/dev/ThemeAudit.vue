@@ -1,6 +1,8 @@
 <template>
   <div class="theme-audit">
-    <h1 class="text-h2 mb-6">{{ copy('dev.themeAudit.title') }}</h1>
+    <h1 data-testid="theme-audit-heading" class="text-h2 mb-6">
+      {{ copy('dev.themeAudit.title') }}
+    </h1>
 
     <!-- ============================== Colors ============================== -->
     <section class="mb-10">
@@ -13,9 +15,8 @@
         >
           <div
             class="swatch-tile"
-            role="img"
+            aria-hidden="true"
             :style="{ backgroundColor: swatch.hex }"
-            :aria-label="`Color sample for ${swatch.label}`"
           />
           <div class="text-body-2 mt-2 font-weight-medium">{{ swatch.label }}</div>
           <div class="text-caption text-on-surface-variant tabular-nums">{{ swatch.hex }}</div>
@@ -54,9 +55,8 @@
         </div>
         <div
           class="spacing-bar"
-          role="img"
+          aria-hidden="true"
           :style="{ width: spacing.px + 'px' }"
-          :aria-label="`Spacing token ${spacing.token} (${spacing.px} pixels)`"
         />
       </div>
     </section>
@@ -94,8 +94,17 @@
         label="Category"
         :items="['Must-have', 'Performance', 'Delighter']"
       />
+      <!--
+        Likert demo uses the real `respondent.likert.*` values from the copy
+        deck so a regression to those strings is caught visually here too.
+      -->
       <v-radio-group label="Likert demo" :model-value="3">
-        <v-radio v-for="i in 5" :key="i" :label="`Option ${i}`" :value="i" />
+        <v-radio
+          v-for="i in 5"
+          :key="i"
+          :label="copy(`respondent.likert.${i}` as 'respondent.likert.1')"
+          :value="i"
+        />
       </v-radio-group>
       <v-checkbox label="Enable auto-advance" />
       <v-switch label="Show advanced settings" color="primary" />
@@ -126,14 +135,20 @@
             <v-list-item title="Third item" />
           </v-list>
         </v-menu>
-        <v-tooltip
-          location="top"
-          aria-label="Sample tooltip body"
-        >
+        <!--
+          Tooltip access pattern: the accessible name lives on the
+          ACTIVATOR via `aria-describedby` pointing at the tooltip body,
+          not on the tooltip itself. Voicing on the tooltip element AND on
+          its slot content would double-announce to AT — the activator is
+          the focusable surface SR users interact with first.
+        -->
+        <v-tooltip location="top">
           <template #activator="{ props }">
-            <v-btn v-bind="props">Hover for tooltip</v-btn>
+            <v-btn v-bind="props" aria-describedby="theme-audit-tooltip-body">
+              Hover for tooltip
+            </v-btn>
           </template>
-          <span>Tooltip body</span>
+          <span id="theme-audit-tooltip-body">Tooltip body</span>
         </v-tooltip>
       </div>
       <div class="d-flex flex-wrap" style="gap: 12px;">
@@ -211,12 +226,10 @@
       <h2 class="text-h3 mb-4">{{ copy('dev.themeAudit.overrides') }}</h2>
       <v-card class="pa-4">
         <ul class="text-body-2">
-          <li>Card elevation 0 (Material default: 1dp shadow)</li>
-          <li>Primary button variant flat (default: elevated)</li>
-          <li>Input default variant outlined (default: filled with floating label)</li>
-          <li>No floating label on TextField (default: animated label)</li>
-          <li>App bar uses surface color, not primary (default: primary background)</li>
-          <li>Theme is single light theme (default: system / dark / light pair)</li>
+          <li
+            v-for="o in tixeoOverrides"
+            :key="o.id"
+          >{{ o.applied }} (Material default: {{ o.materialDefault }})</li>
         </ul>
       </v-card>
     </section>
@@ -227,13 +240,27 @@
 import { reactive, ref } from 'vue'
 
 import { useCopy } from '@/composables/useCopy'
-import { tixeoColors } from '@/theme/tixeo'
+import { tixeoColors, type TixeoColorToken } from '@/theme/tixeo'
+import { tixeoOverrides } from '@/theme/overrides-evidence'
 
 const copy = useCopy()
 
-const colorSwatches = [
+interface ColorSwatch {
+  token: TixeoColorToken
+  label: string
+  hex: string
+}
+
+// Includes the decorative tokens (`outline`, `outline-variant`,
+// `surface-bright`, `background`) so any regression to those is caught by
+// the visual-regression baseline alongside the rest.
+const colorSwatches: ColorSwatch[] = [
   { token: 'primary', label: 'Primary (Tixeo orange)', hex: tixeoColors.primary },
   { token: 'surface-variant', label: 'Sidebar dark', hex: tixeoColors['surface-variant'] },
+  { token: 'surface-bright', label: 'Surface bright', hex: tixeoColors['surface-bright'] },
+  { token: 'background', label: 'Background', hex: tixeoColors.background },
+  { token: 'outline', label: 'Outline (border)', hex: tixeoColors.outline },
+  { token: 'outline-variant', label: 'Outline variant', hex: tixeoColors['outline-variant'] },
   { token: 'success', label: 'Success', hex: tixeoColors.success },
   { token: 'warning', label: 'Warning', hex: tixeoColors.warning },
   { token: 'error', label: 'Error', hex: tixeoColors.error },
@@ -242,11 +269,16 @@ const colorSwatches = [
   { token: 'category-perf', label: 'Performance', hex: tixeoColors['category-perf'] },
   { token: 'category-del', label: 'Delighter', hex: tixeoColors['category-del'] },
   { token: 'category-ind', label: 'Indifferent', hex: tixeoColors['category-ind'] },
-  { token: 'category-rev', label: 'Reverse', hex: tixeoColors['category-rev'] },
-  { token: 'category-que', label: 'Questionable', hex: tixeoColors['category-que'] },
+  { token: 'category-cont', label: 'Contradictory', hex: tixeoColors['category-cont'] },
+  { token: 'category-doub', label: 'Doubtful', hex: tixeoColors['category-doub'] },
 ]
 
-const spacingScale = [
+interface SpacingToken {
+  token: string
+  px: number
+}
+
+const spacingScale: SpacingToken[] = [
   { token: 'space-1', px: 4 },
   { token: 'space-2', px: 8 },
   { token: 'space-3', px: 12 },
@@ -257,13 +289,24 @@ const spacingScale = [
   { token: 'space-16', px: 64 },
 ]
 
-const tableHeaders = [
+interface TableHeader {
+  title: string
+  key: string
+}
+
+interface FeatureRow {
+  name: string
+  category: string
+  responses: number
+}
+
+const tableHeaders: TableHeader[] = [
   { title: 'Feature', key: 'name' },
   { title: 'Category', key: 'category' },
   { title: 'Responses', key: 'responses' },
 ]
 
-const tableItems = [
+const tableItems: FeatureRow[] = [
   { name: 'Auto-save', category: 'Must-have', responses: 12 },
   { name: 'Custom themes', category: 'Performance', responses: 8 },
   { name: 'AI suggestions', category: 'Delighter', responses: 4 },

@@ -8,13 +8,20 @@
  *    typo'd Vuetify default) tends to log to the console first; capturing
  *    `console.error` events catches the loud failures before the silent
  *    pixel-diff regression.
- * 2. axe-core reports zero accessibility violations. The audit page stresses
- *    every Vuetify primitive the product depends on, so this acts as a
- *    canary for any framework upgrade that regresses a11y.
+ * 2. axe-core reports zero accessibility violations across `wcag2a`+`wcag2aa`.
+ *    The audit page stresses every Vuetify primitive the product depends on,
+ *    so this acts as a canary for any framework upgrade that regresses a11y.
+ *    The `@axe-core/playwright` package is pinned to an exact version
+ *    (package.json) so the rule set doesn't expand silently between patches.
  * 3. The full-page screenshot matches the committed baseline. The first run
  *    captures `theme-audit-baseline.png`; subsequent runs diff against it
- *    with a 1% pixel-ratio tolerance to absorb font-antialiasing variance
- *    across operating systems.
+ *    with a 0.5% pixel-ratio tolerance. We pin chromium-linux only so the
+ *    tolerance can be tight; cross-OS variance is out of scope today.
+ *
+ * Why `data-testid="theme-audit-heading"` rather than `getByRole({ name })`:
+ * the role+name query hardcodes the English copy and breaks the moment the
+ * copy deck is edited or localized. The testid is part of the page's
+ * stable contract.
  */
 
 import AxeBuilder from '@axe-core/playwright'
@@ -28,10 +35,10 @@ test.describe('theme audit', () => {
     })
 
     await page.goto('/dev/theme-audit')
-    await page.waitForLoadState('networkidle')
-
-    const heading = page.getByRole('heading', { name: 'Theme audit' })
-    await expect(heading).toBeVisible()
+    // Wait for a specific landmark element rather than `networkidle` — the
+    // latter is flaky in Vite dev mode (HMR WebSocket keeps the connection
+    // open, fonts load on-demand) and is discouraged in modern Playwright.
+    await expect(page.getByTestId('theme-audit-heading')).toBeVisible()
 
     const axeResults = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa'])
@@ -43,11 +50,13 @@ test.describe('theme audit', () => {
 
   test('matches the visual-regression baseline screenshot', async ({ page }) => {
     await page.goto('/dev/theme-audit')
-    await page.waitForLoadState('networkidle')
+    await expect(page.getByTestId('theme-audit-heading')).toBeVisible()
 
     await expect(page).toHaveScreenshot('theme-audit-baseline.png', {
       fullPage: true,
-      maxDiffPixelRatio: 0.01,
+      // 0.5% tolerance — tight because we pin chromium-linux. Any drift
+      // larger than this is a real change, not antialiasing variance.
+      maxDiffPixelRatio: 0.005,
     })
   })
 })

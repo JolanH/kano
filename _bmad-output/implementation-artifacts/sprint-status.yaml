@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-22
-last_updated: 2026-04-28
+last_updated: 2026-05-11
 project: kano
 project_key: NOKEY
 tracking_system: file-system
@@ -47,12 +47,12 @@ development_status:
   1-1-monorepo-scaffold-with-backend-and-frontend-project-initialization: done
   1-2-alembic-migration-1-locks-the-five-table-domain-schema: done
   1-3-flask-app-factory-with-csrf-cors-request-id-structured-logging-and-problem-details-middleware: review
-  1-4-health-and-csrf-token-endpoints: review
-  1-5-kano-categorization-matrix-pure-function-module-with-25-cell-parametrized-test: review
-  1-6-vue-spa-scaffold-with-tixeo-vuetify-theme-two-layouts-and-useapi-composable: review
-  1-7-copy-deck-scaffold-with-usecopy-composable-and-inline-literal-lint-rule: review
-  1-8-theme-audit-screen-as-day-zero-verification-artifact: review
-  1-9-docker-compose-local-boot-brings-the-full-stack-up-on-one-command: review
+  1-4-health-and-csrf-token-endpoints: done
+  1-5-kano-categorization-matrix-pure-function-module-with-25-cell-parametrized-test: done
+  1-6-vue-spa-scaffold-with-tixeo-vuetify-theme-two-layouts-and-useapi-composable: done
+  1-7-copy-deck-scaffold-with-usecopy-composable-and-inline-literal-lint-rule: done
+  1-8-theme-audit-screen-as-day-zero-verification-artifact: done
+  1-9-docker-compose-local-boot-brings-the-full-stack-up-on-one-command: done
   1-10-ci-baseline-pipeline-and-pre-commit-hooks: review
   epic-1-retrospective: optional
 

@@ -24,10 +24,10 @@
     "qrcode": "^1.5.4",
     "vue": "^3.5.30",
     "vue-router": "^5.0.3",
-    "vuetify": "^4.0.2"
+    "vuetify": "4.0.2"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.11.2",
+    "@axe-core/playwright": "4.11.2",
     "@size-limit/preset-app": "^12.1.0",
     "@tsconfig/node22": "^22.0.5",
     "@types/node": "^24.12.0",

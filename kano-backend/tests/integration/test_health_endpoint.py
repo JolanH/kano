@@ -51,6 +51,24 @@ def test_health_returns_503_when_database_is_unreachable(
     assert body == {"status": "degraded", "db": "unreachable"}
 
 
+def test_health_returns_503_when_probe_raises_non_sqlalchemy_exception(
+    client: FlaskClient,
+) -> None:
+    """Defense-in-depth: any probe failure (not just ``SQLAlchemyError``) → 503.
+
+    AC #1 says DB-side failures collapse to 503 with the documented body.
+    Without a broad ``except``, a non-``SQLAlchemyError`` (e.g. a ``RuntimeError``
+    from a misconfigured engine) escapes to the generic 500 handler instead.
+    """
+
+    with patch.object(db.session, "execute", side_effect=RuntimeError("bad config")):
+        response = client.get("/api/v1/health")
+
+    assert response.status_code == 503
+    body = json.loads(response.data)
+    assert body == {"status": "degraded", "db": "unreachable"}
+
+
 def test_health_degraded_response_carries_request_id_header(
     client: FlaskClient,
 ) -> None:

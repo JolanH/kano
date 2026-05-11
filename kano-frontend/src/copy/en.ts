@@ -18,23 +18,37 @@ export const en = {
   'common.unsupportedViewport.title': 'Open Kano on a desktop to manage projects',
   'common.unsupportedViewport.body':
     'The project-manager workspace is designed for screens 1280 px and wider. Polls themselves work on mobile.',
+  'common.notFound.title': 'Page not found',
+  'common.notFound.body': "The link you followed doesn't exist (or no longer does).",
+  'common.notFound.cta': 'Back to projects',
   'common.snackbar.success': 'Done.',
   'common.snackbar.error': 'Something went wrong. Please try again.',
   'common.version': 'Version',
 
-  // PM layout chrome
+  // PM layout chrome. `sidebar.aria` is the assistive-tech label for the
+  // sidebar `<nav>` element — it describes the *role* of the landmark, not
+  // the product name. The visible product title sits in `appBar.title`.
+  'pm.layout.sidebar.aria': 'Primary navigation',
   'pm.layout.sidebar.projects': 'Projects',
   'pm.layout.sidebar.polls': 'Polls',
   'pm.layout.sidebar.resources': 'Resources',
   'pm.layout.appBar.title': 'Kano',
 
   // PM category labels (mirror the six theme tokens in src/theme/tixeo.ts)
+  // Display labels are the friendlier industry-standard Kano terms for the
+  // first three categories (Must-have ↔ MANDATORY, Performance ↔ LINEAR,
+  // Delighter ↔ EXCITER) — these map 1:1. The bottom two use the spec's own
+  // names (Contradictory, Doubtful) rather than the extended-Kano vocabulary
+  // (Reverse, Questionable) that drafts inadvertently used — those terms
+  // mean *different things* in Kano theory and conflict with the backend
+  // semantics (e.g. C means "respondent answers contradict each other,"
+  // not "user wants the inverse feature"). See story 1-5 (5,1)→D fix.
   'pm.category.must': 'Must-have',
   'pm.category.perf': 'Performance',
   'pm.category.del': 'Delighter',
   'pm.category.ind': 'Indifferent',
-  'pm.category.rev': 'Reverse',
-  'pm.category.que': 'Questionable',
+  'pm.category.cont': 'Contradictory',
+  'pm.category.doub': 'Doubtful',
 
   // Epoch-bump dialog (Story 2-11). The user-facing copy says "Version".
   'pm.epochBump.dialog.title': 'Create Version {n}?',
@@ -57,6 +71,14 @@ export const en = {
   'respondent.thankYou.body': 'Your responses have been recorded.',
   'respondent.expired.title': 'This poll is closed',
   'respondent.expired.body': 'The link you used is no longer accepting responses.',
+  // Preregistered for Epic 4 — the CTAs and the generic-error string are
+  // load-bearing across multiple respondent stories (4-3 submission path,
+  // 4-5 Likert, 4-6 next/back, 4-7 submit). Registering them here means
+  // each downstream story consumes a key instead of inventing a literal.
+  'respondent.cta.next': 'Next',
+  'respondent.cta.back': 'Back',
+  'respondent.cta.submit': 'Submit',
+  'respondent.error.generic': "We couldn't save your response. Please try again.",
 
   // Story 1.8 dev-only theme audit page section labels.
   'dev.themeAudit.title': 'Theme audit',

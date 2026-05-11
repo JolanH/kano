@@ -1,6 +1,6 @@
 # Story 1.5: Kano categorization matrix pure-function module with 25-cell parametrized test
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -41,6 +41,11 @@ so that the single most load-bearing correctness invariant in the product (FR28)
   - [x] Purity test: `test_module_is_pure` — assert no `flask` / `sqlalchemy` modules loaded after import
 - [x] Coverage gate: 100% branch coverage on this module per PRD Technical Success criteria (pytest-cov configured in Story 1.1)
 
+### Review Findings
+
+- [x] [Review][Patch] `compute_category` does not type-check inputs — bool/float/None/str slip through differently [`kano-backend/src/kano/services/kano_matrix.py:67-69`] — `compute_category(True, True)` returned `DOUBTFUL` (bool is int subclass, hashes equal to `(1,1)`); `compute_category(2.5, 3)` raised `KeyError` (range check passes, dict lookup misses); `compute_category(None, 3)` / `compute_category("3", 3)` raised `TypeError`. Resolved: added `isinstance(value, bool) or not isinstance(value, int)` rejection on each axis before the range check. New `test_non_int_inputs_raise_value_error` parametrized test exercises 9 paths (bool ×2, float ×3, None ×2, str ×2). Branch coverage on the module remains at 100 %.
+- [x] [Review][Patch] `test_module_is_pure` cannot actually catch a flask/sqlalchemy regression [`kano-backend/tests/unit/test_kano_matrix.py:80-103`] — original snapshot-based approach was vacuous because conftest pre-loads flask transitively; subprocess approach failed because Python's eager parent-package import drags `kano/__init__.py` (which imports flask). Resolved: replaced with a static AST inspection of `kano_matrix.py`'s source — deterministically flags any `import flask` / `from sqlalchemy import …` / `from kano.api …` regression at the file level. The stronger runtime subprocess check is filed in `deferred-work.md` pending a `kano/__init__.py` lazy-import refactor.
+
 ## Dev Notes
 
 ### Why this story exists early in Epic 1
@@ -59,7 +64,7 @@ The Kano functional/dysfunctional decision matrix (1=I'd love it → 5=would dis
 | **2 (like)** | C | I | I | I | M |
 | **3 (neutral)** | C | I | I | I | M |
 | **4 (can live)** | C | I | I | I | M |
-| **5 (dislike)** | C | C | C | C | D |
+| **5 (dislike)** | D | C | C | C | D |
 
 Legend: M = Mandatory / Must-have, L = Linear / Performance, E = Exciter / Delighter, I = Indifferent, C = Contradictory / Reverse, D = Doubtful / Questionable.
 
@@ -122,7 +127,7 @@ claude-opus-4-7 (1M context)
 ### Completion Notes List
 
 - All 4 ACs satisfied. 34 unit tests pass: 25 parametrized cells (one independent literal assertion per cell, **not** derived from `_MATRIX`), 6 out-of-range cases (0/6/-1 on each axis), 1 grid-size sanity assert (`len(_ALL_CELLS) == 25`), 1 enum-value shape test (single uppercase letter matching the DB `CHAR(1)` domain), and 1 purity test that re-imports the module and asserts no `flask*` / `sqlalchemy*` symbol appears in `sys.modules`.
-- **Authoritative matrix transcribed from `initial-specification.md` (root of repo).** The eight rules in the spec (`A=1,B=1→D`; `A=1,B=2,3,4→E`; `A=1,B=5→L`; `A=2,3,4,B=1→C`; `A=5,B=2,3,4→C`; `A=2,3,4,B=2,3,4→I`; `A=2,3,4,B=5→M`; `A=5,B=5→D`) cover 24 of the 25 cells exhaustively. The 25th cell — `(fq=5, dq=1)`: hate-if-present **and** love-if-absent — is not explicitly listed but is the strongest possible contradiction; resolved as `CONTRADICTORY`, consistent with both standard Kano practice (Kano 1984) and the "row 5 → C" pattern the spec already establishes for `(5, 2..4)`. This is the only judgment call in the matrix and is documented at the top of `kano_matrix.py`.
+- **Authoritative matrix transcribed from `initial-specification.md` (root of repo).** The spec now lists nine rules — eight original plus `A=5,B=1→D` added after the adversarial review of this story flagged that the original `(5,1)→C` choice mislabelled a coherent anti-feature signal as "contradictory answers." `(5, 1)` is grouped with the other extreme answer pairs `(1, 1)` and `(5, 5)` as ``DOUBTFUL``, preserving the six-category contract. The product does not model an explicit "Reverse" category; if downstream analysis ever needs to distinguish strong-negative from genuinely-contradictory, that becomes a spec-level addition rather than a silent matrix decision.
 - **Purity test design.** The test pops `kano.services.kano_matrix` from `sys.modules` first, snapshots the set of currently-loaded `flask*` / `sqlalchemy*` modules, re-imports the target, and asserts the snapshot didn't grow. Pop-then-reimport is essential — by the time the unit test file itself is collected, `conftest.py` has already pulled in `kano` (which transitively imports Flask via `create_app`). Snapshotting alone wouldn't have detected a regression where this module started importing flask.
 - **`Category(str, Enum)` chosen over plain `Enum`.** The `str` mixin makes `member.value` directly comparable to a DB string and serializable to JSON without `.value` plumbing — important once Story 4-2 writes `response.category` and Story 5-1 aggregates by category in raw SQL.
 - **`compute_category` returns the enum instance, not the string.** Callers that persist the value do `.value`; callers that branch on category compare against `Category.X`. Returning the enum keeps type narrowing tight at every call site (mypy strict catches typos like `Category.MANDATORI`).
@@ -150,3 +155,4 @@ claude-opus-4-7 (1M context)
 | Date       | Version | Change                                                                 | Author |
 |------------|---------|------------------------------------------------------------------------|--------|
 | 2026-04-27 | 0.1.0   | Added the Kano categorization service: `Category` enum (six members, single-letter `.value` matching the DB `CHAR(1)` domain) and `compute_category(fq, dq)` lookup function. The 25-cell matrix is transcribed from `initial-specification.md`; the un-listed `(fq=5, dq=1)` cell resolves to `CONTRADICTORY` per standard Kano practice (documented in the module docstring). Out-of-range inputs raise `ValueError`. 34 unit tests, 25 of which are independent literal assertions per cell (not derived from the implementation); plus a purity test that asserts importing the module pulls in zero `flask` / `sqlalchemy` symbols. 100% line and branch coverage on the module per PRD Technical Success. | Amelia (dev agent) |
+| 2026-05-11 | 0.1.1   | Corrected the `(fq=5, dq=1)` cell from `CONTRADICTORY` to `DOUBTFUL` after adversarial review. `C` denotes self-contradictory answer pairs (e.g. `(2,1)`); `(5,1)` is the strongest *coherent* anti-feature signal (hate-if-present + love-if-absent) and was being misbucketed. The spec was updated with an explicit `A=5,B=1 → D` rule, the module docstring rewritten, and the test oracle grid flipped to match. `(5,1)` now joins `(1,1)` and `(5,5)` as the three extreme-pair `D` cells. | Jolan (review fix) |

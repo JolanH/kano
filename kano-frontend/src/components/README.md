@@ -1,35 +1,14 @@
 # Components
 
-Vue template files in this folder are automatically imported.
+Reusable Vue components live here. Each component is imported explicitly
+where it's used; this project does NOT use `unplugin-vue-components` for
+auto-import (the create-vuetify scaffolder's claim that it does was carried
+into the initial boilerplate; story 1-1's deferred-work flagged it, story
+1-8 corrected it during cleanup).
 
-## 🚀 Usage
-
-Importing is handled by [unplugin-vue-components](https://github.com/unplugin/unplugin-vue-components). This plugin automatically imports `.vue` files created in the `src/components` directory, and registers them as global components. This means that you can use any component in your application without having to manually import it.
-
-The following example assumes a component located at `src/components/MyComponent.vue`:
-
-```vue
-<template>
-  <div>
-    <MyComponent />
-  </div>
-</template>
-
-<script lang="ts" setup>
-  //
-</script>
-```
-
-When your template is rendered, the component's import will automatically be inlined, which renders to this:
-
-```vue
-<template>
-  <div>
-    <MyComponent />
-  </div>
-</template>
-
-<script lang="ts" setup>
-  import MyComponent from '@/components/MyComponent.vue'
-</script>
-```
+Conventions:
+- One component per file, PascalCase filename matching the component name
+  (e.g. `KanoLikert.vue` exports `<KanoLikert>`).
+- User-facing strings flow through `useCopy()` — see `docs/copy-deck.md`.
+- Themed primitives sit on `src/theme/*`; reusable styles go through
+  Vuetify's defaults system in `src/plugins/vuetify.ts`.

@@ -10,6 +10,12 @@
 #
 # Tear-down (including volumes):
 #   docker compose down -v
+#
+# `name: kano` pins the compose project name regardless of the directory
+# the repo was cloned into, so the named volumes are always
+# `kano_db_data` / `kano_backup_data` / `kano_frontend_node_modules` and
+# the runbook's `docker volume ls | grep kano` recipes are reliable.
+name: kano
 
 services:
   db:
@@ -28,8 +34,15 @@ services:
     # NFR16: surface any query taking ≥500 ms in dev (and prod) so slow paths
     # show up in `docker compose logs db` from day one.
     command: ["postgres", "-c", "log_min_duration_statement=500"]
+    # Bind to loopback only — the dev DB carries placeholder credentials
+    # (`change-me`) and should never be reachable from the LAN. Use the
+    # `docker compose exec db psql` recipe in `docs/ops/runbook.md` for
+    # local shell access, or temporarily flip this to `5432:5432` if you
+    # genuinely need to point a host-side tool at it.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
+    # Modest cap so a runaway transaction doesn't OOM a laptop.
+    mem_limit: 1g
 
   api:
     build:
@@ -52,6 +65,7 @@ services:
         condition: service_healthy
     ports:
       - "5000:5000"
+    mem_limit: 1g
 
   web:
     build:
@@ -63,13 +77,20 @@ services:
       # `http://localhost:5000` (vite.config.mts fallback).
       VITE_API_PROXY: http://api:5000
     volumes:
-      # Bind mounts for HMR. `node_modules` is volume-mounted on top so the
-      # host's modules (likely built for the host OS) don't shadow the
-      # container's Linux-built copies.
+      # Bind mounts for HMR. Keep this list aligned with the top-level files
+      # the host edits — every config file you want hot-reloaded in the
+      # container must be mounted here. `node_modules` is volume-mounted on
+      # top so the host's modules (likely built for the host OS) don't
+      # shadow the container's Linux-built copies.
       - ./kano-frontend/src:/app/src
+      - ./kano-frontend/tests:/app/tests
+      - ./kano-frontend/e2e:/app/e2e
       - ./kano-frontend/index.html:/app/index.html
       - ./kano-frontend/public:/app/public
       - ./kano-frontend/vite.config.mts:/app/vite.config.mts:ro
+      - ./kano-frontend/vitest.config.ts:/app/vitest.config.ts:ro
+      - ./kano-frontend/playwright.config.ts:/app/playwright.config.ts:ro
+      - ./kano-frontend/eslint.config.js:/app/eslint.config.js:ro
       - ./kano-frontend/tsconfig.app.json:/app/tsconfig.app.json:ro
       - ./kano-frontend/tsconfig.json:/app/tsconfig.json:ro
       - ./kano-frontend/tsconfig.node.json:/app/tsconfig.node.json:ro
@@ -79,18 +100,16 @@ services:
       - api
     ports:
       - "5173:5173"
+    mem_limit: 2g
 
   backup:
     build:
       context: ./ops/backup
     volumes:
       - backup_data:/backups
-    # Real backup logic lands in Story 6-1; this service idles in dev so the
-    # named volume comes into existence and downstream stories can hang
-    # `pg_dump` cron jobs off it without bootstrap pain.
-    depends_on:
-      db:
-        condition: service_healthy
+    # `depends_on: db` will be reintroduced in Story 6-1 when this service
+    # runs real `pg_dump` cron logic. For now the container only idles, so
+    # the dependency is omitted to keep the boot critical path short.
 
 volumes:
   db_data:

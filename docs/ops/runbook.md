@@ -12,13 +12,16 @@ cp .env.example .env          # placeholders are dev-safe; tighten for non-dev
 docker compose up --build     # first run: builds three images
 ```
 
-After ~30 s (DB healthcheck + migrations + frontend npm-ci) the stack is up:
+First boot takes **1–3 minutes** end-to-end (frontend `npm ci` dominates;
+DB healthcheck + Alembic upgrade + Flask boot together are ~10 s on the
+critical path). Subsequent boots reuse cached layers and the named
+`frontend_node_modules` volume — typically <15 s.
 
 | Service | URL | Notes |
 |---|---|---|
 | `web`   | http://localhost:5173/  | Vue SPA, Vite HMR enabled |
 | `api`   | http://localhost:5000/api/v1/health | Flask `--debug`, hot-reload on src edits |
-| `db`    | `psql postgresql://kano:change-me@localhost:5432/kano` | Postgres 17, slow-query log ≥500 ms (DSN matches `.env.example`) |
+| `db`    | `psql postgresql://kano:change-me@localhost:5432/kano` | Postgres 17, slow-query log ≥500 ms, bound to **127.0.0.1 only** (DSN matches `.env.example`) |
 
 ## Smoke checklist (manual day-zero verification)
 
@@ -29,7 +32,12 @@ After ~30 s (DB healthcheck + migrations + frontend npm-ci) the stack is up:
 5. `curl -s http://localhost:5173/api/v1/health | jq .status` → `"ok"` (Vite proxy round-trip)
 6. Edit `kano-backend/src/kano/api/health.py` (e.g. add a no-op log line) — Flask --debug reloads within 2 s; new request hits the new code
 7. Edit `kano-frontend/src/main.ts` (any change) — Vite HMR pushes the change within 1 s
-8. `docker compose down -v` — all containers stop, named volumes (`db_data`, `backup_data`, `frontend_node_modules`) removed; next `docker compose up` is fully fresh
+8. `docker compose down -v` — all containers stop, named volumes (`kano_db_data`, `kano_backup_data`, `kano_frontend_node_modules`) removed; next `docker compose up` is fully fresh
+
+> **`docker compose down -v` destroys all DB data.** Use it freely during
+> day-zero verification; once real response data is in the DB, run
+> `docker compose exec db pg_dump -U kano kano > /tmp/kano-$(date +%F).sql`
+> first or use the `backup` service (Story 6-1 once implemented).
 
 ## Common operations
 
@@ -69,72 +77,62 @@ docker compose exec web wget -qO- http://api:5000/api/v1/health
 
 ## Troubleshooting
 
-### `web` exits with `EACCES: permission denied, mkdir '/app/node_modules'`
+### `api` port 5000 collides with an existing service
 
-Means the host's `node_modules` is shadowing the container's volume. Wipe the
-named volume and rebuild:
+On macOS 12+, **AirPlay Receiver binds 5000** by default. On Linux dev
+machines, a common collision is a local `docker registry` container or
+another Python service. Two options:
+
+- Stop the offender: `sudo lsof -i :5000` to find it, then stop it.
+- Or, for a one-off, edit `docker-compose.yml`'s `api` ports line to
+  `"5001:5000"` and hit the API at `http://localhost:5001/api/v1/health`.
+  (Vite proxy uses internal Docker DNS via `VITE_API_PROXY`, so the SPA
+  surface is unaffected.)
+
+### `api` fails with `database "kano_v2" does not exist`
+
+You changed `POSTGRES_DB` (or `POSTGRES_USER`) in `.env` after the initial
+boot. Postgres's official image creates the role + DB **only on first
+init** — subsequent boots reuse what's on the named volume. Reset:
 
 ```bash
-docker compose down -v
+docker compose down -v          # destroys db_data (back up first if needed)
+docker compose up --build
+```
+
+### `web` exits with `EACCES: permission denied, mkdir '/app/node_modules'`
+
+The host's `node_modules` is shadowing the container's volume. Wipe **only**
+the frontend modules volume (not the whole stack — that would lose DB
+data):
+
+```bash
+docker compose down
+docker volume rm kano_frontend_node_modules
 docker compose up --build
 ```
 
 ### `api` reports `connection refused` to the database
 
-The DB healthcheck normally gates this, but if your machine is slow on first
-boot the API may race ahead. Either:
-
-- `docker compose restart api` — by now the DB is up and Alembic completes
-- or rely on the `depends_on: condition: service_healthy` clause; that's the
-  canonical fix and it's already configured
+The DB healthcheck normally gates this. The entrypoint also retries the
+Alembic upgrade up to 15× with a 2 s sleep between attempts — even a slow
+laptop should ride through bootstrap. If you still see a stuck container,
+check `docker compose logs db` for an init error (commonly a malformed
+`POSTGRES_PASSWORD` containing shell metacharacters in `.env`).
 
 ### Slow first boot
 
-The frontend `npm ci` step can take 1–2 minutes on first build. Subsequent
+The frontend `npm ci` step can take 1–3 minutes on first build. Subsequent
 boots use the named `frontend_node_modules` volume and are sub-second.
 
-## CI baseline (Story 1.10)
+## CI baseline
 
-`.github/workflows/ci.yml` runs on every PR and push to `main`:
-
-| Job | What it gates |
-|---|---|
-| `lint-frontend`         | `npm run lint` (ESLint flat config + `vue/no-bare-strings-in-template`) |
-| `typecheck-frontend`    | `vue-tsc --build --force` |
-| `test-frontend`         | `vitest run` (unit specs under `tests/unit/**`) |
-| `size-limit`            | Bundle size against `.size-limit.json` (respondent ≤150 KB gz, PM ≤400 KB gz, runtime ≤200 KB gz) |
-| `e2e-playwright`        | Theme-audit spec — zero console errors, zero axe-core violations, screenshot diff |
-| `lint-backend`          | `ruff check` + `black --check` over `src tests migrations` |
-| `typecheck-backend`     | `mypy --strict` |
-| `test-backend`          | `pytest --cov=kano --cov-branch`; enforces 100 % line + branch on `kano.services.kano_matrix` |
-| `migration-roundtrip`   | `alembic upgrade head && alembic downgrade -1 && alembic upgrade head` against a Postgres 17 service container |
-| `compose-smoke`         | `docker compose up -d --build --wait` then probes `/api/v1/health` and the SPA root |
-
-### Branch protection — one-time setup
-
-In GitHub → repository → **Settings → Branches → Branch protection rules**:
-
-1. Pattern: `main`
-2. Require a pull request before merging
-3. Require status checks to pass: tick **every** job name from the table above
-4. Require conversation resolution before merging
-5. Disallow force pushes
-6. Disallow deletions
-
-The job names appear in the dropdown only after the workflow has run once on
-any branch — push a no-op commit to a feature branch first to populate them.
-
-### Pre-commit (local mirror of CI)
-
-```bash
-pip install pre-commit
-pre-commit install                  # one-time per clone
-pre-commit run --all-files          # exercise the full hook suite
-```
-
-`.pre-commit-config.yaml` runs Ruff, Black, ESLint, vue-tsc, mypy, and
-generic-hygiene hooks. The TypeScript/mypy hooks are scoped to the package
-root so they pick up cross-module errors.
+Owned by **Story 1.10**. The CI pipeline runs lint + typecheck + tests +
+size-limit + Playwright + migration roundtrip + a `docker compose up -d
+--build --wait` smoke against this very stack. The job list, branch
+protection setup, and pre-commit configuration land alongside that story —
+this section will reference `.github/workflows/ci.yml` and
+`.pre-commit-config.yaml` once they exist.
 
 ## Things this story does NOT do
 

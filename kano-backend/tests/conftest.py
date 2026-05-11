@@ -32,6 +32,12 @@ class TestConfig(KanoConfig):
     Tests need a stable ``SECRET_KEY`` (so signed session cookies don't drift
     across runs) and explicit CORS origins. Other tests subclass this when they
     need to flip e.g. ``FLASK_ENV`` to exercise production-mode branches.
+
+    ``SQLALCHEMY_DATABASE_URI`` is intentionally pointed at a non-existent
+    sentinel so unguarded test paths fail loudly instead of silently hitting
+    a developer's local Postgres on :5432 (or hanging on CI). DB-needing tests
+    use the ``app_with_db`` fixture which subclasses this and supplies the
+    testcontainer URL.
     """
 
     TESTING = True
@@ -40,6 +46,7 @@ class TestConfig(KanoConfig):
     CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]
     SESSION_COOKIE_SECURE = False
     FLASK_ENV = "development"
+    SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://nope:nope@127.0.0.1:1/nope"
 
 
 @pytest.fixture(scope="session")
@@ -100,18 +107,30 @@ def client(app: Flask) -> FlaskClient:
 
 
 @pytest.fixture
-def app_with_db(db_url: str) -> Flask:
+def app_with_db(db_url: str) -> Iterator[Flask]:
     """Flask app whose ``db.session`` points at the live testcontainer.
 
     Used by tests that exercise the database round-trip (e.g. ``/api/v1/health``
     happy path). No migrations are applied; trivial probes like ``SELECT 1``
     succeed against an empty schema.
+
+    The teardown removes the scoped session and disposes the engine so pooled
+    connections to the testcontainer don't accumulate across the suite — same
+    pattern as :func:`alembic_head`.
     """
 
     class _DBConfig(TestConfig):
         SQLALCHEMY_DATABASE_URI = db_url
 
-    return create_app(_DBConfig)
+    from kano.db import db as kano_db
+
+    app = create_app(_DBConfig)
+    try:
+        yield app
+    finally:
+        with app.app_context():
+            kano_db.session.remove()
+            kano_db.engine.dispose()
 
 
 @pytest.fixture

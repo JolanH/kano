@@ -12,7 +12,12 @@
 
 import { describe, expect, test } from 'vitest'
 
-import { contrastPairings, tixeoColors, type TixeoColorToken } from '@/theme/tixeo'
+import {
+  contrastPairings,
+  decorativeTokens,
+  tixeoColors,
+  type TixeoColorToken,
+} from '@/theme/tixeo'
 
 function hexToRgb(hex: string): [number, number, number] {
   const trimmed = hex.replace('#', '')
@@ -61,6 +66,21 @@ describe('Tixeo theme — large / non-text UI contrast (WCAG AA, ≥ 3:1)', () =
         colorOf(pairing.bg as TixeoColorToken),
       )
       expect(ratio).toBeGreaterThanOrEqual(3.0)
+    })
+  }
+})
+
+describe('Tixeo theme — decorative tokens excluded from contrast assertions', () => {
+  // The decorative-token list pins which colors are intentionally low-
+  // contrast (subtle borders, page-level fills). The contrast pairings list
+  // MUST NOT include any of them as a foreground — doing so would falsely
+  // claim a decorative color meets a WCAG threshold it isn't engineered for.
+  const decorativeSet = new Set<string>(decorativeTokens)
+  const allPairings = [...contrastPairings.bodyText, ...contrastPairings.largeOrUi]
+
+  for (const pairing of allPairings) {
+    test(`pairing fg=${pairing.fg} is not a decorative token`, () => {
+      expect(decorativeSet.has(pairing.fg)).toBe(false)
     })
   }
 })

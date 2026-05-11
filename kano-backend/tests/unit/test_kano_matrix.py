@@ -9,10 +9,12 @@ restatement of a spec rule.
 
 from __future__ import annotations
 
-import sys
+import ast
+from pathlib import Path
 
 import pytest
 
+from kano.services import kano_matrix
 from kano.services.kano_matrix import Category, compute_category
 
 # Cells laid out as a literal 5×5 grid for human review against the spec:
@@ -31,7 +33,7 @@ _EXPECTED_GRID: list[list[Category]] = [
     [  _C,   _I,   _I,   _I,   _M  ],  # FQ = 2
     [  _C,   _I,   _I,   _I,   _M  ],  # FQ = 3
     [  _C,   _I,   _I,   _I,   _M  ],  # FQ = 4
-    [  _C,   _C,   _C,   _C,   _D  ],  # FQ = 5
+    [  _D,   _C,   _C,   _C,   _D  ],  # FQ = 5
 ]  # fmt: skip
 
 _ALL_CELLS: list[tuple[int, int, Category]] = [
@@ -66,6 +68,35 @@ def test_out_of_range_inputs_raise_value_error(fq: int, dq: int) -> None:
         compute_category(fq, dq)
 
 
+@pytest.mark.parametrize(
+    ("fq", "dq"),
+    [
+        # bool is an int subclass; True/False would otherwise silently hash to
+        # (1,1)/(0,0) in the matrix dict and bypass the range check.
+        (True, 3),
+        (3, False),
+        # Non-int numerics: floats inside [1,5] would pass the range check but
+        # KeyError on the dict lookup; outside the range they'd hit range too.
+        (2.5, 3),
+        (3, 2.5),
+        (1.0, 3),
+        # Non-numeric: None / str raise TypeError on comparison without an
+        # explicit type guard.
+        (None, 3),
+        (3, None),
+        ("3", 3),
+        (3, "3"),
+    ],
+)
+def test_non_int_inputs_raise_value_error(fq: object, dq: object) -> None:
+    """Type guard: any non-int input must raise ``ValueError``, not bubble up
+    a ``TypeError`` / ``KeyError`` that downstream callers wouldn't expect.
+    """
+
+    with pytest.raises(ValueError, match=r"fq and dq must be ints in 1\.\.5"):
+        compute_category(fq, dq)  # type: ignore[arg-type]
+
+
 def test_category_value_is_single_uppercase_letter() -> None:
     """``Category.value`` must match the DB ``CHAR(1)`` domain (Story 1.2)."""
 
@@ -78,26 +109,34 @@ def test_category_value_is_single_uppercase_letter() -> None:
 
 
 def test_module_is_pure() -> None:
-    """``kano.services.kano_matrix`` does not depend on flask / sqlalchemy.
+    """``kano.services.kano_matrix.py`` source has no forbidden imports.
 
-    Re-importing inside this test guarantees we observe the module's import
-    side-effects in isolation — the assertion is on what *this module* drags
-    in, not on whatever else the test session has already loaded.
+    The spec's original "snapshot ``sys.modules`` before/after" approach is
+    vacuous: by the time any test runs, conftest has already imported
+    ``kano`` (which itself imports ``kano.api`` and ``kano.db``), so flask
+    and sqlalchemy are always present and a regression like
+    ``from flask import current_app`` inside this module would not introduce
+    a *new* sys.modules key.
+
+    Static AST inspection of the source file is deterministic and catches the
+    actual regression the spec cares about. A future pass that restructures
+    ``kano/__init__.py`` to lazy-load its blueprints could re-introduce a
+    runtime subprocess check on top of this one.
     """
 
-    target = "kano.services.kano_matrix"
-    if target in sys.modules:
-        del sys.modules[target]
+    forbidden_prefixes = ("flask", "sqlalchemy", "kano.api", "kano.models")
 
-    forbidden_prefixes = ("flask", "sqlalchemy")
-    forbidden_before = {name for name in sys.modules if name.startswith(forbidden_prefixes)}
+    source = Path(kano_matrix.__file__).read_text()
+    tree = ast.parse(source)
 
-    import kano.services.kano_matrix  # noqa: F401  - import for side-effect inspection
-
-    forbidden_after = {name for name in sys.modules if name.startswith(forbidden_prefixes)}
-
-    newly_loaded = forbidden_after - forbidden_before
-    assert not newly_loaded, (
-        "kano.services.kano_matrix must be a pure function module — "
-        f"importing it pulled in: {sorted(newly_loaded)}"
-    )
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                assert not alias.name.startswith(
+                    forbidden_prefixes
+                ), f"forbidden top-level import in kano_matrix.py: {alias.name}"
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            assert not module.startswith(
+                forbidden_prefixes
+            ), f"forbidden `from {module} import ...` in kano_matrix.py"

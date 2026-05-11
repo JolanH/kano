@@ -34,6 +34,8 @@ the categories are : Mandatory (M); Linear (L); Exciter (E); Indifferent (I); Co
 > 
 > if response to A = 2,3,4 and B = 5 	-> M;
 > 
+> if response to A = 5 and B = 1		-> D;
+> 
 > if response to A = 5 and B = 5		-> D;
 
 

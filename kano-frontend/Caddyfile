@@ -2,16 +2,56 @@
 #
 # Two routes:
 # - `/api/*` → reverse-proxied to the `api` service on the docker-compose
-#   network. The Flask app handles CORS / CSRF; Caddy is a transparent proxy.
+#   network. The Flask app handles CORS / CSRF; Caddy is a transparent proxy
+#   and Caddy's `reverse_proxy` directive adds `X-Forwarded-For`,
+#   `X-Forwarded-Proto`, and `Host` headers by default.
 # - everything else → SPA fallback (`try_files`) so the Vue router's
 #   client-side history mode works on any deep-link refresh.
 #
 # This file is consumed by `Dockerfile`'s `runtime` stage. Dev does not use
 # Caddy; Vite's dev server proxies `/api` directly (see vite.config.mts).
+#
+# TLS is NOT configured here — the `:80` listener is the dev-overlay form
+# Story 7-1 will swap for a domain-bound TLS block that uses Caddy's
+# automatic certificate provisioning. The redirect-to-HTTPS lives in 7-1
+# alongside the public domain definition.
 
 :80 {
     encode gzip zstd
 
+    # ------ Security headers (apply to every response) ------
+    header {
+        # Block content-type sniffing — assets are already correctly typed.
+        X-Content-Type-Options "nosniff"
+        # Prevent clickjacking. The PM workspace and respondent surface
+        # are never embedded; Story 7-1 can relax this if iframe embedding
+        # becomes a real product requirement.
+        X-Frame-Options "DENY"
+        # Don't leak the full referrer to cross-origin endpoints.
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Caddy will set Strict-Transport-Security automatically when TLS
+        # is enabled in Story 7-1's domain block.
+        # Drop the default `Server` header so we don't advertise the
+        # Caddy version to scanners.
+        -Server
+    }
+
+    # ------ Asset cache policy ------
+    # Vite emits hashed asset filenames (e.g. `index-abc123.js`), so we
+    # cache them forever; index.html is the cache-busting entry point and
+    # must never be cached client-side or by intermediaries.
+    @hashedAssets {
+        path /assets/*
+        path /*.woff2 /*.woff /*.ttf /*.eot
+    }
+    header @hashedAssets Cache-Control "public, max-age=31536000, immutable"
+
+    @indexHtml {
+        path /index.html /
+    }
+    header @indexHtml Cache-Control "no-cache, no-store, must-revalidate"
+
+    # ------ Routing ------
     handle /api/* {
         reverse_proxy api:5000
     }
