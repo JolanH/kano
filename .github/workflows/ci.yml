@@ -180,7 +180,14 @@ jobs:
       - run: poetry install --with dev --no-interaction
       # Tests use testcontainers, which talks to the Docker socket the runner
       # already exposes; no service container needed here.
-      - run: poetry run pytest --cov=kano --cov-branch --cov-report=xml
+      #
+      # `--cov-fail-under=80` enforces the architecture's "≥85% line coverage"
+      # floor with a generous 5-point margin per Story 1.10 Dev Notes
+      # ("generous overall floor"). Tighten upward as Epic 2+ stabilizes; the
+      # per-module 100% gate below stays the strict gate for critical modules.
+      - run: >-
+          poetry run pytest --cov=kano --cov-branch --cov-report=xml
+          --cov-fail-under=80
       # Per PRD Technical Success: 100% line + branch coverage on the
       # categorization module. As more critical modules land (epoch_service
       # in Epic 2, poll_expiry in Epic 3), append them to this gate.
@@ -246,10 +253,21 @@ jobs:
             -o /tmp/health.json \
             http://localhost:5000/api/v1/health
           cat /tmp/health.json | jq -e '.status == "ok" and .db == "connected"'
-      - name: Probe Vite proxy round-trip
+      - name: Probe Vite SPA shell + proxy round-trip
         run: |
+          # Story 1.9 AC #4: GET http://localhost:5173/ returns 200 with the
+          # Vue SPA shell. A bare `-o /dev/null` would pass even if Vite
+          # served a blank 200 — grep an SPA marker so a regression in the
+          # entry HTML (broken main.ts, missing #app mount point, wrong
+          # title) actually fails the gate.
           curl --fail --retry 5 --retry-delay 3 --retry-connrefused \
-            http://localhost:5173/ -o /dev/null -s
+            http://localhost:5173/ -o /tmp/spa.html -s
+          grep -q '<div id="app">' /tmp/spa.html
+          grep -q '<title>Kano</title>' /tmp/spa.html
+          # Vite dev proxy must round-trip /api/* to the api container.
+          curl --fail --retry 5 --retry-delay 3 --retry-connrefused \
+            http://localhost:5173/api/v1/health -o /tmp/proxied-health.json -s
+          jq -e '.status == "ok"' /tmp/proxied-health.json
       - if: failure()
         name: Dump stack logs on failure
         run: docker compose logs

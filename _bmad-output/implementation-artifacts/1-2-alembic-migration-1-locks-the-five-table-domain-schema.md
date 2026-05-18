@@ -14,9 +14,9 @@ so that the most irreversible artifact in the project is locked in one reviewabl
 
 1. **Given** `kano-backend/alembic.ini` and `kano-backend/migrations/env.py` are bootstrapped (env.py wires SQLAlchemy metadata, target URL from config, `TIMESTAMPTZ` default naming convention) **and** a clean PostgreSQL 17 database, **when** I run `alembic upgrade head`, **then** all 5 tables are created with application-generated UUID primary keys (no `DEFAULT gen_random_uuid()`).
 2. `features` has unique constraint on `(project_id, epoch, feature_key)`, `is_active` boolean, TIMESTAMPTZ `created_at`.
-3. `polls` foreign-keys `(project_id, epoch)` to pin to an immutable feature set snapshot; includes TIMESTAMPTZ `expires_at` and a partial index on non-expired polls.
+3. `polls` foreign-keys `(project_id, epoch)` to pin to an immutable feature set snapshot; includes TIMESTAMPTZ `expires_at` and a B-tree index on `expires_at` that the planner uses for "non-expired polls" queries (`WHERE expires_at > now()`). The originally-specified *partial* index `WHERE expires_at > now()` is rejected by PostgreSQL because `now()` is STABLE, not IMMUTABLE — see Completion Notes for the documented deviation.
 4. `responses` has CHECK constraints `fq_answer BETWEEN 1 AND 5`, `dq_answer BETWEEN 1 AND 5`, `category IN ('M','L','E','I','C','D')`, composite PK `(submission_id, feature_id)`.
-5. All required indexes exist: `feature(project_id, epoch)`, `poll(project_id, epoch)`, `poll(expires_at)` partial, `submission(poll_id)`.
+5. All required indexes exist: `feature(project_id, epoch)`, `poll(project_id, epoch)`, plain B-tree `poll(expires_at)` (see AC #3 for the partial-index deviation), `submission(poll_id)`.
 6. Running `alembic downgrade -1 && alembic upgrade head` completes without error.
 7. `tests/integration/test_timestamptz.py` asserts every timestamp column is `TIMESTAMPTZ`, not `TIMESTAMP`.
 

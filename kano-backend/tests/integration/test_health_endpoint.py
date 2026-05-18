@@ -51,22 +51,26 @@ def test_health_returns_503_when_database_is_unreachable(
     assert body == {"status": "degraded", "db": "unreachable"}
 
 
-def test_health_returns_503_when_probe_raises_non_sqlalchemy_exception(
+def test_health_does_not_mask_non_db_programming_errors_as_503(
     client: FlaskClient,
 ) -> None:
-    """Defense-in-depth: any probe failure (not just ``SQLAlchemyError``) → 503.
+    """A non-DB ``Exception`` from the probe must surface as 500, not 503.
 
-    AC #1 says DB-side failures collapse to 503 with the documented body.
-    Without a broad ``except``, a non-``SQLAlchemyError`` (e.g. a ``RuntimeError``
-    from a misconfigured engine) escapes to the generic 500 handler instead.
+    AC #1 says DB-side failures collapse to 503. The inverse is also important:
+    a programming error inside the health handler (or a misconfigured engine
+    that raises something *other* than ``SQLAlchemyError`` / ``DBAPIError``)
+    must NOT be relabelled as a transient DB outage, because that hides bugs
+    behind a "retryable" status code that ops will ignore.
     """
 
     with patch.object(db.session, "execute", side_effect=RuntimeError("bad config")):
         response = client.get("/api/v1/health")
 
-    assert response.status_code == 503
+    # Generic Problem-Details 500 handler picks this up; either way it must
+    # NOT be the 503 "db unreachable" body.
+    assert response.status_code == 500
     body = json.loads(response.data)
-    assert body == {"status": "degraded", "db": "unreachable"}
+    assert body != {"status": "degraded", "db": "unreachable"}
 
 
 def test_health_degraded_response_carries_request_id_header(
