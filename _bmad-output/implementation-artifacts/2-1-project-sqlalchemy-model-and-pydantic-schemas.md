@@ -1,6 +1,6 @@
 # Story 2.1: Project SQLAlchemy model and Pydantic schemas
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -17,20 +17,20 @@ so that every project-facing endpoint in this epic shares a single typed contrac
 
 ## Tasks / Subtasks
 
-- [ ] Refine `Project` SQLAlchemy model (AC: #1, #4)
-  - [ ] `src/kano/models/project.py` — if the stub from Story 1.2 exists, extend it; otherwise author it
-  - [ ] Typed columns: `id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)`, `name: Mapped[str] = mapped_column(Text)`, `version: Mapped[str] = mapped_column(Text)`, `current_epoch: Mapped[int] = mapped_column(Integer, default=1)`, `created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())`, `updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())`
-  - [ ] `__tablename__ = "projects"` (plural, per architecture §Naming)
-  - [ ] Verify the model reflects migration 0001 exactly — no drift
-- [ ] Pydantic schemas (AC: #2, #3)
-  - [ ] `src/kano/schemas/project.py` — four classes:
+- [x] Refine `Project` SQLAlchemy model (AC: #1, #4)
+  - [x] `src/kano/models/project.py` — if the stub from Story 1.2 exists, extend it; otherwise author it
+  - [x] Typed columns: `id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)`, `name: Mapped[str] = mapped_column(Text)`, `version: Mapped[str] = mapped_column(Text)`, `current_epoch: Mapped[int] = mapped_column(Integer, default=1)`, `created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())`, `updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())`
+  - [x] `__tablename__ = "projects"` (plural, per architecture §Naming)
+  - [x] Verify the model reflects migration 0001 exactly — no drift
+- [x] Pydantic schemas (AC: #2, #3)
+  - [x] `src/kano/schemas/project.py` — four classes:
     - `ProjectCreate(BaseModel)`: `name: str = Field(..., max_length=200)`, `version: str = Field(..., max_length=50)`
     - `ProjectUpdate(BaseModel)`: `name: str | None = Field(None, max_length=200)`, `version: str | None = Field(None, max_length=50)`; reject a body with zero fields via a `model_validator` that raises when both are None
     - `ProjectResponse(BaseModel)`: `id: UUID`, `name: str`, `version: str`, `current_epoch: int`, `created_at: datetime`, `updated_at: datetime`; `model_config = ConfigDict(from_attributes=True)` for direct SQLAlchemy conversion
     - `ProjectSummary(BaseModel)`: `id: UUID`, `name: str`, `version: str`, `current_epoch: int`, `created_at: datetime`; also `from_attributes=True`
-  - [ ] No `Field(alias=...)` anywhere — wire format is snake_case end-to-end per architecture §Format Patterns
-- [ ] Unit tests
-  - [ ] `tests/unit/test_project_schemas.py`:
+  - [x] No `Field(alias=...)` anywhere — wire format is snake_case end-to-end per architecture §Format Patterns
+- [x] Unit tests
+  - [x] `tests/unit/test_project_schemas.py`:
     - `ProjectCreate.model_validate({"name": "X", "version": "1.0"})` succeeds
     - Name/version exceeding max_length raises `ValidationError`
     - `ProjectUpdate.model_validate({})` raises (empty-body rejection)
@@ -74,7 +74,20 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+claude-opus-4-7 (1M context)
 ### Debug Log References
+- `poetry run pytest tests/unit/test_project_schemas.py -v` → 13/13 passed
+- `poetry run pytest tests/unit -v` → 57/57 passed (no regressions)
+- `poetry run ruff check src tests migrations` → clean
+- `poetry run black --check src tests migrations` → clean
+- `poetry run mypy src tests migrations` → clean
 ### Completion Notes List
+- `Project` model already matched migration 0001 (String(255)/String(64), Uuid PK, TIMESTAMPTZ with onupdate). No drift to fix — left it intact. Pydantic `max_length` (200/50) is intentionally tighter than the DB columns.
+- New `src/kano/schemas/__init__.py` exports the four project schemas.
+- `ProjectUpdate` empty-body rejection uses a `model_validator(mode="after")` that raises when both `name` and `version` are `None`.
+- `ProjectResponse` and `ProjectSummary` use `from_attributes=True` so endpoints can pass SQLAlchemy instances directly.
+- Snake_case end-to-end: no `Field(alias=...)` anywhere.
 ### File List
+- `kano-backend/src/kano/schemas/__init__.py` (new)
+- `kano-backend/src/kano/schemas/project.py` (new)
+- `kano-backend/tests/unit/test_project_schemas.py` (new)

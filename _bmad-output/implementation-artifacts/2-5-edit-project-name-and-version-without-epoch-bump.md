@@ -1,6 +1,6 @@
 # Story 2.5: Edit project name and version without epoch bump
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -18,24 +18,24 @@ so that typo fixes and rebranding don't corrupt my epoch lineage.
 
 ## Tasks / Subtasks
 
-- [ ] `services/project_service.py` — `update_project`
-  - [ ] `def update_project(project_id: UUID, data: ProjectUpdate) -> Project:`
-  - [ ] Fetch project; raise `EntityNotFound` if absent
-  - [ ] Apply only the fields that are not None on `data` (Pydantic `exclude_unset` idiom: `data.model_dump(exclude_unset=True)`)
-  - [ ] `updated_at` is handled by the SQLAlchemy `onupdate=func.now()` from the model
-  - [ ] `db.session.commit(); return project`
-- [ ] `api/projects.py` — PATCH handler
-  - [ ] `@projects_bp.patch("/<uuid:project_id>")` handler
-  - [ ] `body = ProjectUpdate.model_validate(request.get_json())` — empty body rejected by the `model_validator` on the schema (Story 2-1)
-  - [ ] CSRF-protected by default
-- [ ] OpenAPI entry
-- [ ] Integration tests
-  - [ ] PATCH name only → name changes, version unchanged, epoch unchanged, updated_at refreshed (> pre-update timestamp)
-  - [ ] PATCH version only → symmetric
-  - [ ] PATCH both → both change, epoch unchanged
-  - [ ] PATCH with empty body → 400 Problem Details
-  - [ ] PATCH on non-existent UUID → 404
-  - [ ] **Invariant assertion**: in one of the PATCH tests, pre-seed a feature row and a poll row for the project; assert their byte-identical persistence after the PATCH (SELECTs before/after match exactly)
+- [x] `services/project_service.py` — `update_project`
+  - [x] `def update_project(project_id: UUID, data: ProjectUpdate) -> Project:`
+  - [x] Fetch project; raise `EntityNotFound` if absent
+  - [x] Apply only the fields that are not None on `data` (Pydantic `exclude_unset` idiom: `data.model_dump(exclude_unset=True)`)
+  - [x] `updated_at` is handled by the SQLAlchemy `onupdate=func.now()` from the model
+  - [x] `db.session.commit(); return project`
+- [x] `api/projects.py` — PATCH handler
+  - [x] `@projects_bp.patch("/<uuid:project_id>")` handler
+  - [x] `body = ProjectUpdate.model_validate(request.get_json())` — empty body rejected by the `model_validator` on the schema (Story 2-1)
+  - [x] CSRF-protected by default
+- [x] OpenAPI entry
+- [x] Integration tests
+  - [x] PATCH name only → name changes, version unchanged, epoch unchanged, updated_at refreshed (> pre-update timestamp)
+  - [x] PATCH version only → symmetric
+  - [x] PATCH both → both change, epoch unchanged
+  - [x] PATCH with empty body → 400 Problem Details
+  - [x] PATCH on non-existent UUID → 404
+  - [x] **Invariant assertion**: in one of the PATCH tests, pre-seed a feature row and a poll row for the project; assert their byte-identical persistence after the PATCH (SELECTs before/after match exactly)
 
 ## Dev Notes
 
@@ -64,7 +64,18 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+claude-opus-4-7 (1M context)
 ### Debug Log References
+- `poetry run pytest tests/integration/test_projects_api.py -v` → 17/17 passed (6 new for PATCH)
+- `poetry run pytest` → 101/101 passed
+- ruff / mypy → clean
+- black auto-formatted the test file once after the PATCH additions (line wrapping in the mappings().one() chains).
 ### Completion Notes List
+- `update_project` uses `data.model_dump(exclude_unset=True)` so absent fields are never written (per story Dev Notes, exclude_unset > exclude_none).
+- After commit, `db.session.refresh(project)` reloads `updated_at` (the `onupdate=func.now()` value materializes in Postgres but the in-memory instance doesn't see it until refresh). Without this refresh the response would echo the *pre-update* `updated_at`.
+- The invariant test (FR4) seeds 1 feature row + 1 poll row, snapshots them with `SELECT *` into dicts, runs the PATCH, re-reads, and asserts equality. If anyone ever wires PATCH through `epoch_service`, the feature row's epoch or the poll row would change and this test would break loudly.
 ### File List
+- `kano-backend/src/kano/services/project_service.py` (modified — `update_project`)
+- `kano-backend/src/kano/api/projects.py` (modified — `PATCH /api/v1/projects/<uuid:project_id>`)
+- `kano-backend/openapi.yaml` (modified — `patch` op + `ProjectUpdate` schema)
+- `kano-backend/tests/integration/test_projects_api.py` (modified — 6 PATCH tests including invariant snapshot)

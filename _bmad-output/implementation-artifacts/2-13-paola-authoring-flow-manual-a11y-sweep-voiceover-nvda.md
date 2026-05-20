@@ -1,6 +1,6 @@
 # Story 2.13: Paola authoring flow manual a11y sweep (VoiceOver + NVDA)
 
-Status: ready-for-dev
+Status: in-progress
 
 ## Story
 
@@ -19,8 +19,8 @@ so that keyboard-first does not mean screen-reader-broken — field labels, save
 
 ## Tasks / Subtasks
 
-- [ ] Author the manual checklist (AC: #1, #2, #5)
-  - [ ] `docs/a11y/paola-authoring-checklist.md` — sections:
+- [x] Author the manual checklist (AC: #1, #2, #5)
+  - [x] `docs/a11y/paola-authoring-checklist.md` — sections:
     - **Environment setup**: macOS + Safari + VoiceOver; Windows (VM acceptable) + Firefox + NVDA; both latest stable versions
     - **Checklist per screen**:
       - `/app/projects` (empty state): VO/NVDA announces page title, empty-state CTA; Tab lands on CTA; Enter activates
@@ -32,15 +32,15 @@ so that keyboard-first does not mean screen-reader-broken — field labels, save
       - `<EpochSelector>`: trigger announces "Version {n}, has popup, listbox"; arrow keys announce items; selection announces navigation
     - **Issue log**: table for findings (platform / screen / severity / status)
     - **Signoff**: date + initials per platform
-- [ ] Execute the checklist
+- [ ] Execute the checklist *(human-only — VoiceOver / NVDA cannot be driven by the dev agent. **Explicitly deferred 2026-05-20 by Kanaud to unblock Epic 3 progression.** Must be completed before WCAG AA closure — see Change Log.)*
   - [ ] Run on both platforms; capture screenshots of any issues
   - [ ] File issues for any finding marked "defect" — either fix inline (update the responsible component file and reference the fix commit in the checklist) or open a tracked follow-up
-- [ ] Extend CI axe-core coverage (AC: #4)
-  - [ ] `e2e/pm/a11y-paola.spec.ts`: navigate to each of the three URLs with both empty and populated seed data; run `AxeBuilder().analyze()`; assert zero violations
-  - [ ] Seed helpers: test-setup fixtures that create a project (empty, populated, multi-epoch) in the ephemeral DB; cleaned up after
-- [ ] Focus-management Playwright tests (AC: #3)
-  - [ ] Modal open/close: trigger EpochBumpDialog via UI action → assert `page.locator(':focus')` is on the primary action on open, returns to the triggering cell on close
-  - [ ] Route transition: navigate `/app/projects` → `/app/projects/:id` → assert focus is on a sensible landmark (page heading or first interactive), not lost
+- [x] Extend CI axe-core coverage (AC: #4)
+  - [x] `e2e/pm/a11y-paola.spec.ts`: navigates to `/app/projects` (empty + populated), `/app/projects/:id` (empty + populated), and `/app/projects/:id?epoch=1` (past-epoch); each runs `AxeBuilder().withTags(['wcag2a','wcag2aa']).analyze()` and asserts zero violations
+  - [x] Seed helpers: `seedAllRoutes(page)` intercepts `/api/v1/projects/`, the per-project GETs, the past-epoch features GET, and the CSRF-token endpoint at the Playwright `route()` level — fast, deterministic, no docker-compose dependency. Documented in the spec's header why this beats a full-stack fixture for the PM SPA.
+- [x] Focus-management Playwright tests (AC: #3)
+  - [x] Modal open/close: spec opens `EpochBumpDialog` by editing a feature against a mocked 409 `epoch-bump-required` response, asserts focus is inside the dialog on open, then asserts `document.activeElement !== document.body` after cancel. Source fixes wired in `EpochBumpDialog.vue` (autofocus Cancel via `onMounted` + `watch(modelValue)`) and `ProjectDetail.vue` (capture stable selector before open; restore via rAF×2 after Vuetify focus-trap teardown).
+  - [x] Route transition: navigate `/app/projects` → `/app/projects/:id` asserts focus is not on `<body>`; source fix in `ProjectDetail.vue` focuses `data-testid="project-name-display"` on `onMounted` so SR users land on the page heading.
 
 ## Dev Notes
 
@@ -83,7 +83,35 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+Claude Opus 4.7 (1M context) — `claude-opus-4-7[1m]`
+
 ### Debug Log References
+- `npx playwright test e2e/pm/a11y-paola.spec.ts` — 8/8 passing post-fix; first run surfaced 7 failures (5× axe-core color-contrast on `pm-nav-link`, route-transition focus loss, modal-focus race + post-close focus loss).
+- `npm run test:unit` — 121/121 passing (no regressions on FeatureListEditor / EpochBumpDialog unit specs after dialog autofocus + ProjectDetail focus-capture wiring).
+- `npm run type-check` — clean (vue-router's `rootDir` warning is pre-existing, unrelated).
+- `npm run lint` — pre-existing tooling break (`eslint-flat-config-utils` requires `Object.groupBy`, available Node ≥ 21). Not caused by this story; flagged separately.
+
 ### Completion Notes List
+- **Story scope is asymmetric by design.** The "execute the checklist" task is a human-only action — VoiceOver and NVDA cannot be driven from this agent. The dev agent delivers: (1) the comprehensive checklist; (2) automated axe-core + focus-management coverage that exercises the same surfaces; (3) inline fixes for every defect the automated coverage uncovered. The SR-driven sweep + sign-off rows remain for Kanaud to complete before the story can move past `review`.
+- **Three real WCAG 2.1 AA defects were uncovered and fixed** during automated coverage authoring (logged in `docs/a11y/paola-authoring-checklist.md` issue table):
+  1. PM nav drawer contrast — `theme="dark"` on `<v-navigation-drawer>` triggered Vuetify's built-in dark palette, where `surface-variant` resolves to `#c8c8c8`; pm-nav-link white text was 1.67:1 on every PM page. Removed `theme="dark"`; Tixeo's own surface-variant (`#1C1F26`) gives ~16:1.
+  2. Route-transition focus loss — `/app/projects` → `/app/projects/:id` left focus on `<body>` after row activation. `ProjectDetail.vue` now focuses `data-testid="project-name-display"` on `onMounted`.
+  3. EpochBumpDialog focus management — two layered bugs: (a) Vuetify 4 focus-trap initialises a frame after `modelValue` flips, racing assertions and leaving focus on the triggering cell; (b) on cancel the dialog unmounts via `v-if="dialogContext"` and the previously-captured `HTMLElement` reference may be re-rendered out by `store.refreshCurrent()`, so a sync or `nextTick` focus restore lands on `<body>`. Fix: `EpochBumpDialog` autofocuses Cancel via `onMounted` + `watch(modelValue)` (Cancel-first is the safer default for a destructive bump); `ProjectDetail` captures a *stable selector* via `[data-feature-key]` ancestor + aria-label, and restores via `requestAnimationFrame×2` to outlast both Vuetify's trap teardown and the `refreshCurrent()` re-render. Also guarded the capture against double-emit when the trigger input's `@blur` re-fires `commitRow` (the dialog opens, Vuetify steals focus → @blur → 2nd 409 → 2nd `epoch-bump-required` emit) — keeps the FIRST capture, which is the actual trigger cell.
+- The Playwright spec mocks `/api/v1/...` at the `page.route()` level rather than running the full docker-compose stack. Rationale documented in the spec header.
+- Future enhancement candidates surfaced during this sweep (not in scope; not blocking):
+  - inline-edit name `Esc` does not currently re-focus the display span (existing test comments this as "future enhancement"). Same focus-management primitive could be reused.
+  - `EpochSelector` and `EpochBumpBanner` only have axe-coverage on the parent page; targeted focus-management specs would tighten AC #3 coverage further. Manual checklist still covers them.
+
 ### File List
+**Added**
+- `docs/a11y/paola-authoring-checklist.md` — manual VO + NVDA checklist with environment, per-screen tables, issue log (3 fixed findings already recorded), sign-off section
+- `kano-frontend/e2e/pm/a11y-paola.spec.ts` — 5 axe-core gates + 3 focus-management Playwright tests
+
+**Modified**
+- `kano-frontend/src/layouts/PmLayout.vue` — drop `theme="dark"` on the nav drawer (fix #1)
+- `kano-frontend/src/pages/app/ProjectDetail.vue` — `nameDisplay` ref + `onMounted` focus; stable-selector capture / rAF×2 restore for epoch-bump dialog (fixes #2, #3)
+- `kano-frontend/src/components/EpochBumpDialog.vue` — explicit Cancel autofocus on open via `onMounted` + `watch(modelValue)` (fix #3a)
+
+### Change Log
+- 2026-05-20 — Manual a11y checklist authored; axe-core + focus-management Playwright suite extended to cover the three Paola URLs (empty + populated + past-epoch states) and the modal/route focus invariants. Three WCAG 2.1 AA defects fixed inline (nav drawer contrast, route-transition focus, EpochBumpDialog focus management). Story status → `review` pending human VO/NVDA sweep.
+- 2026-05-20 (later) — Manual VO/NVDA sweep **explicitly deferred at Kanaud's direction** so Epic 3 work can proceed in parallel. Dev portion is complete and verified (axe-core green; 8/8 Playwright; 121/121 unit; type-check clean). The SR signoff remains an outstanding pre-MVP gate — story keeps `in-progress` status in `sprint-status.yaml` as a standing reminder, and the "Execute the checklist" task stays unchecked rather than falsified.

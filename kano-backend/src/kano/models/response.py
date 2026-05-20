@@ -7,6 +7,7 @@ storing it here keeps analysis queries to a single GROUP BY (Story 5.1).
 
 from __future__ import annotations
 
+from enum import Enum
 from uuid import UUID
 
 from sqlalchemy import (
@@ -19,6 +20,22 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from kano.db import Base
+
+
+class Category(str, Enum):
+    """Kano category — persistence-domain mirror of ``kano_matrix.Category``.
+
+    The values are the ``CHAR(1)`` codes that the ``responses.category`` CHECK
+    constraint accepts. A test pins value-equality with the pure-function
+    enum in :mod:`kano.services.kano_matrix` so they cannot drift.
+    """
+
+    MANDATORY = "M"
+    LINEAR = "L"
+    EXCITER = "E"
+    INDIFFERENT = "I"
+    CONTRADICTORY = "C"
+    DOUBTFUL = "D"
 
 
 class Response(Base):

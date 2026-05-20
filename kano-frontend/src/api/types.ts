@@ -71,3 +71,52 @@ export function classifyApiError(problem: ProblemDetails, status: number): KanoA
   if (status >= 500) return new ServerError(problem, status)
   return new KanoApiError(problem, status)
 }
+
+/**
+ * Backend resource types (Stories 2-1 .. 2-8).
+ *
+ * Shapes mirror the Pydantic schemas in `kano-backend/src/kano/schemas/`.
+ * Keep field names snake_case so the JSON returned by the API drops in
+ * without aliasing — architecture §Format Patterns.
+ */
+
+export interface ProjectSummary {
+  id: string
+  name: string
+  version: string
+  current_epoch: number
+  created_at: string
+}
+
+export interface Project extends ProjectSummary {
+  updated_at: string
+}
+
+export interface Feature {
+  id: string
+  feature_key: string
+  name: string
+  description: string | null
+  is_active?: boolean
+  created_at: string
+  epoch?: number
+}
+
+export interface ProjectDetail extends Project {
+  active_features: Feature[]
+}
+
+export interface ProjectCreateInput {
+  name: string
+  version: string
+}
+
+export interface ProjectUpdateInput {
+  name?: string
+  version?: string
+}
+
+export interface FeatureAtEpoch extends Feature {
+  is_active: boolean
+  epoch: number
+}

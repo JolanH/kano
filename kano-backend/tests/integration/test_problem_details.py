@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from uuid import uuid4
 
 from flask import Flask
 from flask.testing import FlaskClient
@@ -18,10 +19,16 @@ def test_epoch_bump_required_returns_problem_details(
     client: FlaskClient,
 ) -> None:
     detail_msg = "This project has active polls on epoch 2."
+    project_id = uuid4()
 
     @app.route("/test/raise-epoch")
     def _raise_epoch() -> dict[str, bool]:
-        raise EpochBumpRequired(detail_msg)
+        raise EpochBumpRequired(
+            project_id=project_id,
+            current_epoch=2,
+            would_be_epoch=3,
+            detail=detail_msg,
+        )
 
     response = client.get("/test/raise-epoch")
 
@@ -38,6 +45,10 @@ def test_epoch_bump_required_returns_problem_details(
     assert body["instance"] == "/test/raise-epoch"
     assert isinstance(body["request_id"], str)
     assert re.match(r"^[0-9a-f-]{36}$", body["request_id"], re.IGNORECASE)
+    # Story 2-6 enriches the 409 envelope with the bump-decision context.
+    assert body["project_id"] == str(project_id)
+    assert body["current_epoch"] == 2
+    assert body["would_be_epoch"] == 3
 
 
 def test_unhandled_exception_returns_problem_details_500(

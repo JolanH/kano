@@ -4,7 +4,6 @@
       <v-navigation-drawer
         permanent
         color="surface-variant"
-        theme="dark"
         width="240"
       >
         <nav :aria-label="copy('pm.layout.sidebar.aria')">

@@ -65,10 +65,28 @@ def _kano_error_handler(exc: KanoError) -> Response:
     )
 
 
+def _epoch_bump_handler(exc: EpochBumpRequired) -> Response:
+    """409 envelope with the extra fields PM-SPA uses to render the bump dialog."""
+
+    response = _problem_response(
+        status=exc.status_code,
+        type_slug=exc.type_slug,
+        title=exc.title,
+        detail=str(exc) if str(exc) else None,
+    )
+    payload = response.get_json() or {}
+    payload["project_id"] = str(exc.project_id)
+    payload["current_epoch"] = exc.current_epoch
+    payload["would_be_epoch"] = exc.would_be_epoch
+    response.set_data(jsonify(payload).get_data())
+    return response
+
+
 def register_error_handlers(app: Flask) -> None:
     """Register ``application/problem+json`` handlers for all exception types."""
 
-    for exc_cls in (EpochBumpRequired, PollExpired, PartialSubmission, EntityNotFound):
+    app.register_error_handler(EpochBumpRequired, _epoch_bump_handler)
+    for exc_cls in (PollExpired, PartialSubmission, EntityNotFound):
         app.register_error_handler(exc_cls, _kano_error_handler)
 
     @app.errorhandler(ValidationError)

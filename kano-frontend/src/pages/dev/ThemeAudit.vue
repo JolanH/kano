@@ -209,7 +209,11 @@
         <v-list-item
           title="First feature"
           subtitle="Must-have · 8 of 12 responses"
-        />
+        >
+          <template #title>
+            <v-list-item-title>First feature</v-list-item-title>
+          </template>
+        </v-list-item>
         <v-list-item
           title="Second feature"
           subtitle="Performance · 5 of 12 responses"
@@ -219,6 +223,21 @@
           subtitle="Delighter · 3 of 12 responses"
         />
       </v-list>
+    </section>
+
+    <!-- =============== Chips + grid layout (Story 2-9 primitives) =============== -->
+    <section class="mb-10">
+      <h2 class="text-h3 mb-4">Chips &amp; grid</h2>
+      <v-row dense>
+        <v-col cols="12" md="6">
+          <v-chip color="primary" class="me-2">Primary chip</v-chip>
+          <v-chip color="secondary" class="me-2">Secondary chip</v-chip>
+          <v-chip variant="outlined">Outlined chip</v-chip>
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-chip color="success" size="small">small / success</v-chip>
+        </v-col>
+      </v-row>
     </section>
 
     <!-- ============================ Overrides ============================ -->

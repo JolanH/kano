@@ -27,11 +27,35 @@ class KanoError(Exception):
 
 
 class EpochBumpRequired(KanoError):  # noqa: N818
-    """Raised when a feature mutation needs an epoch bump first."""
+    """Raised when a feature mutation needs an epoch bump first.
+
+    Carries ``project_id``, ``current_epoch``, and ``would_be_epoch`` so the
+    API layer can surface them in the 409 Problem Details body — the PM SPA
+    then shows the two-register confirmation dialog (Story 2-11).
+    """
 
     status_code = 409
     type_slug = "epoch-bump-required"
     title = "Feature change requires epoch bump"
+
+    def __init__(
+        self,
+        *,
+        project_id: object,
+        current_epoch: int,
+        would_be_epoch: int,
+        detail: str | None = None,
+    ) -> None:
+        self.project_id = project_id
+        self.current_epoch = current_epoch
+        self.would_be_epoch = would_be_epoch
+        super().__init__(
+            detail
+            or (
+                f"Project {project_id} has polls at epoch {current_epoch}; "
+                f"mutation must bump to epoch {would_be_epoch}"
+            )
+        )
 
 
 class PollExpired(KanoError):  # noqa: N818

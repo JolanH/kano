@@ -63,10 +63,6 @@ Token suffix mirrors the backend `Category` enum (`MANDATORY` / `LINEAR` /
 
 | Key | English | Context |
 |---|---|---|
-| `pm.epochBump.dialog.title` | Create Version {n}? | `{n}` is the next epoch number |
-| `pm.epochBump.dialog.body` | Editing this feature locks the current version and starts a new one. Existing polls keep their current version. | Two-register confirmation prose |
-| `pm.epochBump.dialog.confirm` | Create version | Confirm button label |
-| `pm.epochBump.dialog.cancel` | Keep current version | Cancel button label |
 
 ## Respondent Likert option labels (FR22)
 
@@ -131,3 +127,76 @@ These keys are deleted as part of the PRs that ship those real pages.
 | `placeholder.polls.body` | PM polls list lands in Epic 3 (Story 3-7). | PollsPlaceholder.vue body |
 | `placeholder.respondent.title` | Poll preview | RespondentPlaceholder.vue title (deleted by Epic 3-8 / 4-4) |
 | `placeholder.respondent.body` | Respondent landing replaces this stub in Epic 3 (Story 3-8) and Epic 4 (Story 4-4). | RespondentPlaceholder.vue body |
+
+## PM Projects list + detail (Story 2-9)
+
+| Key | English | Context |
+|---|---|---|
+| `pm.projects.title` | Projects | Page heading on `/app/projects` |
+| `pm.projects.newProject.cta` | New project | Top-right button on the projects list |
+| `pm.projects.newProject.placeholder.name` | Project name | Inline new-project form: name field label |
+| `pm.projects.newProject.placeholder.version` | Version label | Inline new-project form: version field label |
+| `pm.projects.newProject.commit` | Create | Inline new-project form: submit button |
+| `pm.projects.newProject.cancel` | Cancel | Inline new-project form: cancel button |
+| `pm.projects.col.name` | Name | Projects table column header |
+| `pm.projects.col.version` | Version | Projects table column header |
+| `pm.projects.col.epoch` | Current version | Projects table column header (user-facing for `current_epoch`) |
+| `pm.projects.col.featureCount` | Features | Projects table column header (reserved for later) |
+| `pm.projects.col.createdAt` | Created | Projects table column header |
+| `pm.projects.empty.title` | No projects yet | Empty-state title when zero projects exist |
+| `pm.projects.empty.body` | Projects are where you collect Kano feature feedback. | Empty-state body |
+| `pm.projects.empty.cta` | Create your first project | Empty-state primary CTA |
+| `pm.projects.loading` | Loading projects… | Data-table loading indicator |
+| `pm.projects.error.generic` | We couldn't load your projects. Please try again. | Toast on list-load failure |
+| `pm.projectDetail.notFound.title` | Project not found | Detail page 404 title |
+| `pm.projectDetail.notFound.body` | This project doesn't exist (or no longer does). | Detail page 404 body |
+| `pm.projectDetail.notFound.cta` | Back to projects | Detail page 404 primary CTA |
+| `pm.projectDetail.name.aria` | Project name (click to edit) | Aria-label on inline-editable project name |
+| `pm.projectDetail.version.aria` | Project version label (click to edit) | Aria-label on inline-editable version |
+| `pm.projectDetail.features.title` | Features | Detail page features panel heading |
+| `pm.projectDetail.features.empty` | No features yet — Story 2-10 ships the inline editor. | Placeholder body when feature list is empty |
+| `pm.projectDetail.loading` | Loading project… | Detail page loading state |
+
+## FeatureListEditor (Story 2-10)
+
+| Key | English | Context |
+|---|---|---|
+| `pm.features.editor.grid.aria` | Feature list editor | `aria-label` on the WAI-ARIA grid root |
+| `pm.features.editor.row.aria` | Feature row | `aria-label` on each grid row |
+| `pm.features.editor.col.name` | Feature | Name cell `aria-label` + visible placeholder |
+| `pm.features.editor.col.description` | Description (optional) | Description cell `aria-label` + visible placeholder |
+| `pm.features.editor.newRow.placeholder.name` | Add a feature… | New-row name field placeholder |
+| `pm.features.editor.newRow.placeholder.description` | Description (optional) | New-row description field placeholder |
+| `pm.features.editor.delete.aria` | Delete feature | `aria-label` on the trash-icon button |
+| `pm.features.editor.error.create` | We couldn't create that feature. Please try again. | Error message on create failure |
+| `pm.features.editor.error.update` | We couldn't save that change. Please try again. | Error message on update failure |
+| `pm.features.editor.error.delete` | We couldn't delete that feature. Please try again. | Error message on delete failure |
+
+## EpochBumpDialog + EpochBumpBanner (Story 2-11)
+
+Internal name retains `Epoch` (matches backend); user-facing values say `Version`. Placeholder names avoid the substring "epoch" so the `useCopy` regression sweep stays strict.
+
+| Key | English | Context |
+|---|---|---|
+| `pm.versionBump.dialog.title` | Create Version {n}? | Dialog title; `{n}` is the next version number |
+| `pm.versionBump.dialog.body.preserved` | Existing responses on Version {current} will be preserved. | First body paragraph |
+| `pm.versionBump.dialog.body.newPolls` | New polls will use Version {next}. | Second body paragraph |
+| `pm.versionBump.dialog.confirm` | Create Version {n} | Primary CTA |
+| `pm.versionBump.dialog.cancel` | Cancel | Secondary CTA |
+| `pm.versionBump.dialog.error` | We couldn't bump the version. Please try again. | Error alert inside the dialog on confirm failure |
+| `pm.versionBump.dialog.processing` | Creating new version… | Loading text while confirm is in-flight |
+| `pm.versionBump.banner.inPlace` | Version {n} updated in place — no responses to preserve. | Soft banner after a Branch-A mutation |
+| `pm.versionBump.banner.close` | Dismiss | `aria-label` on the banner close button |
+| `pm.versionBump.nowEditing` | Now editing Version {n} | Snackbar message after a successful version bump |
+
+## EpochSelector + past-epoch view (Story 2-12)
+
+Component file is `EpochSelector.vue` (internal name keeps "Epoch" parity with the backend); user-facing copy below stays Version-only.
+
+| Key | English | Context |
+|---|---|---|
+| `pm.versionSelector.trigger.aria` | Switch version | `aria-label` on the dropdown trigger |
+| `pm.versionSelector.item.aria` | View Version {n} | `aria-label` for a version list-item |
+| `pm.versionSelector.item.current` | Current | Suffix tag next to the active version in the dropdown |
+| `pm.viewingPast.banner` | Viewing Version {n} (read-only). Return to Version {current} to edit. | Banner on `/app/projects/:id?epoch=N` when viewing a past version |
+| `pm.viewingPast.returnCta` | Return to current | Button on the past-epoch banner |

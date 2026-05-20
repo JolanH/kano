@@ -1,6 +1,6 @@
 # Story 2.8: Past-epoch feature-set read endpoint
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -17,20 +17,20 @@ so that I can reconstruct exactly what a prior poll's respondents saw.
 
 ## Tasks / Subtasks
 
-- [ ] `services/feature_service.py` (new module) — `list_features_for_epoch`
-  - [ ] `def list_features_for_epoch(project_id: UUID, epoch: int) -> list[Feature]:`
+- [x] `services/feature_service.py` (new module) — `list_features_for_epoch`
+  - [x] `def list_features_for_epoch(project_id: UUID, epoch: int) -> list[Feature]:`
     - Verify project exists (raise `EntityNotFound` if not)
     - Verify the epoch has at least one row in features for this project; if zero rows exist, raise `EntityNotFound` (the epoch number is invalid for this project)
     - Return all rows for `(project_id, epoch)` ordered by `created_at.asc()` — no `is_active` filter
-- [ ] Extend `api/features.py` (Story 2-7's file) with the past-epoch read
-  - [ ] `@features_bp.get("/epochs/<int:epoch>/features")` handler; returns array of `FeatureResponse`
-  - [ ] Not CSRF-protected (GET)
-- [ ] OpenAPI entry
-- [ ] Integration tests
-  - [ ] Multi-epoch: seed project at epoch 3; verify GET for epoch 1, 2, 3 returns the right frozen set (including soft-deleted features in past epochs)
-  - [ ] GET for epoch 99 on a project whose current_epoch is 3 → 404
-  - [ ] GET for epoch 1 on a non-existent project UUID → 404
-  - [ ] Validate ordering by `created_at` ascending (distinct from `GET /projects/:id` which is same within an epoch — verify semantics consistent)
+- [x] Extend `api/features.py` (Story 2-7's file) with the past-epoch read
+  - [x] `@features_bp.get("/epochs/<int:epoch>/features")` handler; returns array of `FeatureResponse`
+  - [x] Not CSRF-protected (GET)
+- [x] OpenAPI entry
+- [x] Integration tests
+  - [x] Multi-epoch: seed project at epoch 3; verify GET for epoch 1, 2, 3 returns the right frozen set (including soft-deleted features in past epochs)
+  - [x] GET for epoch 99 on a project whose current_epoch is 3 → 404
+  - [x] GET for epoch 1 on a non-existent project UUID → 404
+  - [x] Validate ordering by `created_at` ascending (distinct from `GET /projects/:id` which is same within an epoch — verify semantics consistent)
 
 ## Dev Notes
 
@@ -64,7 +64,16 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+claude-opus-4-7 (1M context)
 ### Debug Log References
+- `poetry run pytest tests/integration/test_features_api.py::TestListFeaturesAtEpoch -v` → 4/4 passed
+- `poetry run pytest` → 134/134 passed
+- ruff/black/mypy → clean
 ### Completion Notes List
+- `list_features_for_epoch` does two queries: (1) project-existence via `SELECT EXISTS(...)`, (2) the feature rows. The project-exists probe makes the "no project" vs "wrong epoch" error message distinct in logs even though both surface as 404 to the client.
+- Multi-epoch test asserts the subtle filter behavior: soft-deleted features stay in their original epoch (visible here) but are NOT cloned forward by `epoch_service` — the active-only filter in `_clone_active_features` is what keeps the lineage clean.
 ### File List
+- `kano-backend/src/kano/services/feature_service.py` (new — `list_features_for_epoch`)
+- `kano-backend/src/kano/api/features.py` (modified — `GET /epochs/:epoch/features`)
+- `kano-backend/openapi.yaml` (modified — new path)
+- `kano-backend/tests/integration/test_features_api.py` (modified — 4 new tests under `TestListFeaturesAtEpoch`)

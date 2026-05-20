@@ -1,6 +1,6 @@
 # Story 2.7: Feature mutation API with epoch-bump gating
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -20,13 +20,13 @@ so that my feature changes never corrupt the data pinned to already-collected po
 
 ## Tasks / Subtasks
 
-- [ ] `api/features.py` blueprint with all three endpoints
-  - [ ] `features_bp = Blueprint("features", __name__, url_prefix="/api/v1/projects/<uuid:project_id>")`
-  - [ ] Every handler reads `acknowledged = request.args.get("acknowledged") == "true"` from the query string
-  - [ ] Every handler delegates the mutation to `epoch_service.bump_epoch_on_feature_change(project_id, mutation_fn, acknowledged=acknowledged)`
-  - [ ] No direct `db.session.add` / `db.session.commit` in this file for `features` — the service owns the transaction
-- [ ] POST handler (AC: #1, #2, #3)
-  - [ ] `@features_bp.post("/features")`:
+- [x] `api/features.py` blueprint with all three endpoints
+  - [x] `features_bp = Blueprint("features", __name__, url_prefix="/api/v1/projects/<uuid:project_id>")`
+  - [x] Every handler reads `acknowledged = request.args.get("acknowledged") == "true"` from the query string
+  - [x] Every handler delegates the mutation to `epoch_service.bump_epoch_on_feature_change(project_id, mutation_fn, acknowledged=acknowledged)`
+  - [x] No direct `db.session.add` / `db.session.commit` in this file for `features` — the service owns the transaction
+- [x] POST handler (AC: #1, #2, #3)
+  - [x] `@features_bp.post("/features")`:
     ```python
     body = FeatureCreate.model_validate(request.get_json())
     def mutation(epoch: int):
@@ -39,8 +39,8 @@ so that my feature changes never corrupt the data pinned to already-collected po
         project_id, mutation, acknowledged=acknowledged)
     return FeatureResponse.model_validate(mutation_context["created_feature"]).model_dump(mode="json"), 201
     ```
-- [ ] PATCH handler (AC: #4)
-  - [ ] `@features_bp.patch("/features/<uuid:feature_key>")`:
+- [x] PATCH handler (AC: #4)
+  - [x] `@features_bp.patch("/features/<uuid:feature_key>")`:
     ```python
     body = FeatureUpdate.model_validate(request.get_json())
     def mutation(epoch: int):
@@ -59,24 +59,24 @@ so that my feature changes never corrupt the data pinned to already-collected po
         mutation_context["updated_feature"] = feature
     # ... same service call, 200 response
     ```
-- [ ] DELETE handler — soft delete semantics per AC #5
-  - [ ] `@features_bp.delete("/features/<uuid:feature_key>")`:
+- [x] DELETE handler — soft delete semantics per AC #5
+  - [x] `@features_bp.delete("/features/<uuid:feature_key>")`:
     - On no-polls branch: the service's `mutation_fn` sets `is_active = FALSE` on the epoch N row
     - On has-polls + acknowledged branch: the service clones active features into N+1; the blueprint's `mutation_fn` for delete must **NOT clone this feature** into N+1. This means the generic `bump_epoch_on_feature_change` contract doesn't support DELETE semantics cleanly (clone-then-mutate produces the wrong result — the feature ends up in N+1 is_active=FALSE, not absent).
     - **Resolution**: add an optional `exclude_feature_keys: set[UUID] | None = None` kwarg to `bump_epoch_on_feature_change`; when cloning, skip feature_keys in the exclude set. DELETE passes `{feature_key}` via this kwarg. Update Story 2-6 if that enhancement wasn't captured there.
     - Return 204 No Content
-- [ ] Register blueprint in `create_app()`
-- [ ] OpenAPI (AC: #7) — three paths with all status codes
-- [ ] Integration tests (AC: #1–6)
-  - [ ] Happy path add: no polls → 201, epoch stays at N
-  - [ ] Add with polls, no ack → 409 Problem Details (type=epoch-bump-required, `would_be_epoch=N+1`)
-  - [ ] Add with polls + ack → 201, project.current_epoch == N+1, epoch-N features unchanged, new feature lives on N+1
-  - [ ] PATCH symmetrics
-  - [ ] DELETE symmetrics + soft-delete on no-polls branch asserts `is_active=FALSE` on epoch N; DELETE with polls+ack asserts feature is NOT in N+1 set but N rows untouched
-  - [ ] **Service-invocation assertion** (AC #6): patch `epoch_service.bump_epoch_on_feature_change` with a spy; each of the 3 endpoints calls it exactly once per request
-  - [ ] Invalid body → 400
-  - [ ] Non-existent feature_key on PATCH/DELETE → 404
-  - [ ] Missing CSRF → 403
+- [x] Register blueprint in `create_app()`
+- [x] OpenAPI (AC: #7) — three paths with all status codes
+- [x] Integration tests (AC: #1–6)
+  - [x] Happy path add: no polls → 201, epoch stays at N
+  - [x] Add with polls, no ack → 409 Problem Details (type=epoch-bump-required, `would_be_epoch=N+1`)
+  - [x] Add with polls + ack → 201, project.current_epoch == N+1, epoch-N features unchanged, new feature lives on N+1
+  - [x] PATCH symmetrics
+  - [x] DELETE symmetrics + soft-delete on no-polls branch asserts `is_active=FALSE` on epoch N; DELETE with polls+ack asserts feature is NOT in N+1 set but N rows untouched
+  - [x] **Service-invocation assertion** (AC #6): patch `epoch_service.bump_epoch_on_feature_change` with a spy; each of the 3 endpoints calls it exactly once per request
+  - [x] Invalid body → 400
+  - [x] Non-existent feature_key on PATCH/DELETE → 404
+  - [x] Missing CSRF → 403
 
 ## Dev Notes
 
@@ -124,7 +124,20 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+claude-opus-4-7 (1M context)
 ### Debug Log References
+- `poetry run pytest tests/integration/test_features_api.py -v` → 17/17 passed
+- `poetry run pytest` → 130/130 passed
+- ruff / black / mypy → clean
 ### Completion Notes List
+- Extended `epoch_service.bump_epoch_on_feature_change` with `exclude_feature_keys: frozenset[UUID] | None`. The clone helper skips any feature_key in that set. Branch A and Branch B are unaffected. Updated the Branch-C clone tests pass through `frozenset()` by default.
+- DELETE on Branch C: the feature is excluded from the clone, so when `mutation_fn` runs at epoch N+1 the row isn't there. The handler does a **pre-flight 404 check** at the project's current epoch before calling the service so DELETE on a missing key surfaces as 404 (not a silent no-op). The `mutation_fn` itself is then idempotent: it finds the row at the active epoch (Branch A) and soft-deletes it; on Branch C the row legitimately doesn't exist at N+1 and it returns without mutating.
+- All three handlers thread an `acknowledged = request.args.get("acknowledged") == "true"` flag — strict string match per architecture (`?acknowledged=yes` is *not* treated as truthy).
+- AC #6 service-invocation spy: `unittest.mock.patch.object(epoch_service, "bump_epoch_on_feature_change", side_effect=original)` wraps the real call so the spy validates count==1 without short-circuiting. Three tests, one per endpoint.
+- POST handler `mutation_fn` does `db.session.flush()` after `add()` so `created_at` is materialized before `FeatureResponse.model_validate` reads it.
 ### File List
+- `kano-backend/src/kano/services/epoch_service.py` (modified — added `exclude_feature_keys` kwarg)
+- `kano-backend/src/kano/api/features.py` (new — POST/PATCH/DELETE blueprint)
+- `kano-backend/src/kano/__init__.py` (modified — register `features_bp`)
+- `kano-backend/openapi.yaml` (modified — three new paths + 4 new component schemas)
+- `kano-backend/tests/integration/test_features_api.py` (new — 17 tests covering branches A/B/C × {POST, PATCH, DELETE} + spy)

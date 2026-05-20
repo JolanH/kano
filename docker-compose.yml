@@ -64,7 +64,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "5000:5000"
+      - "5001:5000"
     mem_limit: 1g
 
   web:

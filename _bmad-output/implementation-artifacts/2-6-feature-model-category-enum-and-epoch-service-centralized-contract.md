@@ -1,6 +1,6 @@
 # Story 2.6: Feature model, Category enum, and epoch_service centralized contract
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -20,21 +20,21 @@ so that every feature mutation endpoint downstream routes through a single contr
 
 ## Tasks / Subtasks
 
-- [ ] `models/feature.py` (AC: #6)
-  - [ ] `class Feature(Base):` with typed columns: `id` UUID PK default=uuid4, `project_id` FK → projects(id), `epoch: int`, `feature_key: UUID default=uuid4` (stable across epochs), `name`, `description`, `is_active: bool default=True`, `created_at TIMESTAMPTZ`
-  - [ ] `__table_args__ = (UniqueConstraint("project_id", "epoch", "feature_key"),)`
-  - [ ] Validate against migration 0001 — no drift
-- [ ] `models/response.py` — Category enum (AC: #7)
-  - [ ] `class Category(str, Enum): MANDATORY = "M"; LINEAR = "L"; EXCITER = "E"; INDIFFERENT = "I"; CONTRADICTORY = "C"; DOUBTFUL = "D"`
-  - [ ] **Note**: a parallel `Category` enum also exists in `services/kano_matrix.py` (Story 1-5). These are intentionally duplicated — one represents the persistence layer's domain, the other the pure-function domain. They must stay in sync; cross-reference test: `assert set(models.Category) == set(services.kano_matrix.Category)` at the value level. Consider consolidating into `src/kano/domain.py` in a follow-up if the duplication becomes painful; out of scope for v1.
-  - [ ] Placeholder `Response` model stub may be extended here or in Epic 4 — at minimum, define the `Category` enum so features can reference the value set
-- [ ] `schemas/feature.py`
-  - [ ] `FeatureCreate(name: str, description: str | None)`, `FeatureUpdate(name | description optional)`, `FeatureResponse(id, feature_key, name, description, is_active, created_at, epoch)`, `FeatureSummary(id, feature_key, name, description, created_at)` (used by `ProjectDetailResponse` in Story 2-4)
-  - [ ] Max lengths: `name ≤ 200`, `description ≤ 2000`
-- [ ] `services/epoch_service.py` (AC: #1, #2, #3)
-  - [ ] `def get_current_epoch(project_id: UUID) -> int:` — reads `project.current_epoch`; raises `EntityNotFound` if project missing
-  - [ ] `def _has_polls_for_epoch(project_id: UUID, epoch: int) -> bool:` — private helper
-  - [ ] `def bump_epoch_on_feature_change(project_id: UUID, mutation_fn: Callable[[int], None], *, acknowledged: bool) -> int:`
+- [x] `models/feature.py` (AC: #6)
+  - [x] `class Feature(Base):` with typed columns: `id` UUID PK default=uuid4, `project_id` FK → projects(id), `epoch: int`, `feature_key: UUID default=uuid4` (stable across epochs), `name`, `description`, `is_active: bool default=True`, `created_at TIMESTAMPTZ`
+  - [x] `__table_args__ = (UniqueConstraint("project_id", "epoch", "feature_key"),)`
+  - [x] Validate against migration 0001 — no drift
+- [x] `models/response.py` — Category enum (AC: #7)
+  - [x] `class Category(str, Enum): MANDATORY = "M"; LINEAR = "L"; EXCITER = "E"; INDIFFERENT = "I"; CONTRADICTORY = "C"; DOUBTFUL = "D"`
+  - [x] **Note**: a parallel `Category` enum also exists in `services/kano_matrix.py` (Story 1-5). These are intentionally duplicated — one represents the persistence layer's domain, the other the pure-function domain. They must stay in sync; cross-reference test: `assert set(models.Category) == set(services.kano_matrix.Category)` at the value level. Consider consolidating into `src/kano/domain.py` in a follow-up if the duplication becomes painful; out of scope for v1.
+  - [x] Placeholder `Response` model stub may be extended here or in Epic 4 — at minimum, define the `Category` enum so features can reference the value set
+- [x] `schemas/feature.py`
+  - [x] `FeatureCreate(name: str, description: str | None)`, `FeatureUpdate(name | description optional)`, `FeatureResponse(id, feature_key, name, description, is_active, created_at, epoch)`, `FeatureSummary(id, feature_key, name, description, created_at)` (used by `ProjectDetailResponse` in Story 2-4)
+  - [x] Max lengths: `name ≤ 200`, `description ≤ 2000`
+- [x] `services/epoch_service.py` (AC: #1, #2, #3)
+  - [x] `def get_current_epoch(project_id: UUID) -> int:` — reads `project.current_epoch`; raises `EntityNotFound` if project missing
+  - [x] `def _has_polls_for_epoch(project_id: UUID, epoch: int) -> bool:` — private helper
+  - [x] `def bump_epoch_on_feature_change(project_id: UUID, mutation_fn: Callable[[int], None], *, acknowledged: bool) -> int:`
     - Load project row (for update, `with_for_update()` to prevent concurrent bumps — even at the PRD's expected low concurrency, belt-and-braces for correctness)
     - `n = project.current_epoch`
     - `has_polls = self._has_polls_for_epoch(project_id, n)`
@@ -46,14 +46,14 @@ so that every feature mutation endpoint downstream routes through a single contr
       3. Invoke `mutation_fn(epoch=n+1)` — caller's mutation applied to the newly-created N+1 rows
       4. `db.session.commit()`
       5. `return n + 1`
-  - [ ] `mutation_fn` signature: takes `epoch: int` kwarg, returns None; caller owns the specific add/edit/delete SQL; this service owns the transaction boundary and the epoch decision
-  - [ ] Exception `EpochBumpRequired` (defined in `exceptions.py` Story 1-3; extend with `project_id`, `current_epoch`, `would_be_epoch` attributes for the 409 Problem Details body)
-- [ ] Tests (AC: #4, #5)
-  - [ ] `tests/unit/test_epoch_service.py`:
+  - [x] `mutation_fn` signature: takes `epoch: int` kwarg, returns None; caller owns the specific add/edit/delete SQL; this service owns the transaction boundary and the epoch decision
+  - [x] Exception `EpochBumpRequired` (defined in `exceptions.py` Story 1-3; extend with `project_id`, `current_epoch`, `would_be_epoch` attributes for the 409 Problem Details body)
+- [x] Tests (AC: #4, #5)
+  - [x] `tests/unit/test_epoch_service.py`:
     - Parametrized matrix: mutation ∈ {add, edit, delete} × poll_state ∈ {none, one} × acknowledged ∈ {True, False} — 12 cases
     - For each: pre-seed the state, call `bump_epoch_on_feature_change`, assert the expected outcome
     - **Byte-identity snapshot** for epoch N after a bump: `SELECT * FROM features WHERE project_id = :id AND epoch = :n ORDER BY id` both pre- and post-bump; assert row-wise equality (id, feature_key, name, description, is_active, created_at, epoch all unchanged)
-  - [ ] `tests/integration/test_epoch_service.py` if any test needs real Postgres (CHECK constraints, UNIQUE indexes) — unit-level can use sqlite-in-memory if all invariants express in Alchemy Core; prefer Postgres for confidence
+  - [x] `tests/integration/test_epoch_service.py` if any test needs real Postgres (CHECK constraints, UNIQUE indexes) — unit-level can use sqlite-in-memory if all invariants express in Alchemy Core; prefer Postgres for confidence
 
 ## Dev Notes
 
@@ -128,7 +128,28 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+claude-opus-4-7 (1M context)
 ### Debug Log References
+- `poetry run pytest tests/unit/test_epoch_service.py tests/integration/test_epoch_service.py -v` → 12/12 passed
+- `poetry run pytest` → 113/113 passed
+- `poetry run ruff check src tests migrations` → clean (after combining nested `with` + dropping stray `datetime` import)
+- `poetry run black src tests migrations` → applied (2 files reformatted)
+- `poetry run mypy src tests migrations` → clean
 ### Completion Notes List
+- `Feature` model already existed from Story 1-2 with the exact shape this story specifies (UniqueConstraint on `(project_id, epoch, feature_key)` + Index on `(project_id, epoch)`). No drift; left untouched.
+- Added persistence-domain `Category` enum to `models/response.py`. Story-pinned parity test in `tests/unit/test_epoch_service.py` verifies `{c.value for c in ModelCategory} == {c.value for c in MatrixCategory}` AND `{c.name ...} == {c.name ...}`. There's already a *migration-vs-MatrixCategory* parity test in `test_category_check_parity.py`; the two together transitively pin all three representations to the same six letters.
+- `EpochBumpRequired` now takes kwargs `project_id`, `current_epoch`, `would_be_epoch`, plus optional `detail`. The default message includes both epoch numbers so logs can grep them. **Breaking** the old positional signature: I updated the existing `test_problem_details.py` test in the same commit to use the kwargs form and to assert the three enriched fields land in the Problem Details body.
+- Custom handler `_epoch_bump_handler` registered in `api/errors.py` injects `project_id`, `current_epoch`, `would_be_epoch` into the response JSON so the PM SPA's two-register dialog (Story 2-11) has what it needs. Other domain exceptions still use the generic `_kano_error_handler`.
+- `epoch_service` uses `SELECT ... FOR UPDATE` on the project row to serialize concurrent bumps. The `_clone_active_features` helper `flush()`-es the insert batch before `mutation_fn` runs so the caller's UPDATE/DELETE statements can find the newly-cloned epoch-N+1 rows.
+- 12-cell behavioral matrix lives in `tests/integration/test_epoch_service.py` (Branch A × {add, edit, delete} × {ack=False/True}, Branch B × {add, edit, delete}, Branch C × {add, edit, delete}). Each Branch-C test asserts byte-identity of the epoch-N snapshot pre- and post-bump via `_snapshot_features` reading every column ordered by id.
+- `schemas/feature.py` exports `FeatureCreate`, `FeatureUpdate`, `FeatureResponse`. `FeatureSummary` was already defined in `schemas/project.py` from Story 2-4 and is re-exported from the package `__init__.py`; consumers should import everything from `kano.schemas`.
 ### File List
+- `kano-backend/src/kano/models/response.py` (modified — `Category` enum)
+- `kano-backend/src/kano/schemas/feature.py` (new — `FeatureCreate`, `FeatureUpdate`, `FeatureResponse`)
+- `kano-backend/src/kano/schemas/__init__.py` (modified — new exports)
+- `kano-backend/src/kano/services/epoch_service.py` (new — full contract)
+- `kano-backend/src/kano/exceptions.py` (modified — `EpochBumpRequired` carries `project_id`/`current_epoch`/`would_be_epoch`)
+- `kano-backend/src/kano/api/errors.py` (modified — `_epoch_bump_handler` injects the three fields)
+- `kano-backend/tests/unit/test_epoch_service.py` (new — enum parity + exception field guards)
+- `kano-backend/tests/integration/test_epoch_service.py` (new — 12-cell behavioral matrix)
+- `kano-backend/tests/integration/test_problem_details.py` (modified — updated to new `EpochBumpRequired` signature, asserts enriched fields)

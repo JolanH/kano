@@ -22,7 +22,7 @@ describe('useCopy — lookup & fallback', () => {
 describe('useCopy — placeholder interpolation', () => {
   test('interpolates {name} placeholders from params', () => {
     const copy = useCopy()
-    expect(copy('pm.epochBump.dialog.title', { n: 3 })).toBe('Create Version 3?')
+    expect(copy('pm.versionBump.dialog.title', { n: 3 })).toBe('Create Version 3?')
     expect(copy('respondent.progress', { current: 4, total: 16 })).toBe('Question 4 of 16')
   })
 
@@ -31,7 +31,7 @@ describe('useCopy — placeholder interpolation', () => {
     // With the previous chained-replaceAll implementation, passing `n: '{n}'`
     // would substitute then re-substitute. The single-pass regex makes the
     // substitution one-shot — `{n}` in the value is left as literal text.
-    expect(copy('pm.epochBump.dialog.title', { n: '{n}' })).toBe('Create Version {n}?')
+    expect(copy('pm.versionBump.dialog.title', { n: '{n}' })).toBe('Create Version {n}?')
   })
 
   test('substitution is order-independent across multiple keys', () => {
@@ -50,10 +50,10 @@ describe('useCopy — placeholder interpolation', () => {
 
   test('throws on a null/undefined param value rather than rendering literal "null"', () => {
     const copy = useCopy()
-    expect(() => copy('pm.epochBump.dialog.title', { n: null as unknown as string })).toThrow(
+    expect(() => copy('pm.versionBump.dialog.title', { n: null as unknown as string })).toThrow(
       /null\/undefined/,
     )
-    expect(() => copy('pm.epochBump.dialog.title', { n: undefined as unknown as string })).toThrow(
+    expect(() => copy('pm.versionBump.dialog.title', { n: undefined as unknown as string })).toThrow(
       /null\/undefined/,
     )
   })
@@ -63,7 +63,7 @@ describe('useCopy — placeholder interpolation', () => {
     // placeholder visible (loud failure mode) rather than crash or interpolate
     // the literal string "undefined".
     const copy = useCopy()
-    expect(copy('pm.epochBump.dialog.title')).toBe('Create Version {n}?')
+    expect(copy('pm.versionBump.dialog.title')).toBe('Create Version {n}?')
   })
 })
 

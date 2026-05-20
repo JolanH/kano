@@ -31,5 +31,16 @@ export default defineConfig({
     include: ['tests/unit/**/*.spec.ts'],
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
     environment: 'node',
+    // Vuetify auto-import (set above) emits CSS side-effect imports inside the
+    // transformed .vue files. jsdom can't evaluate `.css` modules at runtime;
+    // mock them to empty stylesheets so component-mounting specs don't blow
+    // up on import. Use `server.deps.inline` to force Vuetify's ESM through
+    // Vite's CSS pipeline rather than Node's import.
+    css: { include: [/.+/] },
+    server: {
+      deps: {
+        inline: ['vuetify'],
+      },
+    },
   },
 })

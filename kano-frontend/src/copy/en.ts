@@ -50,13 +50,6 @@ export const en = {
   'pm.category.cont': 'Contradictory',
   'pm.category.doub': 'Doubtful',
 
-  // Epoch-bump dialog (Story 2-11). The user-facing copy says "Version".
-  'pm.epochBump.dialog.title': 'Create Version {n}?',
-  'pm.epochBump.dialog.body':
-    'Editing this feature locks the current version and starts a new one. Existing polls keep their current version.',
-  'pm.epochBump.dialog.confirm': 'Create version',
-  'pm.epochBump.dialog.cancel': 'Keep current version',
-
   // Respondent Likert option labels (FR22 — plain-language replacements for
   // the Kano-methodology jargon).
   'respondent.likert.1': "I'd love it",
@@ -102,6 +95,74 @@ export const en = {
   'placeholder.respondent.title': 'Poll preview',
   'placeholder.respondent.body':
     'Respondent landing replaces this stub in Epic 3 (Story 3-8) and Epic 4 (Story 4-4).',
+
+  // PM Projects list + detail (Story 2-9).
+  'pm.projects.title': 'Projects',
+  'pm.projects.newProject.cta': 'New project',
+  'pm.projects.newProject.placeholder.name': 'Project name',
+  'pm.projects.newProject.placeholder.version': 'Version label',
+  'pm.projects.newProject.commit': 'Create',
+  'pm.projects.newProject.cancel': 'Cancel',
+  'pm.projects.col.name': 'Name',
+  'pm.projects.col.version': 'Version',
+  'pm.projects.col.epoch': 'Current version',
+  'pm.projects.col.featureCount': 'Features',
+  'pm.projects.col.createdAt': 'Created',
+  'pm.projects.empty.title': 'No projects yet',
+  'pm.projects.empty.body': 'Projects are where you collect Kano feature feedback.',
+  'pm.projects.empty.cta': 'Create your first project',
+  'pm.projects.loading': 'Loading projects…',
+  'pm.projects.error.generic': "We couldn't load your projects. Please try again.",
+
+  // PM Project Detail
+  'pm.projectDetail.notFound.title': 'Project not found',
+  'pm.projectDetail.notFound.body':
+    "This project doesn't exist (or no longer does).",
+  'pm.projectDetail.notFound.cta': 'Back to projects',
+  'pm.projectDetail.name.aria': 'Project name (click to edit)',
+  'pm.projectDetail.version.aria': 'Project version label (click to edit)',
+  'pm.projectDetail.features.title': 'Features',
+  'pm.projectDetail.features.empty':
+    'No features yet — Story 2-10 ships the inline editor.',
+  'pm.projectDetail.loading': 'Loading project…',
+
+  // FeatureListEditor (Story 2-10).
+  'pm.features.editor.grid.aria': 'Feature list editor',
+  'pm.features.editor.row.aria': 'Feature row',
+  'pm.features.editor.col.name': 'Feature',
+  'pm.features.editor.col.description': 'Description (optional)',
+  'pm.features.editor.newRow.placeholder.name': 'Add a feature…',
+  'pm.features.editor.newRow.placeholder.description': 'Description (optional)',
+  'pm.features.editor.delete.aria': 'Delete feature',
+  'pm.features.editor.error.create': "We couldn't create that feature. Please try again.",
+  'pm.features.editor.error.update': "We couldn't save that change. Please try again.",
+  'pm.features.editor.error.delete': "We couldn't delete that feature. Please try again.",
+
+  // EpochBumpDialog + EpochBumpBanner (Story 2-11).
+  // Placeholder names deliberately avoid the substring "epoch": the
+  // useCopy regression test sweeps every value in this file for the literal
+  // string "epoch" (case-insensitive) to enforce the Version/Epoch glossary.
+  'pm.versionBump.dialog.title': 'Create Version {n}?',
+  'pm.versionBump.dialog.body.preserved':
+    'Existing responses on Version {current} will be preserved.',
+  'pm.versionBump.dialog.body.newPolls': 'New polls will use Version {next}.',
+  'pm.versionBump.dialog.confirm': 'Create Version {n}',
+  'pm.versionBump.dialog.cancel': 'Cancel',
+  'pm.versionBump.dialog.error': "We couldn't bump the version. Please try again.",
+  'pm.versionBump.dialog.processing': 'Creating new version…',
+  'pm.versionBump.banner.inPlace': 'Version {n} updated in place — no responses to preserve.',
+  'pm.versionBump.banner.close': 'Dismiss',
+  'pm.versionBump.nowEditing': 'Now editing Version {n}',
+
+  // EpochSelector + past-epoch view (Story 2-12). Internal name retains
+  // "Epoch"; user-facing strings say "Version" (per Story 1-7 glossary).
+  // Placeholder name `current` deliberately avoids the substring "epoch".
+  'pm.versionSelector.trigger.aria': 'Switch version',
+  'pm.versionSelector.item.aria': 'View Version {n}',
+  'pm.versionSelector.item.current': 'Current',
+  'pm.viewingPast.banner':
+    'Viewing Version {n} (read-only). Return to Version {current} to edit.',
+  'pm.viewingPast.returnCta': 'Return to current',
 } as const
 
 export type CopyKey = keyof typeof en
