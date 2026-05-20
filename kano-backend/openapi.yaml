@@ -1,0 +1,472 @@
+openapi: 3.1.0
+info:
+  title: Kano Backend API
+  version: 0.1.0
+  description: |
+    PM-facing and respondent-facing HTTP surface for the Kano study tool.
+    All state-changing /api/v1/* routes require an X-CSRF-Token header
+    bootstrapped from GET /api/v1/csrf-token. Errors use RFC 7807
+    application/problem+json.
+
+servers:
+  - url: /
+
+paths:
+  /api/v1/projects/:
+    get:
+      operationId: listProjects
+      summary: List all projects (newest first)
+      description: |
+        Bare JSON array of project summaries. No pagination — total project
+        count is O(tens) per architecture §Scaling Strategy.
+      tags: [projects]
+      responses:
+        '200':
+          description: Project summaries, newest-first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectSummary'
+    post:
+      operationId: createProject
+      summary: Create a project
+      description: |
+        Creates a new Kano project with an app-generated UUIDv4. The project
+        starts at current_epoch=1; the epoch advances later via the bump flow
+        (Epic 2 story 2.7+).
+      tags: [projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreate'
+      responses:
+        '201':
+          description: Project created
+          headers:
+            Location:
+              description: Path to the newly created project
+              schema:
+                type: string
+                example: /api/v1/projects/3fa85f64-5717-4562-b3fc-2c963f66afa6
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '400':
+          description: Validation or CSRF failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /api/v1/projects/{project_id}/features:
+    parameters:
+      - in: path
+        name: project_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: createFeature
+      summary: Add a feature (epoch-gated)
+      tags: [features]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeatureCreate'
+      responses:
+        '201':
+          description: Feature created at current_epoch (or N+1 after a bump)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureResponse'
+        '400':
+          description: Validation or CSRF failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Epoch bump required (polls exist, not acknowledged)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EpochBumpRequiredProblem'
+  /api/v1/projects/{project_id}/epochs/{epoch}/features:
+    parameters:
+      - in: path
+        name: project_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: epoch
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      operationId: listFeaturesAtEpoch
+      summary: Get the frozen feature list at a historical epoch
+      description: |
+        Returns every feature row at the given (project, epoch) tuple,
+        including soft-deleted ones. Used by EpochSelector (Story 2-12) and
+        the analysis page to reconstruct what respondents saw.
+      tags: [features]
+      responses:
+        '200':
+          description: Feature list (bare array)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeatureResponse'
+        '404':
+          description: Project or epoch not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /api/v1/projects/{project_id}/features/{feature_key}:
+    parameters:
+      - in: path
+        name: project_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: feature_key
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateFeature
+      summary: Edit a feature (epoch-gated)
+      tags: [features]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeatureUpdate'
+      responses:
+        '200':
+          description: Feature updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureResponse'
+        '400':
+          description: Validation or CSRF failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Feature not found at current epoch
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Epoch bump required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EpochBumpRequiredProblem'
+    delete:
+      operationId: deleteFeature
+      summary: Soft-delete a feature (epoch-gated)
+      tags: [features]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeatureDelete'
+      responses:
+        '204':
+          description: Feature soft-deleted (no polls) or absent from N+1 (with ack)
+        '404':
+          description: Feature not found at current epoch
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Epoch bump required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EpochBumpRequiredProblem'
+
+  /api/v1/projects/{project_id}:
+    parameters:
+      - in: path
+        name: project_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getProjectDetail
+      summary: Get a project with its current-epoch active features
+      tags: [projects]
+      responses:
+        '200':
+          description: Project detail + active_features
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDetailResponse'
+        '404':
+          description: Project not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      operationId: updateProject
+      summary: Edit project name and/or version (never bumps the epoch)
+      description: |
+        At least one of `name` or `version` must be provided. Empty body
+        returns 400. The project's `current_epoch` is **never** advanced by
+        this endpoint — FR4 invariant.
+      tags: [projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdate'
+      responses:
+        '200':
+          description: Project updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '400':
+          description: Validation failure (e.g. empty body) or CSRF failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Project not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+components:
+  schemas:
+    ProjectCreate:
+      type: object
+      required: [name, version]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        version:
+          type: string
+          maxLength: 50
+    ProjectUpdate:
+      type: object
+      description: |
+        At least one of `name` or `version` MUST be provided. An empty body
+        is rejected with 400 / `validation-error`.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        version:
+          type: string
+          maxLength: 50
+    ProjectResponse:
+      type: object
+      required: [id, name, version, current_epoch, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        version:
+          type: string
+        current_epoch:
+          type: integer
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ProjectSummary:
+      type: object
+      description: List-item projection of a project (omits updated_at).
+      required: [id, name, version, current_epoch, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        version:
+          type: string
+        current_epoch:
+          type: integer
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+    FeatureSummary:
+      type: object
+      description: Compact feature projection used inside ProjectDetailResponse.
+      required: [id, feature_key, name, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        feature_key:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    ProjectDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/ProjectResponse'
+        - type: object
+          required: [active_features]
+          properties:
+            active_features:
+              type: array
+              items:
+                $ref: '#/components/schemas/FeatureSummary'
+    FeatureCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+        acknowledged:
+          type: boolean
+          description: |
+            Set to `true` after the PM confirms the two-register epoch-bump
+            dialog. Required to retry a mutation that previously returned
+            409 `epoch-bump-required`. Passed in body (not query) so it does
+            not leak into access logs or link prefetches.
+    FeatureUpdate:
+      type: object
+      description: |
+        At least one of `name` or `description` MUST be provided. Empty
+        body is rejected with 400 / `validation-error`.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+        acknowledged:
+          type: boolean
+          description: |
+            See `FeatureCreate.acknowledged` — same semantics on PATCH.
+    FeatureDelete:
+      type: object
+      description: |
+        Optional DELETE request body. Only `acknowledged` is meaningful.
+      properties:
+        acknowledged:
+          type: boolean
+          description: |
+            See `FeatureCreate.acknowledged` — same semantics on DELETE.
+    FeatureResponse:
+      type: object
+      required: [id, feature_key, name, is_active, created_at, epoch]
+      properties:
+        id:
+          type: string
+          format: uuid
+        feature_key:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        epoch:
+          type: integer
+          minimum: 1
+    EpochBumpRequiredProblem:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          required: [project_id, current_epoch, would_be_epoch]
+          properties:
+            project_id:
+              type: string
+              format: uuid
+            current_epoch:
+              type: integer
+              minimum: 1
+            would_be_epoch:
+              type: integer
+              minimum: 2
+    ProblemDetails:
+      type: object
+      description: RFC 7807 problem-details envelope.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://kano.example.com/problems/validation-error
+        title:
+          type: string
+          example: Request validation failed
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          nullable: true
+        instance:
+          type: string
+          example: /api/v1/projects/
+        request_id:
+          type: string
+          nullable: true
+          example: 018f9a1b-1234-4567-8901-abcdef012345
