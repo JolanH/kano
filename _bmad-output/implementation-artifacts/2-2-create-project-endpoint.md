@@ -1,6 +1,6 @@
 # Story 2.2: Create project endpoint
 
-Status: review
+Status: done
 
 ## Story
 
@@ -82,7 +82,7 @@ claude-opus-4-7 (1M context)
 - `poetry run black --check src tests migrations` → clean
 - `poetry run mypy src tests migrations` → clean
 ### Completion Notes List
-- AC #4 says "no `X-CSRF-Token` returns 403"; the existing Story 1.3 middleware (`api/errors.py::_handle_csrf`) emits **400** for CSRF failures with `type=csrf-validation-failed`, and Story 1.3's integration tests pin that behavior. The new test asserts 400 to stay consistent with the codebase. The contract is RFC 7807 Problem Details, regardless of which 4xx code carries it; if 403 is truly required, change `api/errors.py` once with a follow-up story so all CSRF error sites flip together.
+- AC #4 says "no `X-CSRF-Token` returns 403". Initial implementation emitted **400** (matching Flask-WTF's default) and the AC was tagged as a follow-up. Resolved 2026-05-20 by updating `api/errors.py::_handle_csrf` to emit **403** and updating every CSRF-status assertion across `test_csrf.py`, `test_csrf_token_endpoint.py`, `test_projects_api.py`, and `test_features_api.py`. The `type` slug `csrf-validation-failed` is unchanged; only the HTTP status differs.
 - Service is intentionally a one-liner (uuid4 + add + commit). No epoch logic — model default carries it.
 - Added local `app_with_migrated_db` / `client_migrated` / `db_engine` fixtures in `tests/integration/test_projects_api.py`. They compose `alembic_config` + `db_url` + `create_app(TestConfig subclass)` and downgrade-to-base on teardown so each test gets a hermetic schema. Will promote to `conftest.py` once a second test module needs them (likely 2-3).
 - `openapi.yaml` is brand new; documents `POST /api/v1/projects/` with `ProjectCreate` / `ProjectResponse` / `ProblemDetails` components. Future Epic 2 stories extend it in place.

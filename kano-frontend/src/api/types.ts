@@ -16,6 +16,31 @@ export interface ProblemDetails {
   request_id: string | null
 }
 
+/**
+ * RFC 7807 ``type`` slug suffixes the backend emits. Mirror of the
+ * ``type_slug`` constants on each ``KanoError`` subclass in
+ * ``kano-backend/src/kano/exceptions.py``. Keep this in sync — these are
+ * the only acceptable string-match anchor points for problem-type detection
+ * on the frontend. Match via ``problem.type.endsWith(...)`` so the
+ * domain-prefixed URL ``https://kano.example.com/problems/<slug>`` resolves
+ * against the suffix regardless of host.
+ */
+export const PROBLEM_TYPE = {
+  EPOCH_BUMP_REQUIRED: 'epoch-bump-required',
+  CSRF_VALIDATION_FAILED: 'csrf-validation-failed',
+  ENTITY_NOT_FOUND: 'entity-not-found',
+  VALIDATION_ERROR: 'validation-error',
+  POLL_EXPIRED: 'poll-expired',
+  PARTIAL_SUBMISSION: 'partial-submission',
+} as const
+
+export type ProblemTypeSlug = (typeof PROBLEM_TYPE)[keyof typeof PROBLEM_TYPE]
+
+/** True iff ``problem.type`` ends with the given slug (host-agnostic match). */
+export function isProblemType(problem: ProblemDetails, slug: ProblemTypeSlug): boolean {
+  return typeof problem.type === 'string' && problem.type.endsWith(slug)
+}
+
 export class KanoApiError extends Error {
   readonly problem: ProblemDetails
   readonly status: number

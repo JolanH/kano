@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-22
-last_updated: 2026-05-19
+last_updated: 2026-05-20
 project: kano
 project_key: NOKEY
 tracking_system: file-system
@@ -57,19 +57,21 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2: Project & Feature Authoring with Epoch Integrity
+  # 2-13 stays in-progress: dev portion done, manual VO/NVDA signoff still
+  # owed before Story 5-8 ships (see _bmad-output/.../deferred-work.md).
   epic-2: in-progress
-  2-1-project-sqlalchemy-model-and-pydantic-schemas: review
-  2-2-create-project-endpoint: review
-  2-3-list-projects-endpoint: review
-  2-4-get-project-detail-endpoint: review
-  2-5-edit-project-name-and-version-without-epoch-bump: review
-  2-6-feature-model-category-enum-and-epoch-service-centralized-contract: review
-  2-7-feature-mutation-api-with-epoch-bump-gating: review
-  2-8-past-epoch-feature-set-read-endpoint: review
-  2-9-pm-projects-list-and-project-detail-vue-routes: review
-  2-10-featurelisteditor-inline-first-authoring-component: review
-  2-11-epochbumpdialog-and-epochbumpbanner-two-register-confirmation-pattern: review
-  2-12-epochselector-for-past-epoch-navigation: review
+  2-1-project-sqlalchemy-model-and-pydantic-schemas: done
+  2-2-create-project-endpoint: done
+  2-3-list-projects-endpoint: done
+  2-4-get-project-detail-endpoint: done
+  2-5-edit-project-name-and-version-without-epoch-bump: done
+  2-6-feature-model-category-enum-and-epoch-service-centralized-contract: done
+  2-7-feature-mutation-api-with-epoch-bump-gating: done
+  2-8-past-epoch-feature-set-read-endpoint: done
+  2-9-pm-projects-list-and-project-detail-vue-routes: done
+  2-10-featurelisteditor-inline-first-authoring-component: done
+  2-11-epochbumpdialog-and-epochbumpbanner-two-register-confirmation-pattern: done
+  2-12-epochselector-for-past-epoch-navigation: done
   2-13-paola-authoring-flow-manual-a11y-sweep-voiceover-nvda: in-progress
   epic-2-retrospective: optional
 

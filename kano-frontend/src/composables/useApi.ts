@@ -40,6 +40,7 @@
 import {
   classifyApiError,
   KanoApiError,
+  PROBLEM_TYPE,
   type ProblemDetails,
 } from '@/api/types'
 
@@ -56,7 +57,7 @@ export interface ApiRequestOptions {
 
 const API_PREFIX = '/api/v1'
 const CSRF_TOKEN_PATH = `${API_PREFIX}/csrf-token`
-const CSRF_PROBLEM_TYPE_SUFFIX = 'csrf-validation-failed'
+const CSRF_PROBLEM_TYPE_SUFFIX = PROBLEM_TYPE.CSRF_VALIDATION_FAILED
 
 let cachedCsrfToken: string | null = null
 let csrfFetchPromise: Promise<string> | null = null
@@ -272,7 +273,7 @@ export interface KanoApi {
   post<T>(path: string, body?: unknown, options?: ApiRequestOptions): Promise<ApiResponse<T>>
   patch<T>(path: string, body?: unknown, options?: ApiRequestOptions): Promise<ApiResponse<T>>
   put<T>(path: string, body?: unknown, options?: ApiRequestOptions): Promise<ApiResponse<T>>
-  delete<T>(path: string, options?: ApiRequestOptions): Promise<ApiResponse<T>>
+  delete<T>(path: string, body?: unknown, options?: ApiRequestOptions): Promise<ApiResponse<T>>
   /** Drop the cached CSRF token (call on logout / explicit session reset). */
   resetCsrf(): void
 }
@@ -282,7 +283,7 @@ const api: KanoApi = {
   post: (path, body, options) => request('POST', path, body, options),
   patch: (path, body, options) => request('PATCH', path, body, options),
   put: (path, body, options) => request('PUT', path, body, options),
-  delete: (path, options) => request('DELETE', path, undefined, options),
+  delete: (path, body, options) => request('DELETE', path, body, options),
   resetCsrf: () => {
     cachedCsrfToken = null
     csrfFetchPromise = null

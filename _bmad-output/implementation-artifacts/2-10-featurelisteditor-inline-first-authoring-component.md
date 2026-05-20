@@ -1,6 +1,6 @@
 # Story 2.10: FeatureListEditor inline-first authoring component
 
-Status: review
+Status: done
 
 ## Story
 
@@ -111,8 +111,8 @@ claude-opus-4-7 (1M context)
 ### Completion Notes List
 - Component avoids Vuetify primitives in its body (uses plain `<input>` and `<button>` + a Unicode "×" delete glyph) so the Vitest spec can mount it without Vuetify's CSS loader. Reuse via the global stubs object documented in the spec if Vuetify components become necessary later.
 - The 12-line ARIA grid: outer `role="grid"`, per-row `role="row"`, per-cell `role="gridcell"`. Tab order falls out of the natural DOM order; Enter commits, Esc cancels, Backspace on an empty row deletes + focuses the row above.
-- Paste handler on the new-row name field splits clipboard text on `\r?\n`, filters empty lines, and POSTs them sequentially. On 409 it stops the paste loop and emits the bump event with a replay callback — the parent can decide whether to retry the rest after the user acknowledges.
-- 409 handling emits a typed `epoch-bump-required` event with `{ mutation, currentEpoch, wouldBeEpoch }`. The component never renders bump UI; that's Story 2-11. ProjectDetail.vue currently calls `payload.mutation()` directly (auto-ack) as a placeholder; 2-11 will replace that body with the dialog flow.
+- Paste handler on the new-row name field splits clipboard text on `\r?\n`, filters empty lines, and POSTs them sequentially. On 409 it stops the paste loop and emits the bump event with a replay callback. **Remaining-lines resume (added 2026-05-20)**: the replay closure captures `lines.slice(i+1)` and, after the ack succeeds at epoch N+1, continues the paste at the new epoch — so a 50-line paste that trips the bump gate on line 3 no longer silently drops lines 4–50. Per-feature errors after the resume are swallowed (we don't want N dialogs for one paste); the last error message surfaces via `errorMessage`.
+- 409 handling emits a typed `epoch-bump-required` event with `{ mutation, currentEpoch, wouldBeEpoch }`. The component never renders bump UI; that's Story 2-11. ProjectDetail.vue currently calls `payload.mutation()` directly (auto-ack) as a placeholder; 2-11 will replace that body with the dialog flow. Problem-type detection uses the shared `PROBLEM_TYPE.EPOCH_BUMP_REQUIRED` constant + `isProblemType()` helper from `@/api/types` (extracted 2026-05-20 — replaces a hand-written `'epoch-bump-required'` string literal in the handler).
 - Store actions `createFeature` / `updateFeature` / `deleteFeature` optimistically update `current.active_features` so the editor reflects state without a refetch round-trip on Branch A. On Branch C the bump invalidates the epoch — the parent's `refreshCurrent` call after the replay re-fetches.
 ### File List
 - `kano-frontend/src/stores/projects.ts` (modified — `createFeature` / `updateFeature` / `deleteFeature` actions + input types)

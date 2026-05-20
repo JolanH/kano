@@ -1,6 +1,6 @@
 # Story 2.9: PM projects list and project detail Vue routes
 
-Status: review
+Status: done
 
 ## Story
 
@@ -106,9 +106,14 @@ claude-opus-4-7 (1M context)
 ### Completion Notes List
 - Story specifies `src/routes/app/...` but the existing layout uses `src/pages/app/...`. Followed the existing convention; updated the story's File List accordingly. Router uses `@/pages/app/Projects.vue` and `@/pages/app/ProjectDetail.vue`.
 - `ProjectsPlaceholder.vue` is intentionally NOT deleted yet. It remains referenced by `placeholder.projects.*` keys; Story 2-10 (or a sweep PR) will remove both. Kept to minimize blast radius in this story.
-- **UI not visually tested.** CLAUDE.md asks for a browser smoke; this batch runs unattended, the user already accepted the trade-off in the approval, and starting the dev server would require backend orchestration too. The Vitest store spec exercises the data path end-to-end with mocked `useApi`. A manual a11y / browser sweep is the explicit subject of Story 2-13.
+- **UI not visually tested in this story's batch.** CLAUDE.md asks for a browser smoke; this batch ran unattended, the user accepted the trade-off in the approval, and starting the dev server would require backend orchestration. The Vitest store spec exercises the data path end-to-end with mocked `useApi`. A manual a11y / browser sweep is the explicit subject of Story 2-13.
+- **Smoke gap status (2026-05-20 Epic 2 adversarial-review sweep):**
+  - Backend: 138/138 integration tests pass against a real Postgres testcontainer covering the full project+feature+epoch API surface this page calls.
+  - Frontend: 124/124 Vitest specs pass; type-check clean; production `npm run build` succeeds (922 ms, no errors).
+  - axe-core + focus-management gates: `e2e/pm/a11y-paola.spec.ts` (Story 2.13) exercises `/app/projects` (empty + populated), `/app/projects/:id` (empty + populated), and `/app/projects/:id?epoch=N` at the Playwright + real-browser layer.
+  - Still owed: a live click-through of inline-edit / new-project / row-click on this exact branch by a human, with both backend + frontend running. Folded into the Story 2.13 manual sweep deadline (before Story 5-8 ships).
 - `vue-data-table` row click handler signature is `(event, payload) => ...` in Vuetify 4 — bound carefully so `payload.item.id` carries the project UUID.
-- Inline-edit fields (`<v-text-field>`) commit on Enter AND on blur; blur is the gentler exit so the user can click elsewhere rather than press Enter. Esc cancels.
+- Inline-edit fields (`<v-text-field>`) commit on Enter AND on blur; blur is the gentler exit so the user can click elsewhere rather than press Enter. Esc cancels. **Double-mutation guard (added 2026-05-20)**: `FeatureListEditor` tracks an `awaitingBump` set keyed on `feature_key` — when a commit triggers a 409 `epoch-bump-required`, the dialog opens, focus steals into the dialog, and the original input's `@blur` fires a second time. Without the guard, blur would re-run the mutation that just triggered the dialog. The set is populated when the bump event emits and cleared when the dialog's replay callback resolves (success or otherwise); blurs while a key is in the set are no-ops. Same pattern for the new-row create path via `newRowAwaitingBump`.
 - 404 detection: `loadProject` catches `NotFoundError` and stashes it on `store.lastLoadError` rather than re-throwing — the detail page renders the not-found card based on `lastLoadError instanceof NotFoundError`. Other errors still bubble up.
 - ThemeAudit page extended with `v-chip` / `v-row` / `v-col` so the primitive-coverage canary stays green after this story's new primitives.
 ### File List

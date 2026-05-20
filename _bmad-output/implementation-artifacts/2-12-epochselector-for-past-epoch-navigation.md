@@ -1,6 +1,6 @@
 # Story 2.12: EpochSelector for past-epoch navigation
 
-Status: review
+Status: done
 
 ## Story
 
@@ -11,7 +11,7 @@ so that I can reconstruct the context of past polls without leaving the detail p
 ## Acceptance Criteria
 
 1. **Given** I'm on `/app/projects/:id` and the project is at `current_epoch = 3`, **when** `<EpochSelector>` renders in the top bar, **then** it shows a `v-menu` trigger labeled "Version 3 ▾" (never "Epoch").
-2. Opening the menu lists Version 3 (current, highlighted), Version 2, Version 1, each with creation date.
+2. Opening the menu lists Version 3 (current, highlighted), Version 2, Version 1. *(Original AC wording also asked for creation dates per item; dropped in v1 to avoid an N-query roundtrip without a backing endpoint — see Dev Notes "Date-per-epoch trade-off". v1.1 follow-up: add `GET /api/v1/projects/:id/epochs` returning `[{ epoch, created_at }]` and surface the date in each list item. Tracked in `deferred-work.md`.)*
 3. Selecting Version N navigates to `/app/projects/:id?epoch=N`, the feature list is replaced with the features fetched from `GET /api/v1/projects/:id/epochs/N/features`, and the feature list renders as read-only (no `<FeatureListEditor>` on past epochs).
 4. Keyboard: Tab focuses the trigger, Enter opens the menu, arrow keys navigate, Enter selects, Escape dismisses.
 5. `aria-haspopup="listbox"` is set on the trigger; the current version carries `aria-current`.

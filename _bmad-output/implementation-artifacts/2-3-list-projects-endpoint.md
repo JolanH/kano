@@ -1,6 +1,6 @@
 # Story 2.3: List projects endpoint
 
-Status: review
+Status: done
 
 ## Story
 
@@ -68,7 +68,7 @@ claude-opus-4-7 (1M context)
 - `poetry run mypy src tests migrations` → clean
 ### Completion Notes List
 - Bare-array shape (no envelope) per architecture §Format Patterns.
-- Ordering test skips explicit `time.sleep` — Postgres clock resolution distinguishes the 3 consecutive inserts deterministically. If this ever becomes flaky we'll inject `created_at` directly via session.execute, but POST round-trips have been stable so far.
+- Ordering test pins `created_at` via direct SQL UPDATE after the three POSTs so the assertion does not depend on `transaction_timestamp()` resolution within rapid-fire transactions. (Made deterministic 2026-05-20; original test relied on `now()` per-transaction values which would collide if Postgres' transaction clock didn't advance between two POSTs on a fast machine.)
 - `ProjectSummary` projection omits `updated_at` — the test pins that exact key set.
 ### File List
 - `kano-backend/src/kano/services/project_service.py` (modified — `list_projects`)

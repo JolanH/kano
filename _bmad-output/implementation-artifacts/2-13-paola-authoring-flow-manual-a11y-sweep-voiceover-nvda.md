@@ -32,7 +32,7 @@ so that keyboard-first does not mean screen-reader-broken — field labels, save
       - `<EpochSelector>`: trigger announces "Version {n}, has popup, listbox"; arrow keys announce items; selection announces navigation
     - **Issue log**: table for findings (platform / screen / severity / status)
     - **Signoff**: date + initials per platform
-- [ ] Execute the checklist *(human-only — VoiceOver / NVDA cannot be driven by the dev agent. **Explicitly deferred 2026-05-20 by Kanaud to unblock Epic 3 progression.** Must be completed before WCAG AA closure — see Change Log.)*
+- [ ] Execute the checklist *(human-only — VoiceOver / NVDA cannot be driven by the dev agent. **Explicitly deferred 2026-05-20 by Kanaud to unblock Epic 3 progression.** Hard deadline: complete before Story 5-8 (analysis-surface a11y close-out) ships, so the full WCAG 2.1 AA MVP gate clears at the Epic 5 retrospective. Tracked in `deferred-work.md` under the 2026-05-20 sweep.)*
   - [ ] Run on both platforms; capture screenshots of any issues
   - [ ] File issues for any finding marked "defect" — either fix inline (update the responsible component file and reference the fix commit in the checklist) or open a tracked follow-up
 - [x] Extend CI axe-core coverage (AC: #4)
@@ -114,4 +114,4 @@ Claude Opus 4.7 (1M context) — `claude-opus-4-7[1m]`
 
 ### Change Log
 - 2026-05-20 — Manual a11y checklist authored; axe-core + focus-management Playwright suite extended to cover the three Paola URLs (empty + populated + past-epoch states) and the modal/route focus invariants. Three WCAG 2.1 AA defects fixed inline (nav drawer contrast, route-transition focus, EpochBumpDialog focus management). Story status → `review` pending human VO/NVDA sweep.
-- 2026-05-20 (later) — Manual VO/NVDA sweep **explicitly deferred at Kanaud's direction** so Epic 3 work can proceed in parallel. Dev portion is complete and verified (axe-core green; 8/8 Playwright; 121/121 unit; type-check clean). The SR signoff remains an outstanding pre-MVP gate — story keeps `in-progress` status in `sprint-status.yaml` as a standing reminder, and the "Execute the checklist" task stays unchecked rather than falsified.
+- 2026-05-20 (later) — Manual VO/NVDA sweep **explicitly deferred at Kanaud's direction** so Epic 3 work can proceed in parallel. Dev portion is complete and verified (axe-core green; 8/8 Playwright; 121/121 unit; type-check clean). The SR signoff remains an outstanding pre-MVP gate with a concrete deadline of **before Story 5-8 ships** (the parallel analysis-surface a11y close-out is the natural sibling and gates the Epic 5 retrospective). Tracked in `deferred-work.md` under the "Deferred from: adversarial review of Epic 2 (2026-05-20)" section. Story keeps `in-progress` status in `sprint-status.yaml` as a standing reminder, and the "Execute the checklist" task stays unchecked rather than falsified.

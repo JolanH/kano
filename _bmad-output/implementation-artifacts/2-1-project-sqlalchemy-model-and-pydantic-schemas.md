@@ -1,6 +1,6 @@
 # Story 2.1: Project SQLAlchemy model and Pydantic schemas
 
-Status: review
+Status: done
 
 ## Story
 

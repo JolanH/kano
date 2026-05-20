@@ -100,8 +100,10 @@ def register_error_handlers(app: Flask) -> None:
 
     @app.errorhandler(CSRFError)
     def _handle_csrf(exc: CSRFError) -> Response:
+        # 403 per Story 2.2 AC #4 — RFC 9110 §15.5.4 "Forbidden" is the natural
+        # fit for "request understood but cross-origin protection rejected it".
         return _problem_response(
-            status=400,
+            status=403,
             type_slug="csrf-validation-failed",
             title="CSRF token missing or invalid",
             detail=exc.description,

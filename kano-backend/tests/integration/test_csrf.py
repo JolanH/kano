@@ -21,11 +21,11 @@ def test_csrf_blocks_post_without_token_with_problem_details(
 
     response = client.post("/api/v1/some-protected", json={})
 
-    assert response.status_code == 400
+    assert response.status_code == 403
     assert response.content_type == "application/problem+json"
     body = json.loads(response.data)
     assert body["type"] == "https://kano.example.com/problems/csrf-validation-failed"
-    assert body["status"] == 400
+    assert body["status"] == 403
 
 
 def test_public_endpoint_decorator_exempts_route_from_csrf(
@@ -53,4 +53,4 @@ def test_polls_submit_unrouted_returns_404_not_csrf_400(
     response = client.post(f"/api/v1/polls/{poll_id}/submit", json={})
 
     assert response.status_code == 404
-    assert response.status_code != 400
+    assert response.status_code != 403

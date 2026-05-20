@@ -81,5 +81,5 @@ def test_protected_post_without_token_still_rejected_after_bootstrap(
 
     response = client.post("/test/protected", json={})
 
-    assert response.status_code == 400
+    assert response.status_code == 403
     assert response.content_type == "application/problem+json"

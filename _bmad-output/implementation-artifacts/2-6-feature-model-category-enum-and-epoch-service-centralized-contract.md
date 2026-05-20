@@ -1,20 +1,20 @@
 # Story 2.6: Feature model, Category enum, and epoch_service centralized contract
 
-Status: review
+Status: done
 
 ## Story
 
 As a solo dev,
-I want the `Feature` model, the `Category` enum, and `services/epoch_service.py` exposing `get_current_epoch(project_id)` and `bump_epoch_on_feature_change(project_id, mutation_fn, *, acknowledged)`,
+I want the `Feature` model, the `Category` enum, and `services/epoch_service.py` exposing `get_current_epoch(project_id)` and `bump_epoch_on_feature_change(project_id, mutation_fn, *, acknowledged, exclude_feature_keys=None)`,
 so that every feature mutation endpoint downstream routes through a single contract that guarantees epoch invariants.
 
 ## Acceptance Criteria
 
 1. **Given** `services/epoch_service.bump_epoch_on_feature_change()` is invoked, **when** the current epoch has zero polls, **then** `mutation_fn` is applied directly to the current epoch's feature rows without bumping.
 2. **Given** the current epoch has at least one poll, **when** `bump_epoch_on_feature_change` is invoked with `acknowledged=False`, **then** the function raises `EpochBumpRequired` (mapped to HTTP 409 by `api/errors.py`) without any mutation occurring.
-3. **Given** the current epoch has at least one poll, **when** `bump_epoch_on_feature_change` is invoked with `acknowledged=True`, **then** in a single transaction: all currently-active features from epoch N are cloned into epoch N+1 with the same `feature_key`s and `is_active=TRUE`; `mutation_fn` is applied to the epoch N+1 rows; `projects.current_epoch` is updated to N+1; epoch N's feature rows are left byte-identical.
+3. **Given** the current epoch has at least one poll, **when** `bump_epoch_on_feature_change` is invoked with `acknowledged=True`, **then** in a single transaction: all currently-active features from epoch N (minus any feature_keys passed in `exclude_feature_keys`) are cloned into epoch N+1 with the same `feature_key`s and `is_active=TRUE`; `mutation_fn` is applied to the epoch N+1 rows; `projects.current_epoch` is updated to N+1; epoch N's feature rows are left at row-level column equality (every column on every epoch-N row matches the pre-bump snapshot value, regardless of `exclude_feature_keys`).
 4. A parametrized pytest fixture tests the full bump matrix: add/edit/delete × (no polls, has polls, acknowledged, not acknowledged) with correct epoch-N invariance assertions.
-5. `tests/unit/test_epoch_service.py` asserts that after a bump, epoch-N feature rows match a pre-bump snapshot byte-for-byte.
+5. `tests/unit/test_epoch_service.py` asserts that after a bump, epoch-N feature rows match a pre-bump snapshot at the column level: every column (id, feature_key, name, description, is_active, created_at, epoch) on every epoch-N row equals the pre-bump value, verified by row-wise equality of `SELECT * FROM features WHERE epoch=N ORDER BY id` between pre- and post-bump snapshots.
 6. `src/kano/models/feature.py` exposes the SQLAlchemy `Feature` model mapping to the `features` table from migration 0001.
 7. `src/kano/models/response.py` defines `Category` as a Python enum with members `MANDATORY`, `LINEAR`, `EXCITER`, `INDIFFERENT`, `CONTRADICTORY`, `DOUBTFUL` whose values match the `CHAR(1)` CHECK constraint from migration 0001.
 
@@ -34,14 +34,14 @@ so that every feature mutation endpoint downstream routes through a single contr
 - [x] `services/epoch_service.py` (AC: #1, #2, #3)
   - [x] `def get_current_epoch(project_id: UUID) -> int:` — reads `project.current_epoch`; raises `EntityNotFound` if project missing
   - [x] `def _has_polls_for_epoch(project_id: UUID, epoch: int) -> bool:` — private helper
-  - [x] `def bump_epoch_on_feature_change(project_id: UUID, mutation_fn: Callable[[int], None], *, acknowledged: bool) -> int:`
+  - [x] `def bump_epoch_on_feature_change(project_id: UUID, mutation_fn: Callable[[int], None], *, acknowledged: bool, exclude_feature_keys: frozenset[UUID] | None = None) -> int:`
     - Load project row (for update, `with_for_update()` to prevent concurrent bumps — even at the PRD's expected low concurrency, belt-and-braces for correctness)
     - `n = project.current_epoch`
     - `has_polls = self._has_polls_for_epoch(project_id, n)`
     - **Branch A** (no polls): `mutation_fn(epoch=n); db.session.commit(); return n`
     - **Branch B** (has polls, not acknowledged): `raise EpochBumpRequired(project_id=project_id, current_epoch=n, would_be_epoch=n+1)`
     - **Branch C** (has polls, acknowledged): all in one transaction:
-      1. `SELECT * FROM features WHERE project_id = :id AND epoch = :n AND is_active = TRUE` → for each active feature, `INSERT INTO features (id=uuid4(), project_id=:id, epoch=:n+1, feature_key=src.feature_key, name=src.name, description=src.description, is_active=TRUE, created_at=now())`
+      1. `SELECT * FROM features WHERE project_id = :id AND epoch = :n AND is_active = TRUE` → for each active feature whose `feature_key` is NOT in `exclude_feature_keys`, `INSERT INTO features (id=uuid4(), project_id=:id, epoch=:n+1, feature_key=src.feature_key, name=src.name, description=src.description, is_active=TRUE, created_at=now())`. The exclusion is the DELETE-on-Branch-C primitive consumed by Story 2-7.
       2. `UPDATE projects SET current_epoch = :n+1 WHERE id = :id`
       3. Invoke `mutation_fn(epoch=n+1)` — caller's mutation applied to the newly-created N+1 rows
       4. `db.session.commit()`
@@ -64,6 +64,14 @@ PRD Risk Mitigation Strategy (lines 310–311) names **epoch isolation drift** a
 ### The `with_for_update` lock
 
 Rationale: two concurrent feature-edit requests on the same project could both read `current_epoch = N`, both branch to "clone into N+1", both attempt to create duplicate epoch-N+1 rows. `with_for_update()` on the `projects` row serializes these. Not theoretical — once a PR template is filled in by Paola and a CI test runs against the same project, the race is reproducible.
+
+### `exclude_feature_keys` kwarg
+
+Added to support DELETE-on-Branch-C semantics from Story 2-7: when a feature is being deleted on a populated epoch with acknowledgement, the row must be excluded from the clone (so it never reaches epoch N+1) while staying byte-identical in epoch N (because epoch N is frozen). Without this kwarg, a delete would either (a) be cloned then marked `is_active=FALSE` in N+1 (wrong — the row should be absent, not soft-deleted), or (b) require ad-hoc post-clone cleanup that bypasses the transaction boundary. The kwarg keeps DELETE inside the same single-transaction Branch-C path as add/edit. `None` (default) is equivalent to `frozenset()` — clone everything active.
+
+### Audit of callers (2026-05-20 sweep)
+
+`EpochBumpRequired` is constructed in two places besides `epoch_service.bump_epoch_on_feature_change` itself: `tests/unit/test_epoch_service.py::test_epoch_bump_required_carries_extra_fields_for_problem_details` and `tests/integration/test_problem_details.py`. Both use the keyword-only signature (`project_id=`, `current_epoch=`, `would_be_epoch=`, optional `detail=`). No positional-argument callers remain. The `cast(Any, ...)` linters and `app.register_error_handler` lookup paths reference the class itself, not its constructor. Safe to keep the keyword-only signature.
 
 ### `mutation_fn` contract
 
@@ -142,7 +150,7 @@ claude-opus-4-7 (1M context)
 - Custom handler `_epoch_bump_handler` registered in `api/errors.py` injects `project_id`, `current_epoch`, `would_be_epoch` into the response JSON so the PM SPA's two-register dialog (Story 2-11) has what it needs. Other domain exceptions still use the generic `_kano_error_handler`.
 - `epoch_service` uses `SELECT ... FOR UPDATE` on the project row to serialize concurrent bumps. The `_clone_active_features` helper `flush()`-es the insert batch before `mutation_fn` runs so the caller's UPDATE/DELETE statements can find the newly-cloned epoch-N+1 rows.
 - 12-cell behavioral matrix lives in `tests/integration/test_epoch_service.py` (Branch A × {add, edit, delete} × {ack=False/True}, Branch B × {add, edit, delete}, Branch C × {add, edit, delete}). Each Branch-C test asserts byte-identity of the epoch-N snapshot pre- and post-bump via `_snapshot_features` reading every column ordered by id.
-- `schemas/feature.py` exports `FeatureCreate`, `FeatureUpdate`, `FeatureResponse`. `FeatureSummary` was already defined in `schemas/project.py` from Story 2-4 and is re-exported from the package `__init__.py`; consumers should import everything from `kano.schemas`.
+- `schemas/feature.py` exports `FeatureCreate`, `FeatureUpdate`, `FeatureResponse`, `FeatureSummary`. (`FeatureSummary` lived in `schemas/project.py` initially per Story 2-4 and was relocated to its canonical home in `schemas/feature.py` on 2026-05-20 — consumers import everything from `kano.schemas`.)
 ### File List
 - `kano-backend/src/kano/models/response.py` (modified — `Category` enum)
 - `kano-backend/src/kano/schemas/feature.py` (new — `FeatureCreate`, `FeatureUpdate`, `FeatureResponse`)

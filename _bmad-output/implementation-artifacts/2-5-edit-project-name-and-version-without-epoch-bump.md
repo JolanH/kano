@@ -1,6 +1,6 @@
 # Story 2.5: Edit project name and version without epoch bump
 
-Status: review
+Status: done
 
 ## Story
 
@@ -33,6 +33,7 @@ so that typo fixes and rebranding don't corrupt my epoch lineage.
   - [x] PATCH name only → name changes, version unchanged, epoch unchanged, updated_at refreshed (> pre-update timestamp)
   - [x] PATCH version only → symmetric
   - [x] PATCH both → both change, epoch unchanged
+  - [x] **Identity PATCH** (same-value field): updated_at strictly advances even when no column is dirty. (Added 2026-05-20 — the SQLAlchemy `onupdate` hook does not fire on an empty dirty-set, so the service explicitly bumps `updated_at`.)
   - [x] PATCH with empty body → 400 Problem Details
   - [x] PATCH on non-existent UUID → 404
   - [x] **Invariant assertion**: in one of the PATCH tests, pre-seed a feature row and a poll row for the project; assert their byte-identical persistence after the PATCH (SELECTs before/after match exactly)
@@ -73,6 +74,7 @@ claude-opus-4-7 (1M context)
 ### Completion Notes List
 - `update_project` uses `data.model_dump(exclude_unset=True)` so absent fields are never written (per story Dev Notes, exclude_unset > exclude_none).
 - After commit, `db.session.refresh(project)` reloads `updated_at` (the `onupdate=func.now()` value materializes in Postgres but the in-memory instance doesn't see it until refresh). Without this refresh the response would echo the *pre-update* `updated_at`.
+- **Identity-PATCH guard (2026-05-20)**: when every supplied field already matches its persisted value, SQLAlchemy sees zero dirty columns and the model's `onupdate=func.now()` does NOT fire. `update_project` now explicitly assigns `project.updated_at = datetime.now(UTC)` before commit so AC #3 ("`updated_at` is refreshed") holds unconditionally. Regression-pinned by `test_patch_identity_still_refreshes_updated_at`.
 - The invariant test (FR4) seeds 1 feature row + 1 poll row, snapshots them with `SELECT *` into dicts, runs the PATCH, re-reads, and asserts equality. If anyone ever wires PATCH through `epoch_service`, the feature row's epoch or the poll row would change and this test would break loudly.
 ### File List
 - `kano-backend/src/kano/services/project_service.py` (modified — `update_project`)

@@ -1,6 +1,6 @@
 # Story 2.4: Get project detail endpoint
 
-Status: review
+Status: done
 
 ## Story
 
@@ -18,7 +18,7 @@ so that I can render the project detail page in one request.
 ## Tasks / Subtasks
 
 - [x] Extend `schemas/project.py` with the detail response
-  - [x] `FeatureSummary(BaseModel)` — this lives in `schemas/feature.py` (created in Story 2-6); if 2-6 hasn't merged, inline a local copy here and refactor on 2-6 landing
+  - [x] `FeatureSummary(BaseModel)` lives canonically in `schemas/feature.py` (canonicalised 2026-05-20). `schemas/project.py` imports it; `kano.schemas` (package `__init__.py`) re-exports it.
   - [x] `ProjectDetailResponse(ProjectResponse)` — extends `ProjectResponse` with `active_features: list[FeatureSummary]`
 - [x] `services/project_service.py` — `get_project_detail`
   - [x] `def get_project_detail(project_id: UUID) -> Project:` — fetch project; raise `EntityNotFound` if absent
@@ -67,7 +67,7 @@ claude-opus-4-7 (1M context)
 - `poetry run pytest` → 95/95 passed
 - ruff / black / mypy → clean
 ### Completion Notes List
-- `FeatureSummary` inlined in `schemas/project.py` per story instruction. Story 2-6 will move it canonically to `schemas/feature.py`; the `__init__.py` export already exposes it from `kano.schemas`, so consumers won't change when 2-6 lands.
+- `FeatureSummary` was initially inlined in `schemas/project.py` per story instruction; Story 2-6 noted the canonical home should be `schemas/feature.py` but the move never landed. Relocated to `schemas/feature.py` on 2026-05-20 (Epic 2 adversarial-review sweep). The `kano.schemas` package re-exports it from the new location — consumer imports stay unchanged.
 - Service returns a `ProjectDetail` dataclass (slots=True) so Pydantic's `from_attributes=True` can hydrate `ProjectDetailResponse` in one `model_validate` pass. Two queries (project by PK, then features filtered by epoch+is_active) — chose that over `selectinload` because the filter on `epoch == project.current_epoch` requires the loaded project anyway.
 - Malformed-UUID path (e.g. `/api/v1/projects/not-a-uuid`) Werkzeug's `<uuid:>` converter returns 404 at routing; the generic `HTTPException` handler in `api/errors.py` wraps it as Problem Details with `type=http-404`. Test pins this.
 - `EntityNotFound` already had a handler registered in `api/errors.py` from Story 1.3 — no change needed there.
