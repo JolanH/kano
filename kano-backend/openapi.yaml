@@ -213,6 +213,133 @@ paths:
               schema:
                 $ref: '#/components/schemas/EpochBumpRequiredProblem'
 
+  /api/v1/projects/{project_id}/polls:
+    parameters:
+      - in: path
+        name: project_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listPollsForProject
+      summary: List polls for a project, newest first
+      description: |
+        Bare JSON array. Includes expired polls (`is_expired` flag).
+        `response_count` is computed via a single LEFT-OUTER-JOIN aggregation;
+        does not scale linearly with poll count.
+      tags: [polls]
+      responses:
+        '200':
+          description: Polls for the project
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PollSummary'
+        '404':
+          description: Project not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      operationId: createPoll
+      summary: Create a poll pinned to the project's current epoch (7-day TTL)
+      description: |
+        Empty request body. Pins to `project.current_epoch` at the instant
+        of creation; subsequent epoch bumps never alter the poll's epoch.
+        Returns 422 `poll-requires-features` if the project has zero active
+        features on the current epoch.
+      tags: [polls]
+      responses:
+        '201':
+          description: Poll created
+          headers:
+            Location:
+              description: Public URL of the created poll (`/api/v1/polls/:id`)
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollSummary'
+        '403':
+          description: CSRF token missing or invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Project not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Project has no active features on the current epoch
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /api/v1/polls:
+    get:
+      operationId: listPollsAllProjects
+      summary: Cross-project poll list with project enrichment, newest first
+      description: |
+        Bare JSON array of `PollSummaryWithProject`. The PM home screen's
+        canonical data source. Includes expired polls.
+      tags: [polls]
+      responses:
+        '200':
+          description: All polls across all projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PollSummaryWithProject'
+
+  /api/v1/polls/{poll_id}:
+    parameters:
+      - in: path
+        name: poll_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getPollPublic
+      summary: Respondent-facing poll read (CSRF-exempt, minimal disclosure)
+      description: |
+        Public endpoint consumed by the respondent SPA. No PM fields on the
+        wire (no project_id, no epoch, no response_count). The poll's
+        (project_id, epoch) snapshot is frozen — subsequent epoch bumps do
+        not affect the returned `features` list.
+      tags: [polls]
+      security: []
+      responses:
+        '200':
+          description: Poll public projection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollPublic'
+        '404':
+          description: Poll not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '410':
+          description: Poll has closed (expires_at in the past)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
   /api/v1/projects/{project_id}:
     parameters:
       - in: path
@@ -430,6 +557,82 @@ components:
         epoch:
           type: integer
           minimum: 1
+    PollSummary:
+      type: object
+      description: |
+        PM-facing list-item projection of a poll. `response_count` and
+        `is_expired` are computed at query/response time, not stored on
+        the `polls` table.
+      required:
+        - id
+        - project_id
+        - epoch
+        - created_at
+        - expires_at
+        - response_count
+        - is_expired
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        epoch:
+          type: integer
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        response_count:
+          type: integer
+          minimum: 0
+        is_expired:
+          type: boolean
+    PollSummaryWithProject:
+      allOf:
+        - $ref: '#/components/schemas/PollSummary'
+        - type: object
+          required: [project_name, project_version]
+          properties:
+            project_name:
+              type: string
+            project_version:
+              type: string
+    PollPublicFeature:
+      type: object
+      description: Respondent-facing feature projection. Carries no PM identity.
+      required: [feature_key, name]
+      properties:
+        feature_key:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+    PollPublic:
+      type: object
+      description: |
+        Respondent-facing poll projection. Intentionally narrow — no PM
+        fields. Used by the public read endpoint and consumed by the
+        respondent SPA only.
+      required: [id, expires_at, features]
+      properties:
+        id:
+          type: string
+          format: uuid
+        expires_at:
+          type: string
+          format: date-time
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/PollPublicFeature'
     EpochBumpRequiredProblem:
       allOf:
         - $ref: '#/components/schemas/ProblemDetails'

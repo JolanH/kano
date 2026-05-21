@@ -1,6 +1,6 @@
 # Story 3.2: Create poll endpoint pinned to current epoch with 7-day TTL
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -21,8 +21,8 @@ so that I receive a shareable URL I can send to customers.
 
 ## Tasks / Subtasks
 
-- [ ] `services/poll_service.py` (AC: #1, #3, #4, #5, #7)
-  - [ ] New module; initial surface:
+- [x] `services/poll_service.py` (AC: #1, #3, #4, #5, #7)
+  - [x] New module; initial surface:
     ```python
     POLL_TTL_DAYS = 7  # module-level constant per architecture §Python naming (UPPER_SNAKE_CASE)
 
@@ -52,41 +52,41 @@ so that I receive a shareable URL I can send to customers.
         db.session.commit()
         return poll
     ```
-  - [ ] Attach `response_count=0` and `is_expired=False` as dynamic attributes on the returned `Poll` so `PollSummary.model_validate(poll)` picks them up (Story 3.1 Dev Notes), OR construct the summary dict explicitly in the blueprint — pick one pattern and reuse it in Story 3.3
-- [ ] Extend `src/kano/exceptions.py` with `PollRequiresFeatures`
-  - [ ] Class attributes: `project_id: UUID`, `epoch: int`; message template: `"Project {project_id} has no active features on epoch {epoch}; cannot create a poll"`
-- [ ] Extend `src/kano/api/errors.py` Problem Details registry
-  - [ ] `PollRequiresFeatures` → 422 with `type=https://kano.example.com/problems/poll-requires-features`, `title=Poll requires at least one feature`, `detail` from the exception message, `request_id` from structlog context
-- [ ] `api/polls.py` blueprint (AC: #1, #2, #4, #5, #6)
-  - [ ] `polls_bp = Blueprint("polls", __name__, url_prefix="/api/v1")` — note: the url_prefix is just `/api/v1` because this blueprint hosts **both** the PM-side `/projects/<uuid>/polls` routes here (create + per-project list in Story 3.3) **and** the cross-project `/polls` route in Story 3.3. Story 3.4's respondent `/polls/<uuid>` public read also lives in this blueprint with an explicit CSRF exemption — keeping all poll routes in one file aligns with the architecture's "one file per resource" rule (architecture §Structure Patterns, line 586).
-  - [ ] Route: `@polls_bp.post("/projects/<uuid:project_id>/polls")`
+  - [x] Attach `response_count=0` and `is_expired=False` as dynamic attributes on the returned `Poll` so `PollSummary.model_validate(poll)` picks them up (Story 3.1 Dev Notes), OR construct the summary dict explicitly in the blueprint — pick one pattern and reuse it in Story 3.3
+- [x] Extend `src/kano/exceptions.py` with `PollRequiresFeatures`
+  - [x] Class attributes: `project_id: UUID`, `epoch: int`; message template: `"Project {project_id} has no active features on epoch {epoch}; cannot create a poll"`
+- [x] Extend `src/kano/api/errors.py` Problem Details registry
+  - [x] `PollRequiresFeatures` → 422 with `type=https://kano.example.com/problems/poll-requires-features`, `title=Poll requires at least one feature`, `detail` from the exception message, `request_id` from structlog context
+- [x] `api/polls.py` blueprint (AC: #1, #2, #4, #5, #6)
+  - [x] `polls_bp = Blueprint("polls", __name__, url_prefix="/api/v1")` — note: the url_prefix is just `/api/v1` because this blueprint hosts **both** the PM-side `/projects/<uuid>/polls` routes here (create + per-project list in Story 3.3) **and** the cross-project `/polls` route in Story 3.3. Story 3.4's respondent `/polls/<uuid>` public read also lives in this blueprint with an explicit CSRF exemption — keeping all poll routes in one file aligns with the architecture's "one file per resource" rule (architecture §Structure Patterns, line 586).
+  - [x] Route: `@polls_bp.post("/projects/<uuid:project_id>/polls")`
     ```python
     poll = poll_service.create_poll(project_id)
     summary = PollSummary.model_validate(poll).model_dump(mode="json")
     return summary, 201, {"Location": f"/api/v1/polls/{poll.id}"}
     ```
-  - [ ] Empty body is accepted (no Pydantic validation on the request body — nothing to validate)
-  - [ ] CSRF is automatic via Story 1.3's `CSRFProtect(app)` on `/api/v1/*` — no per-route decorator
-  - [ ] Register the blueprint in `create_app()` alongside `projects_bp` and `features_bp`
-- [ ] OpenAPI documentation (AC: #8)
-  - [ ] `kano-backend/openapi.yaml` — add path `/api/v1/projects/{project_id}/polls` with `post` operation:
+  - [x] Empty body is accepted (no Pydantic validation on the request body — nothing to validate)
+  - [x] CSRF is automatic via Story 1.3's `CSRFProtect(app)` on `/api/v1/*` — no per-route decorator
+  - [x] Register the blueprint in `create_app()` alongside `projects_bp` and `features_bp`
+- [x] OpenAPI documentation (AC: #8)
+  - [x] `kano-backend/openapi.yaml` — add path `/api/v1/projects/{project_id}/polls` with `post` operation:
     - Empty request body
     - 201 response with `PollSummary` schema + `Location` header descriptor
     - 404 response → `ProblemDetails` (`type=entity-not-found`)
     - 422 response → `ProblemDetails` (`type=poll-requires-features`)
     - 403 response → `ProblemDetails` (CSRF failure)
     - Add `PollSummary` and `PollSummaryWithProject` to the `components.schemas` section (referenced by 3.3 too)
-- [ ] Integration tests (AC: #1, #2, #3, #4, #5, #6, #7)
-  - [ ] `tests/integration/test_polls_api.py::test_create_poll_success`
+- [x] Integration tests (AC: #1, #2, #3, #4, #5, #6, #7)
+  - [x] `tests/integration/test_polls_api.py::test_create_poll_success`
     - Seed: create a project at epoch 1 via the existing fixture; add 2 active features on epoch 1
     - POST with CSRF header; assert 201, `Location` header, body matches `PollSummary` shape, `epoch==1`, `response_count==0`, `is_expired==false`, `expires_at - created_at ≈ 7 days` (tolerance 1 second)
     - Assert row persisted in DB with expected `project_id`, `epoch`, UUIDv4 `id`
-  - [ ] `test_create_poll_zero_features_returns_422`
+  - [x] `test_create_poll_zero_features_returns_422`
     - Seed: project at epoch 1 with no features (or all `is_active=FALSE`)
     - POST → assert 422, Problem Details body with `type=...poll-requires-features`
-  - [ ] `test_create_poll_nonexistent_project_returns_404`
-  - [ ] `test_create_poll_without_csrf_returns_403`
-  - [ ] `test_poll_pinned_to_creation_epoch_not_project_current` (AC #7)
+  - [x] `test_create_poll_nonexistent_project_returns_404`
+  - [x] `test_create_poll_without_csrf_returns_403`
+  - [x] `test_poll_pinned_to_creation_epoch_not_project_current` (AC #7)
     - Seed: project at epoch 1 with 1 feature → create poll → assert `poll.epoch == 1`
     - Trigger epoch bump via `POST /projects/:id/features?acknowledged=true` with a new feature → project now at epoch 2
     - Reload poll from DB → assert `poll.epoch` is still 1, unchanged
@@ -164,7 +164,30 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+claude-opus-4-7[1m]
+
 ### Debug Log References
+- `pytest tests/integration/test_polls_api.py` → 6/6 pass
+- `pytest tests/` full suite → 154/154 pass (no regressions)
+- `ruff check` → clean on all new/modified files
+- `mypy src/kano/services/poll_service.py src/kano/api/polls.py` → no issues
+
 ### Completion Notes List
+- Added `PollRequiresFeatures(KanoError)` to `kano.exceptions` (422, type slug `poll-requires-features`) and wired it into the Problem-Details registry by extending the existing `_kano_error_handler` tuple — no per-class handler needed because the envelope shape is canonical.
+- New `kano.services.poll_service.create_poll(project_id)` owns the read-then-insert contract: loads the project (raises `EntityNotFound`), counts active features at `current_epoch` (raises `PollRequiresFeatures` on zero), then inserts the poll with `epoch = current_epoch` and `expires_at = created_at + POLL_TTL_DAYS`. `POLL_TTL_DAYS = 7` is a module constant per architecture §Naming.
+- Picked Pattern 1 from the Dev Notes for `response_count`/`is_expired`: the service decorates the returned `Poll` with transient attributes so `PollSummary.model_validate(poll)` picks them up via `from_attributes=True`. Story 3.3 will mirror this when its query joins on submissions.
+- New `kano.api.polls` blueprint mounted under `/api/v1`. The `POST /projects/<uuid>/polls` route returns 201 + `PollSummary` body + `Location: /api/v1/polls/:id` (the public read endpoint Story 3.4 will add to this same blueprint). CSRF is automatic via Story 1.3's `CSRFProtect`.
+- OpenAPI extended with the `POST /api/v1/projects/{project_id}/polls` operation and the `PollSummary` + `PollSummaryWithProject` component schemas (the latter consumed by Story 3.3).
+- Integration tests: success (assert `Location`, `epoch==1`, response_count/is_expired, 7-day TTL, row persisted), 422 on zero features (fresh project), 422 after soft-delete sweep, 404 on ghost project, 403 sans CSRF, and the load-bearing AC #7 "no drift" test (create poll at epoch 1 → bump to epoch 2 via acknowledged feature add → reload poll → assert poll.epoch still 1).
+
 ### File List
+- Modified: `kano-backend/src/kano/__init__.py` (register `polls_bp`)
+- Modified: `kano-backend/src/kano/api/errors.py` (registry includes `PollRequiresFeatures`)
+- Modified: `kano-backend/src/kano/exceptions.py` (`PollRequiresFeatures` class)
+- Modified: `kano-backend/openapi.yaml` (POST polls operation + PollSummary schemas)
+- Added: `kano-backend/src/kano/api/polls.py`
+- Added: `kano-backend/src/kano/services/poll_service.py`
+- Added: `kano-backend/tests/integration/test_polls_api.py`
+
+### Change Log
+- 2026-05-20 — Story 3.2 implementation complete; status → review.

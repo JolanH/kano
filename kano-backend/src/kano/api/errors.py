@@ -23,6 +23,7 @@ from kano.exceptions import (
     KanoError,
     PartialSubmission,
     PollExpired,
+    PollRequiresFeatures,
 )
 
 if TYPE_CHECKING:
@@ -86,7 +87,7 @@ def register_error_handlers(app: Flask) -> None:
     """Register ``application/problem+json`` handlers for all exception types."""
 
     app.register_error_handler(EpochBumpRequired, _epoch_bump_handler)
-    for exc_cls in (PollExpired, PartialSubmission, EntityNotFound):
+    for exc_cls in (PollExpired, PartialSubmission, EntityNotFound, PollRequiresFeatures):
         app.register_error_handler(exc_cls, _kano_error_handler)
 
     @app.errorhandler(ValidationError)

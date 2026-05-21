@@ -123,10 +123,6 @@ These keys are deleted as part of the PRs that ship those real pages.
 |---|---|---|
 | `placeholder.projects.title` | Projects | ProjectsPlaceholder.vue title (deleted by Epic 2-9) |
 | `placeholder.projects.body` | Project list lands in Epic 2 (Story 2-9). | ProjectsPlaceholder.vue body |
-| `placeholder.polls.title` | Polls | PollsPlaceholder.vue title (deleted by Epic 3-7) |
-| `placeholder.polls.body` | PM polls list lands in Epic 3 (Story 3-7). | PollsPlaceholder.vue body |
-| `placeholder.respondent.title` | Poll preview | RespondentPlaceholder.vue title (deleted by Epic 3-8 / 4-4) |
-| `placeholder.respondent.body` | Respondent landing replaces this stub in Epic 3 (Story 3-8) and Epic 4 (Story 4-4). | RespondentPlaceholder.vue body |
 
 ## PM Projects list + detail (Story 2-9)
 
@@ -200,3 +196,74 @@ Component file is `EpochSelector.vue` (internal name keeps "Epoch" parity with t
 | `pm.versionSelector.item.current` | Current | Suffix tag next to the active version in the dropdown |
 | `pm.viewingPast.banner` | Viewing Version {n} (read-only). Return to Version {current} to edit. | Banner on `/app/projects/:id?epoch=N` when viewing a past version |
 | `pm.viewingPast.returnCta` | Return to current | Button on the past-epoch banner |
+
+## PollSharePanel (Story 3-5)
+
+Card surface where the PM copies the poll URL and previews the QR code.
+
+| Key | English | Context |
+|---|---|---|
+| `pm.polls.share.title` | Share this poll | Region heading (visible) |
+| `pm.polls.share.urlLabel` | Poll URL | URL field label + `aria-label` |
+| `pm.polls.share.copy` | Copy | Idle state of the copy button |
+| `pm.polls.share.copied` | Copied | Post-click button label (~1.2 s) |
+| `pm.polls.share.copyButton.ariaLabel` | Copy poll URL | `aria-label` on the copy button |
+| `pm.polls.share.helperText` | Share via email or chat — link expires in 7 days | Helper caption under URL/QR |
+| `pm.polls.share.copiedAnnouncement` | Copied to clipboard | `aria-live="polite"` snackbar text |
+| `pm.polls.share.copyFailed` | Couldn't copy automatically — the URL is selected for you to copy manually | Fallback failure snackbar |
+| `pm.polls.share.qr.fallback` | QR code is loading… | Placeholder before the QR data URL resolves |
+
+## Generate-poll flow on project detail (Story 3-6)
+
+| Key | English | Context |
+|---|---|---|
+| `pm.projects.detail.generatePoll.button` | Generate poll URL | Primary CTA on the project detail header + its `aria-label` |
+| `pm.projects.detail.generatePoll.disabledTooltip` | Add at least one feature first | Tooltip when the button is disabled (zero active features) |
+| `pm.projects.detail.generatePoll.noFeatures` | Add at least one feature before generating a poll | Inline warning shown on 422 `poll-requires-features` |
+| `pm.projects.detail.generatePoll.backToProject` | Back to project | Back link on the share view |
+| `pm.projects.detail.generatePoll.error` | We couldn't generate the poll. Please try again. | Generic-error alert on unexpected create-poll failures |
+
+## PM polls list (Story 3-7) — the home screen
+
+| Key | English | Context |
+|---|---|---|
+| `pm.polls.title` | Polls | Page heading + section `aria-label` |
+| `pm.polls.loading` | Loading polls… | `v-data-table` loading text |
+| `pm.polls.columns.project` | Project | Table column header |
+| `pm.polls.columns.version` | Version | Table column header (version chip) |
+| `pm.polls.columns.responses` | Responses | Table column header |
+| `pm.polls.columns.expiresIn` | Expires in | Table column header |
+| `pm.polls.columns.created` | Created | Table column header |
+| `pm.polls.expired` | Expired | Token shown in the Expires-in column for closed polls |
+| `pm.polls.countdown.expiringNow` | expiring now | Countdown cell text when remaining < 1 minute |
+| `pm.polls.countdown.minutes` | {n} min | Countdown when remaining < 1 hour |
+| `pm.polls.countdown.hour` | {n} hour | Countdown singular variant for hours |
+| `pm.polls.countdown.hours` | {n} hours | Countdown plural variant for hours |
+| `pm.polls.countdown.day` | {n} day | Countdown singular variant for days |
+| `pm.polls.countdown.days` | {n} days | Countdown plural variant for days |
+| `pm.polls.empty.title` | No polls yet | Empty-state card title |
+| `pm.polls.empty.body` | Create a project, add features, and generate your first poll URL. | Empty-state card body |
+| `pm.polls.empty.cta` | Create your first project | Empty-state CTA → `/app/projects` |
+| `pm.polls.analysisPlaceholder` | Analysis view ships in Epic 5 — for now, the expired poll's responses are preserved in the database. | Analysis placeholder card body (Epic 5 replaces) |
+
+## Respondent landing (Story 3-8)
+
+Live-poll component (`LivePollStub.vue`) is a stub that Story 4-4 will replace; expired + not-found surfaces ship to production quality and are reused verbatim.
+
+| Key | English | Context |
+|---|---|---|
+| `respondent.landing.loading` | Loading… | `v-progress-circular` `aria-label` |
+| `respondent.landing.stub.title` | This poll is ready | LivePollStub headline |
+| `respondent.landing.stub.body` | A short survey is being prepared. Please check back shortly. | LivePollStub body |
+| `respondent.expired.contactCta` | Get in touch with our product team | Mailto button label on expired + not-found |
+| `respondent.notFound.title` | We couldn't find that poll | PollNotFound headline |
+| `respondent.notFound.body` | The link may have been typed incorrectly. If you think this is an error, please reach out. | PollNotFound body |
+| `respondent.loadError.title` | We couldn't load this poll right now | PollLoadError headline (transient 5xx / network) |
+| `respondent.loadError.body` | Something on our end went wrong. Please try again in a moment. | PollLoadError body |
+| `respondent.loadError.retry` | Try again | PollLoadError retry button |
+| `respondent.landing.stub.expiresAt` | This survey is open until {date}. | LivePollStub closes-on line (consumes `PollPublic.expires_at`) |
+| `pm.polls.empty.noProjectsBody` | Create a project, add features, and generate your first poll URL. | PM polls empty state — zero projects |
+| `pm.polls.empty.noProjectsCta` | Create your first project | PM polls empty state CTA — zero projects |
+| `pm.polls.empty.hasProjectsBody` | Open a project to add features and generate a poll URL when you’re ready. | PM polls empty state — projects exist, no polls |
+| `pm.polls.empty.hasProjectsCta` | Open your projects | PM polls empty state CTA — projects exist, no polls |
+| `pm.polls.projectMissing` | (project pending) | PM polls row fallback while project name is being reconciled (replaces raw UUID) |

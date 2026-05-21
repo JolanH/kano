@@ -23,7 +23,11 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/app/projects',
+    redirect: '/app/polls',
+  },
+  {
+    path: '/app',
+    redirect: '/app/polls',
   },
   {
     path: '/app/projects',
@@ -38,13 +42,27 @@ const routes: RouteRecordRaw[] = [
     meta: { layout: 'pm' },
   },
   {
+    path: '/app/projects/:id/polls/:pollId/share',
+    name: 'poll-share',
+    component: () => import('@/pages/app/PollShare.vue'),
+    meta: { layout: 'pm' },
+  },
+  {
+    path: '/app/projects/:id/polls/:pollId/analysis',
+    name: 'poll-analysis',
+    component: () => import('@/pages/app/AnalysisPlaceholder.vue'),
+    meta: { layout: 'pm' },
+  },
+  {
     path: '/app/polls',
-    component: () => import('@/pages/app/PollsPlaceholder.vue'),
+    name: 'polls',
+    component: () => import('@/pages/app/Polls.vue'),
     meta: { layout: 'pm' },
   },
   {
     path: '/poll/:uuid',
-    component: () => import('@/pages/poll/RespondentPlaceholder.vue'),
+    name: 'poll-landing',
+    component: () => import('@/pages/poll/Landing.vue'),
     meta: { layout: 'respondent' },
   },
   {

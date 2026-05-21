@@ -31,6 +31,7 @@ export const PROBLEM_TYPE = {
   ENTITY_NOT_FOUND: 'entity-not-found',
   VALIDATION_ERROR: 'validation-error',
   POLL_EXPIRED: 'poll-expired',
+  POLL_REQUIRES_FEATURES: 'poll-requires-features',
   PARTIAL_SUBMISSION: 'partial-submission',
 } as const
 
@@ -57,6 +58,19 @@ export class ValidationError extends KanoApiError {
   constructor(problem: ProblemDetails, status: number) {
     super(problem, status)
     this.name = 'ValidationError'
+  }
+}
+
+/**
+ * Specialized 422 raised by the create-poll endpoint when the target project
+ * has zero active features on its current epoch. Surfaced to the UI so
+ * Story 3-6 can render the "Add at least one feature" warning inline
+ * instead of the generic validation toast.
+ */
+export class PollRequiresFeaturesError extends ValidationError {
+  constructor(problem: ProblemDetails, status: number) {
+    super(problem, status)
+    this.name = 'PollRequiresFeaturesError'
   }
 }
 
@@ -89,6 +103,9 @@ export class PermissionError extends KanoApiError {
 }
 
 export function classifyApiError(problem: ProblemDetails, status: number): KanoApiError {
+  if (status === 422 && isProblemType(problem, PROBLEM_TYPE.POLL_REQUIRES_FEATURES)) {
+    return new PollRequiresFeaturesError(problem, status)
+  }
   if (status === 400 || status === 422) return new ValidationError(problem, status)
   if (status === 401 || status === 403) return new PermissionError(problem, status)
   if (status === 404) return new NotFoundError(problem, status)
@@ -144,4 +161,37 @@ export interface ProjectUpdateInput {
 export interface FeatureAtEpoch extends Feature {
   is_active: boolean
   epoch: number
+}
+
+/**
+ * Wire shapes for the poll aggregate (Epic 3 — Stories 3-1+). Mirror of
+ * `kano.schemas.poll`. `response_count` and `is_expired` are computed by
+ * the service layer at query/response time, not stored on the DB row.
+ */
+
+export interface PollSummary {
+  id: string
+  project_id: string
+  epoch: number
+  created_at: string
+  expires_at: string
+  response_count: number
+  is_expired: boolean
+}
+
+export interface PollSummaryWithProject extends PollSummary {
+  project_name: string
+  project_version: string
+}
+
+export interface PollPublicFeature {
+  feature_key: string
+  name: string
+  description: string | null
+}
+
+export interface PollPublic {
+  id: string
+  expires_at: string
+  features: PollPublicFeature[]
 }

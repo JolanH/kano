@@ -59,11 +59,32 @@ class EpochBumpRequired(KanoError):  # noqa: N818
 
 
 class PollExpired(KanoError):  # noqa: N818
-    """Raised when a public poll-submission lands after ``expires_at``."""
+    """Raised when a public poll read or submission lands after ``expires_at``.
 
-    status_code = 409
+    Maps to HTTP 410 Gone — the URL was valid, the poll has closed, no
+    further reads or submissions are accepted. RFC 9110 §15.5.11.
+    """
+
+    status_code = 410
     type_slug = "poll-expired"
-    title = "Poll has expired"
+    title = "Poll is closed"
+
+    def __init__(
+        self,
+        *,
+        poll_id: object,
+        expires_at: object,
+        detail: str | None = None,
+    ) -> None:
+        self.poll_id = poll_id
+        self.expires_at = expires_at
+        super().__init__(
+            detail
+            or (
+                f"This poll closed at {expires_at}. "
+                "No further submissions or reads accepted."
+            )
+        )
 
 
 class PartialSubmission(KanoError):  # noqa: N818
@@ -82,10 +103,43 @@ class EntityNotFound(KanoError):  # noqa: N818
     title = "Entity not found"
 
 
+class PollRequiresFeatures(KanoError):  # noqa: N818
+    """Raised when poll creation targets a project with zero active features on the current epoch.
+
+    422 — request shape is valid, domain state is not.
+
+    Carries ``project_id`` and ``epoch`` so an operator (or future PM-side
+    error surface) can disambiguate "project has no features at all" from
+    "project's current-epoch active set is empty after a soft-delete sweep".
+    """
+
+    status_code = 422
+    type_slug = "poll-requires-features"
+    title = "Poll requires at least one feature"
+
+    def __init__(
+        self,
+        *,
+        project_id: object,
+        epoch: int,
+        detail: str | None = None,
+    ) -> None:
+        self.project_id = project_id
+        self.epoch = epoch
+        super().__init__(
+            detail
+            or (
+                f"Project {project_id} has no active features on epoch {epoch}; "
+                "cannot create a poll"
+            )
+        )
+
+
 __all__ = [
     "EntityNotFound",
     "EpochBumpRequired",
     "KanoError",
     "PartialSubmission",
     "PollExpired",
+    "PollRequiresFeatures",
 ]

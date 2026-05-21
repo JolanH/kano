@@ -90,11 +90,6 @@ export const en = {
   // (Epic 2-9, Epic 3-7, Epic 3-8 / 4-4 respectively).
   'placeholder.projects.title': 'Projects',
   'placeholder.projects.body': 'Project list lands in Epic 2 (Story 2-9).',
-  'placeholder.polls.title': 'Polls',
-  'placeholder.polls.body': 'PM polls list lands in Epic 3 (Story 3-7).',
-  'placeholder.respondent.title': 'Poll preview',
-  'placeholder.respondent.body':
-    'Respondent landing replaces this stub in Epic 3 (Story 3-8) and Epic 4 (Story 4-4).',
 
   // PM Projects list + detail (Story 2-9).
   'pm.projects.title': 'Projects',
@@ -163,6 +158,73 @@ export const en = {
   'pm.viewingPast.banner':
     'Viewing Version {n} (read-only). Return to Version {current} to edit.',
   'pm.viewingPast.returnCta': 'Return to current',
+
+  // PollSharePanel (Story 3-5). Internal name retains "epoch" semantics in
+  // the URL routing, but every visible string here is plain English.
+  'pm.polls.share.title': 'Share this poll',
+  'pm.polls.share.urlLabel': 'Poll URL',
+  'pm.polls.share.copy': 'Copy',
+  'pm.polls.share.copied': 'Copied',
+  'pm.polls.share.copyButton.ariaLabel': 'Copy poll URL',
+  'pm.polls.share.helperText': 'Share via email or chat — link expires in 7 days',
+  'pm.polls.share.copiedAnnouncement': 'Copied to clipboard',
+  'pm.polls.share.copyFailed':
+    "Couldn't copy automatically — the URL is selected for you to copy manually",
+  'pm.polls.share.qr.fallback':
+    'QR code is loading…',
+
+  // Generate-poll flow on project detail (Story 3-6).
+  'pm.projects.detail.generatePoll.button': 'Generate poll URL',
+  'pm.projects.detail.generatePoll.disabledTooltip': 'Add at least one feature first',
+  'pm.projects.detail.generatePoll.noFeatures': 'Add at least one feature before generating a poll',
+  'pm.projects.detail.generatePoll.backToProject': 'Back to project',
+  'pm.projects.detail.generatePoll.error':
+    "We couldn't generate the poll. Please try again.",
+
+  // PM polls list (Story 3-7) — the PM home screen.
+  'pm.polls.title': 'Polls',
+  'pm.polls.loading': 'Loading polls…',
+  'pm.polls.columns.project': 'Project',
+  'pm.polls.columns.version': 'Version',
+  'pm.polls.columns.responses': 'Responses',
+  'pm.polls.columns.expiresIn': 'Expires in',
+  'pm.polls.columns.created': 'Created',
+  'pm.polls.expired': 'Expired',
+  'pm.polls.countdown.expiringNow': 'expiring now',
+  'pm.polls.countdown.minutes': '{n} min',
+  'pm.polls.countdown.hour': '{n} hour',
+  'pm.polls.countdown.hours': '{n} hours',
+  'pm.polls.countdown.day': '{n} day',
+  'pm.polls.countdown.days': '{n} days',
+  'pm.polls.empty.title': 'No polls yet',
+  'pm.polls.empty.body': 'Create a project, add features, and generate your first poll URL.',
+  'pm.polls.empty.cta': 'Create your first project',
+  'pm.polls.empty.noProjectsBody':
+    'Create a project, add features, and generate your first poll URL.',
+  'pm.polls.empty.noProjectsCta': 'Create your first project',
+  'pm.polls.empty.hasProjectsBody':
+    'Open a project to add features and generate a poll URL when you’re ready.',
+  'pm.polls.empty.hasProjectsCta': 'Open your projects',
+  'pm.polls.projectMissing': '(project pending)',
+  'pm.polls.analysisPlaceholder':
+    "Analysis view ships in Epic 5 — for now, the expired poll's responses are preserved in the database.",
+
+  // Respondent landing (Story 3-8). Live-poll surface is a stub that
+  // Story 4-4 will replace; expired + not-found components ship to
+  // production quality and are reused by Story 4-4 verbatim.
+  'respondent.landing.loading': 'Loading…',
+  'respondent.landing.stub.title': 'This poll is ready',
+  'respondent.landing.stub.body':
+    'A short survey is being prepared. Please check back shortly.',
+  'respondent.expired.contactCta': 'Get in touch with our product team',
+  'respondent.notFound.title': "We couldn't find that poll",
+  'respondent.notFound.body':
+    'The link may have been typed incorrectly. If you think this is an error, please reach out.',
+  'respondent.loadError.title': "We couldn't load this poll right now",
+  'respondent.loadError.body':
+    'Something on our end went wrong. Please try again in a moment.',
+  'respondent.loadError.retry': 'Try again',
+  'respondent.landing.stub.expiresAt': 'This survey is open until {date}.',
 } as const
 
 export type CopyKey = keyof typeof en

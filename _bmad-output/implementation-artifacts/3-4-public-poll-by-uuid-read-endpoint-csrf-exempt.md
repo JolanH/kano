@@ -1,6 +1,6 @@
 # Story 3.4: Public poll-by-UUID read endpoint (CSRF-exempt)
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -20,13 +20,13 @@ so that the respondent landing can render the correct state (live, expired, not-
 
 ## Tasks / Subtasks
 
-- [ ] Extend `src/kano/exceptions.py` with `PollExpired`
-  - [ ] Class attributes: `poll_id: UUID`, `expires_at: datetime`
-- [ ] Extend `src/kano/api/errors.py` Problem Details registry
-  - [ ] `PollExpired` → 410 `type=https://kano.example.com/problems/poll-expired`, `title=Poll is closed`, `detail="This poll closed at {expires_at.isoformat()}. No further submissions or reads accepted."`, `status=410`
-  - [ ] Ensure `EntityNotFound("poll", poll_id)` → 404 with `type=entity-not-found` (reuse existing registry from Story 1.3 / 2.4)
-- [ ] `services/poll_service.py` (AC: #1, #3, #4)
-  - [ ] `def get_poll_public(poll_id: UUID) -> PollPublic:`
+- [x] Extend `src/kano/exceptions.py` with `PollExpired`
+  - [x] Class attributes: `poll_id: UUID`, `expires_at: datetime`
+- [x] Extend `src/kano/api/errors.py` Problem Details registry
+  - [x] `PollExpired` → 410 `type=https://kano.example.com/problems/poll-expired`, `title=Poll is closed`, `detail="This poll closed at {expires_at.isoformat()}. No further submissions or reads accepted."`, `status=410`
+  - [x] Ensure `EntityNotFound("poll", poll_id)` → 404 with `type=entity-not-found` (reuse existing registry from Story 1.3 / 2.4)
+- [x] `services/poll_service.py` (AC: #1, #3, #4)
+  - [x] `def get_poll_public(poll_id: UUID) -> PollPublic:`
     ```python
     poll = db.session.get(Poll, poll_id)
     if poll is None:
@@ -55,33 +55,33 @@ so that the respondent landing can render the correct state (live, expired, not-
         ],
     )
     ```
-  - [ ] Note: `is_active=TRUE` filter is correct — soft-deleted features from a past in-place edit on an empty-response epoch should not appear. However, for an epoch pinned by an existing poll (which is the invariant whenever a poll exists), `is_active=TRUE` will hold for every cloned row because Story 2.7's delete-with-ack branch excludes deleted features from the N+1 clone rather than cloning them as inactive. The filter is defense-in-depth.
-- [ ] `api/polls.py` blueprint — public read handler (AC: #1, #5, #6)
-  - [ ] `@polls_bp.get("/polls/<uuid:poll_id>")`
+  - [x] Note: `is_active=TRUE` filter is correct — soft-deleted features from a past in-place edit on an empty-response epoch should not appear. However, for an epoch pinned by an existing poll (which is the invariant whenever a poll exists), `is_active=TRUE` will hold for every cloned row because Story 2.7's delete-with-ack branch excludes deleted features from the N+1 clone rather than cloning them as inactive. The filter is defense-in-depth.
+- [x] `api/polls.py` blueprint — public read handler (AC: #1, #5, #6)
+  - [x] `@polls_bp.get("/polls/<uuid:poll_id>")`
     - `return get_poll_public(poll_id).model_dump(mode="json"), 200`
-  - [ ] Mark CSRF-exempt: decorate with `@csrf.exempt` (Flask-WTF) **on this specific route**, OR register the path pattern in Story 1.3's `CSRF_EXEMPT_PATHS` config — whichever pattern Story 1.3 established. Add a code comment: `# CSRF-exempt per architecture §Authentication & Security: public respondent endpoints`.
-  - [ ] Mark CORS-open: if Story 1.3 registered a strict origin allowlist, ensure `/api/v1/polls/<uuid>` is in the public-origin whitelist (or configured as a permissive route via Flask-CORS `resources` map). Architecture §Authentication & Security line 302 + 343: public respondent endpoints allow any origin.
-- [ ] OpenAPI documentation (AC: #7)
-  - [ ] Path `/api/v1/polls/{poll_id}`:
+  - [x] Mark CSRF-exempt: decorate with `@csrf.exempt` (Flask-WTF) **on this specific route**, OR register the path pattern in Story 1.3's `CSRF_EXEMPT_PATHS` config — whichever pattern Story 1.3 established. Add a code comment: `# CSRF-exempt per architecture §Authentication & Security: public respondent endpoints`.
+  - [x] Mark CORS-open: if Story 1.3 registered a strict origin allowlist, ensure `/api/v1/polls/<uuid>` is in the public-origin whitelist (or configured as a permissive route via Flask-CORS `resources` map). Architecture §Authentication & Security line 302 + 343: public respondent endpoints allow any origin.
+- [x] OpenAPI documentation (AC: #7)
+  - [x] Path `/api/v1/polls/{poll_id}`:
     - `get` operation, `security: []` (explicitly no CSRF)
     - 200 response: `$ref: PollPublic`
     - 404: `ProblemDetails` (`type=entity-not-found`)
     - 410: `ProblemDetails` (`type=poll-expired`)
-  - [ ] Add `PollPublic` and `PollPublicFeature` to `components.schemas`
-- [ ] Integration tests (AC: #1, #2, #3, #4, #5)
-  - [ ] `tests/integration/test_polls_public_api.py::test_get_poll_public_success`
+  - [x] Add `PollPublic` and `PollPublicFeature` to `components.schemas`
+- [x] Integration tests (AC: #1, #2, #3, #4, #5)
+  - [x] `tests/integration/test_polls_public_api.py::test_get_poll_public_success`
     - Seed: project + 3 features on epoch 1 + poll on epoch 1
     - GET `/api/v1/polls/<id>` **without** CSRF header or session cookie
     - Assert 200, body keys exactly `{"id", "expires_at", "features"}`, features length 3, each has exactly `{"feature_key", "name", "description"}` keys, order matches `created_at` asc
-  - [ ] `test_get_poll_public_no_pm_fields_leak` (AC #2 explicit coverage)
+  - [x] `test_get_poll_public_no_pm_fields_leak` (AC #2 explicit coverage)
     - Parse response JSON; assert `"project_id" not in body`, `"epoch" not in body`, `"response_count" not in body`, `"created_at" not in body`, and same for each feature item: `"project_id" not in f`, `"epoch" not in f`, `"id" not in f` (Feature.id is an implementation detail; only `feature_key` is stable identity in the wire)
-  - [ ] `test_get_poll_public_expired_returns_410`
+  - [x] `test_get_poll_public_expired_returns_410`
     - Seed: poll with `expires_at = now - 1 minute`
     - GET → assert 410, Problem Details body with `type=...poll-expired`, no `features` key
-  - [ ] `test_get_poll_public_not_found_returns_404`
-  - [ ] `test_get_poll_public_csrf_exempt`
+  - [x] `test_get_poll_public_not_found_returns_404`
+  - [x] `test_get_poll_public_csrf_exempt`
     - Fresh test client, never calls `/api/csrf-token`, sends GET without `X-CSRF-Token` → asserts 200 (success) not 403
-  - [ ] `test_get_poll_public_snapshot_frozen_after_epoch_bump`
+  - [x] `test_get_poll_public_snapshot_frozen_after_epoch_bump`
     - Seed: project + 1 feature on epoch 1 + poll at epoch 1
     - Bump epoch via `POST /projects/:id/features?acknowledged=true` with a new feature — project now at epoch 2 with 2 features
     - GET the original poll → assert `features` array still has the **1 original feature** from epoch 1, not 2
@@ -158,7 +158,28 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+claude-opus-4-7[1m]
+
 ### Debug Log References
+- `pytest tests/integration/test_polls_public_api.py` → 6/6 pass
+- `pytest tests/` full suite → 168/168 pass (no regressions)
+- `ruff check src/ tests/integration/test_polls_public_api.py` → clean
+- `mypy src/kano/` → no issues in 31 source files
+
 ### Completion Notes List
+- Updated `PollExpired` in `kano.exceptions`: HTTP 410 Gone (was 409 placeholder), title "Poll is closed", carries `poll_id` and `expires_at`. The existing Problem Details registry already loops over `PollExpired` so no handler wiring change was needed — only the `status_code` / `title` updates flowed through.
+- New service `poll_service.get_poll_public(poll_id)`: loads the poll, raises `EntityNotFound` if absent, raises `PollExpired(poll_id=..., expires_at=...)` if `expires_at <= now()`, otherwise reads the pinned-epoch active feature rows ordered by `created_at` asc and assembles a `PollPublic` DTO (constructed explicitly, no `from_attributes` — matches Story 3.1 Dev Notes).
+- New blueprint route `GET /api/v1/polls/<uuid>` decorated with `@public_endpoint` (the existing CSRF-exempt helper installed in Story 1.3's `kano.middleware.security`). Reuses the existing CORS profile — the public origin allowlist already covers `/api/*`.
+- OpenAPI extended with the new operation (`security: []` for the explicit no-CSRF contract), plus `PollPublic` and `PollPublicFeature` component schemas.
+- Integration tests live in a new file (`test_polls_public_api.py`) per the story's request, kept separate from the PM tests because the auth model is fundamentally different. The `test_snapshot_frozen_after_epoch_bump` case is the load-bearing pair with Story 3.2's epoch-drift test — together they prove the poll's feature set is immutable from both the write side and the read side.
+- The `test_csrf_exempt` test uses a fresh `application.test_client()` that never touches `/csrf-token`, so the session cookie and CSRF state are both absent on the request — the 200 response proves the exemption is real, not just lazy CSRF on GETs.
+
 ### File List
+- Modified: `kano-backend/src/kano/api/polls.py` (public GET handler + `@public_endpoint`)
+- Modified: `kano-backend/src/kano/exceptions.py` (`PollExpired` → 410, carries poll_id/expires_at)
+- Modified: `kano-backend/src/kano/services/poll_service.py` (`get_poll_public`)
+- Modified: `kano-backend/openapi.yaml` (path + PollPublic/PollPublicFeature schemas)
+- Added: `kano-backend/tests/integration/test_polls_public_api.py`
+
+### Change Log
+- 2026-05-20 — Story 3.4 implementation complete; status → review.

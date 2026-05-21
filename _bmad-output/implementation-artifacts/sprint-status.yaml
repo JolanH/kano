@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-22
-last_updated: 2026-05-20
+last_updated: 2026-05-21  # epic 3 adversarial review fix-ups landed; bundle gates wired
 project: kano
 project_key: NOKEY
 tracking_system: file-system
@@ -76,15 +76,20 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3: Poll Generation & Sharing (with respondent landing stub)
-  epic-3: in-progress
-  3-1-poll-sqlalchemy-model-and-pydantic-schemas: ready-for-dev
-  3-2-create-poll-endpoint-pinned-to-current-epoch-with-7-day-ttl: ready-for-dev
-  3-3-poll-list-endpoints-per-project-and-cross-project: ready-for-dev
-  3-4-public-poll-by-uuid-read-endpoint-csrf-exempt: ready-for-dev
-  3-5-pollsharepanel-component-with-url-qr-preview-and-one-click-copy: ready-for-dev
-  3-6-generate-poll-ui-flow-from-project-detail: ready-for-dev
-  3-7-pm-polls-list-view-as-the-pm-home-screen: ready-for-dev
-  3-8-respondent-landing-stub-with-expired-page-handling: ready-for-dev
+  # Adversarial-review fix-up landed 2026-05-21: CORS split for public
+  # endpoints, project row-lock on poll creation, respondent bundle gate
+  # (check-respondent-bundle.mjs / size-limit), Landing.vue error state
+  # split, Polls.vue row-click + empty-state fixes, PollSharePanel
+  # clipboard fallback + VITE_PUBLIC_BASE_URL override.
+  epic-3: done
+  3-1-poll-sqlalchemy-model-and-pydantic-schemas: done
+  3-2-create-poll-endpoint-pinned-to-current-epoch-with-7-day-ttl: done
+  3-3-poll-list-endpoints-per-project-and-cross-project: done
+  3-4-public-poll-by-uuid-read-endpoint-csrf-exempt: done
+  3-5-pollsharepanel-component-with-url-qr-preview-and-one-click-copy: done
+  3-6-generate-poll-ui-flow-from-project-detail: done
+  3-7-pm-polls-list-view-as-the-pm-home-screen: done
+  3-8-respondent-landing-stub-with-expired-page-handling: done
   epic-3-retrospective: optional
 
   # Epic 4: Respondent Poll Experience & Submission

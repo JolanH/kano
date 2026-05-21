@@ -1,6 +1,6 @@
 # Story 3.1: Poll SQLAlchemy model and Pydantic schemas
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -21,19 +21,19 @@ so that poll creation, listing, and respondent-side reading share a single typed
 
 ## Tasks / Subtasks
 
-- [ ] Refine `Poll` SQLAlchemy model (AC: #1, #2)
-  - [ ] `src/kano/models/poll.py` — if the stub from Story 1.2 exists, extend it; otherwise author it
-  - [ ] Typed columns:
+- [x] Refine `Poll` SQLAlchemy model (AC: #1, #2)
+  - [x] `src/kano/models/poll.py` — if the stub from Story 1.2 exists, extend it; otherwise author it
+  - [x] Typed columns:
     - `id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)`
     - `project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)`
     - `epoch: Mapped[int] = mapped_column(Integer, nullable=False)` — **no FK**; pair `(project_id, epoch)` is a logical snapshot identifier (Story 1.2 Dev Notes)
     - `created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)`
     - `expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)`
-  - [ ] `__tablename__ = "polls"` (plural, architecture §Naming)
-  - [ ] Verify the model reflects migration 0001 exactly — no drift (no extra columns, no missed ones)
-  - [ ] Add a module-level comment explaining that `(project_id, epoch)` is enforced at app level, not via composite FK — mirror the comment from `migrations/versions/0001_*.py`
-- [ ] Pydantic schemas (AC: #3, #4, #5, #6)
-  - [ ] `src/kano/schemas/poll.py` — classes:
+  - [x] `__tablename__ = "polls"` (plural, architecture §Naming)
+  - [x] Verify the model reflects migration 0001 exactly — no drift (no extra columns, no missed ones)
+  - [x] Add a module-level comment explaining that `(project_id, epoch)` is enforced at app level, not via composite FK — mirror the comment from `migrations/versions/0001_*.py`
+- [x] Pydantic schemas (AC: #3, #4, #5, #6)
+  - [x] `src/kano/schemas/poll.py` — classes:
     - `PollSummary(BaseModel)`:
       ```python
       id: UUID
@@ -54,9 +54,9 @@ so that poll creation, listing, and respondent-side reading share a single typed
       features: list[PollPublicFeature]
       ```
       **No `from_attributes`** — `PollPublic` is assembled explicitly in the service layer (Story 3.4) from a `Poll` + its pinned feature rows; the model is a DTO, not an ORM projection.
-  - [ ] No `Field(alias=...)` anywhere — wire format is snake_case end-to-end per architecture §Format Patterns.
-- [ ] Unit tests
-  - [ ] `tests/unit/test_poll_schemas.py`:
+  - [x] No `Field(alias=...)` anywhere — wire format is snake_case end-to-end per architecture §Format Patterns.
+- [x] Unit tests
+  - [x] `tests/unit/test_poll_schemas.py`:
     - `PollSummary.model_validate({...valid...})` succeeds with `is_expired=False`, `response_count=0`
     - `PollSummary.model_validate(poll_instance_with_extra_attrs)` — construct a SQLAlchemy `Poll` with `response_count=3` and `is_expired=True` set as non-column attributes (or via a dataclass-like stub); assert round-trip
     - `PollPublic.model_validate({...})` succeeds; serialized `model_dump(mode="json")` has NO `project_id`, NO `epoch`, NO `response_count` keys
@@ -128,7 +128,24 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+claude-opus-4-7[1m]
+
 ### Debug Log References
+- `pytest tests/unit/test_poll_schemas.py` → 10/10 pass
+- `pytest tests/` full suite → 148/148 pass (no regressions)
+- `ruff check` → clean on all modified/added files
+- `mypy src/kano/schemas/poll.py` → no issues found
+
 ### Completion Notes List
+- `Poll` model already existed (authored in Story 1.2 stub) and matched migration 0001 exactly — no edits required. Verified `id`/`project_id`/`epoch`/`created_at`/`expires_at` columns and the module-level comment explaining the composite-FK split.
+- Created `src/kano/schemas/poll.py` with `PollSummary`, `PollSummaryWithProject`, `PollPublicFeature`, `PollPublic`. `PollPublic` deliberately omits PM-side fields (`project_id`, `project_name`, `epoch`, `response_count`) and does NOT use `from_attributes` — it's assembled explicitly by the service layer in Story 3.4.
+- Wired re-exports through `src/kano/schemas/__init__.py` to mirror the existing project/feature schema convention.
+- Added unit tests covering: dict round-trip, ORM-instance round-trip with transient `response_count`/`is_expired` attrs, snake_case-only key set, project-enrichment fields, public-projection field omission (`model_dump(mode="json")` has no PM fields), and `PollPublicFeature` field validation.
+
 ### File List
+- Modified: `kano-backend/src/kano/schemas/__init__.py`
+- Added: `kano-backend/src/kano/schemas/poll.py`
+- Added: `kano-backend/tests/unit/test_poll_schemas.py`
+
+### Change Log
+- 2026-05-20 — Story 3.1 implementation complete; status → review.

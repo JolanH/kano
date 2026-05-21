@@ -18,6 +18,7 @@ from kano.api.csrf import csrf_bp
 from kano.api.errors import register_error_handlers
 from kano.api.features import features_bp
 from kano.api.health import health_bp
+from kano.api.polls import polls_bp
 from kano.api.projects import projects_bp
 from kano.config import Config
 from kano.db import db
@@ -40,6 +41,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     app.register_blueprint(csrf_bp)
     app.register_blueprint(projects_bp)
     app.register_blueprint(features_bp)
+    app.register_blueprint(polls_bp)
 
     return app
 

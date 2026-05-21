@@ -189,6 +189,12 @@
         class="mb-4"
         aria-label="Sample progress bar at 50 percent"
       />
+      <v-progress-circular
+        indeterminate
+        color="primary"
+        class="mb-4"
+        aria-label="Sample indeterminate spinner"
+      />
       <v-skeleton-loader type="card" class="mb-4" />
       <v-skeleton-loader type="list-item-avatar-two-line@3" class="mb-4" />
       <v-alert type="info" class="mb-2">Info alert</v-alert>

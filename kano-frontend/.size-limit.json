@@ -1,20 +1,14 @@
 [
   {
-    "name": "Respondent JS bundle (mobile-critical)",
-    "path": "dist/assets/respondent-*.js",
+    "name": "Respondent initial bundle (mobile-critical)",
+    "path": ["dist/assets/respondent-*.js", "dist/assets/index-*.js"],
     "limit": "150 KB",
     "gzip": true
   },
   {
-    "name": "PM JS bundle (desktop-only)",
-    "path": "dist/assets/pm-*.js",
-    "limit": "400 KB",
-    "gzip": true
-  },
-  {
-    "name": "Shared runtime + Vuetify core",
+    "name": "Shared runtime (index entry)",
     "path": "dist/assets/index-*.js",
-    "limit": "200 KB",
+    "limit": "50 KB",
     "gzip": true
   }
 ]

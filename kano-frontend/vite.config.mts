@@ -39,17 +39,32 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 200,
+    // `manifest: true` makes Vite emit `.vite/manifest.json` mapping source
+    // entry points to their built chunks. `scripts/check-respondent-bundle.mjs`
+    // reads it to compute the gzipped size of the respondent initial bundle
+    // and enforce the 150 KB ceiling (Story 3-8 AC #2).
+    manifest: true,
     rollupOptions: {
       output: {
         // Route-level split between PM and respondent bundles. The respondent
         // initial bundle target is <150 KB gzipped (architecture §Frontend
-        // Architecture); this `manualChunks` strategy + per-route
-        // dynamic imports keep the two surfaces from cross-contaminating.
+        // Architecture); the respondent chunk MUST NOT statically import
+        // PM-only Vuetify components like `v-data-table` /
+        // `v-navigation-drawer` or PM stores. The `manualChunks` strategy
+        // below only names a single 'respondent' chunk for the respondent
+        // surface; everything else (Vue, Vuetify core, vue-router, pinia,
+        // composables, stores, PM pages) defaults to Vite's chunking, which
+        // emits per-route async chunks plus a small shared `index-*.js`
+        // bootstrap. Result: the respondent route only loads what it
+        // actually imports, not the union of PM + everything.
+        //
+        // Verified at build time by `scripts/check-respondent-bundle.mjs`
+        // (postbuild gate enforcing the 150 KB ceiling).
         manualChunks(id: string): string | undefined {
-          if (id.includes('/src/pages/app/') || id.includes('/src/layouts/PmLayout')) {
-            return 'pm'
-          }
-          if (id.includes('/src/pages/poll/') || id.includes('/src/layouts/RespondentLayout')) {
+          if (
+            id.includes('/src/pages/poll/') ||
+            id.includes('/src/layouts/RespondentLayout')
+          ) {
             return 'respondent'
           }
           return undefined

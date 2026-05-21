@@ -1,6 +1,6 @@
 # Story 3.3: Poll list endpoints — per-project and cross-project
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -20,8 +20,8 @@ so that I can render both the per-project poll section and the PM home poll-list
 
 ## Tasks / Subtasks
 
-- [ ] `services/poll_service.py` (AC: #1, #2, #6)
-  - [ ] `def list_polls_for_project(project_id: UUID) -> list[Poll]:`
+- [x] `services/poll_service.py` (AC: #1, #2, #6)
+  - [x] `def list_polls_for_project(project_id: UUID) -> list[Poll]:`
     - Verify the project exists (raise `EntityNotFound` if not — feeds AC #3)
     - Single query with a LEFT OUTER JOIN aggregation:
       ```python
@@ -41,7 +41,7 @@ so that I can render both the per-project poll section and the PM home poll-list
           polls.append(poll)
       return polls
       ```
-  - [ ] `def list_polls_all_projects() -> list[tuple[Poll, str, str]]:`
+  - [x] `def list_polls_all_projects() -> list[tuple[Poll, str, str]]:`
     - Single query joining projects for name/version enrichment:
       ```python
       stmt = (
@@ -58,30 +58,30 @@ so that I can render both the per-project poll section and the PM home poll-list
       )
       ```
     - Populate `poll.response_count`, `poll.is_expired`, `poll.project_name`, `poll.project_version` as dynamic attributes; return the list for `PollSummaryWithProject.model_validate(...)` at the blueprint layer
-- [ ] Blueprint handlers in `api/polls.py` (AC: #1–5)
-  - [ ] `@polls_bp.get("/projects/<uuid:project_id>/polls")` — calls `list_polls_for_project`; returns `[PollSummary.model_validate(p).model_dump(mode="json") for p in polls]`, 200
-  - [ ] `@polls_bp.get("/polls")` — calls `list_polls_all_projects`; returns `[PollSummaryWithProject.model_validate(p).model_dump(mode="json") for p in polls]`, 200
-  - [ ] Both handlers are plain GET — CSRF middleware allows GET through unconditionally; no decorator needed; session cookie is still issued for subsequent mutating calls
-- [ ] OpenAPI (AC: #7)
-  - [ ] `GET /api/v1/projects/{project_id}/polls` — 200 `{type: array, items: $ref: PollSummary}`, 404 `ProblemDetails`
-  - [ ] `GET /api/v1/polls` — 200 `{type: array, items: $ref: PollSummaryWithProject}`
-- [ ] Integration tests (AC: #1–6)
-  - [ ] `tests/integration/test_polls_api.py::test_list_polls_for_project_sorted_desc`
+- [x] Blueprint handlers in `api/polls.py` (AC: #1–5)
+  - [x] `@polls_bp.get("/projects/<uuid:project_id>/polls")` — calls `list_polls_for_project`; returns `[PollSummary.model_validate(p).model_dump(mode="json") for p in polls]`, 200
+  - [x] `@polls_bp.get("/polls")` — calls `list_polls_all_projects`; returns `[PollSummaryWithProject.model_validate(p).model_dump(mode="json") for p in polls]`, 200
+  - [x] Both handlers are plain GET — CSRF middleware allows GET through unconditionally; no decorator needed; session cookie is still issued for subsequent mutating calls
+- [x] OpenAPI (AC: #7)
+  - [x] `GET /api/v1/projects/{project_id}/polls` — 200 `{type: array, items: $ref: PollSummary}`, 404 `ProblemDetails`
+  - [x] `GET /api/v1/polls` — 200 `{type: array, items: $ref: PollSummaryWithProject}`
+- [x] Integration tests (AC: #1–6)
+  - [x] `tests/integration/test_polls_api.py::test_list_polls_for_project_sorted_desc`
     - Seed: 1 project, 3 polls created 3/2/1 minutes ago respectively
     - GET → assert 200, length 3, order matches most-recent-first
-  - [ ] `test_list_polls_for_project_includes_expired`
+  - [x] `test_list_polls_for_project_includes_expired`
     - Seed: 1 active + 1 poll with `expires_at` in the past
     - GET → assert both present, `is_expired` flags correct
-  - [ ] `test_list_polls_for_project_response_counts`
+  - [x] `test_list_polls_for_project_response_counts`
     - Seed: 1 poll with 0 submissions, 1 poll with 3 submissions
     - GET → assert `response_count` values match exactly (3 and 0)
-  - [ ] `test_list_polls_for_project_404_on_missing_project`
-  - [ ] `test_list_polls_all_projects_enriched`
+  - [x] `test_list_polls_for_project_404_on_missing_project`
+  - [x] `test_list_polls_all_projects_enriched`
     - Seed: 2 projects, 2 polls each
     - GET `/api/v1/polls` → assert length 4, each row has `project_name` and `project_version` matching its project, sorted desc
-  - [ ] `test_list_polls_all_projects_empty_returns_empty_array`
+  - [x] `test_list_polls_all_projects_empty_returns_empty_array`
     - Fresh DB → GET returns `[]` with status 200 (not 404)
-  - [ ] `test_list_polls_single_round_trip` (AC #6)
+  - [x] `test_list_polls_single_round_trip` (AC #6)
     - Subscribe to `Engine`'s `before_cursor_execute` event; count queries during one `GET /polls` call with 5 polls and 10 submissions; assert the count is constant (≤ 2: one for the aggregate query, plus any session setup) — specifically, assert it does NOT grow linearly with poll count. A regression test: add more polls + submissions and re-run; query count does not increase.
 
 ## Dev Notes
@@ -142,7 +142,27 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+claude-opus-4-7[1m]
+
 ### Debug Log References
+- `pytest tests/integration/test_polls_api.py` → 14/14 pass
+- `pytest tests/` full suite → 162/162 pass (no regressions)
+- `ruff check src/ tests/` → clean
+- `mypy src/kano/services/poll_service.py src/kano/api/polls.py` → no issues
+
 ### Completion Notes List
+- Extended `poll_service` with `list_polls_for_project(project_id)` and `list_polls_all_projects()`. Both use a single LEFT-OUTER-JOIN aggregation on `submissions` grouped by `polls.id` to compute `response_count`; `is_expired` is derived in Python from a single `datetime.now(tz=UTC)` per call.
+- `list_polls_all_projects` additionally JOINs `projects` for `project_name`/`project_version`, decorating the returned `Poll` instances with all four transient attributes for `PollSummaryWithProject.model_validate`.
+- Two new GET handlers on `polls_bp`. Both are plain reads — Flask-WTF skips CSRF for GET, so no per-route decorator is needed.
+- AC #6 (no N+1) is verified by a SELECT-statement-counting test using `sqlalchemy.event.listen(engine, "before_cursor_execute", …)`: seed 3 polls → count SELECT count → seed 3 more → re-count → assert counts are equal. Independent of poll volume by construction.
+- Per-project list returns 404 with `entity-not-found` Problem Details when the project is missing (mirrors `EntityNotFound` raised in `list_polls_for_project`). Cross-project list returns `[]` for empty state — never 404, because there is no parent entity to be missing.
+- OpenAPI extended with both endpoints (`listPollsForProject`, `listPollsAllProjects`).
+
 ### File List
+- Modified: `kano-backend/src/kano/api/polls.py`
+- Modified: `kano-backend/src/kano/services/poll_service.py`
+- Modified: `kano-backend/openapi.yaml`
+- Modified: `kano-backend/tests/integration/test_polls_api.py`
+
+### Change Log
+- 2026-05-20 — Story 3.3 implementation complete; status → review.

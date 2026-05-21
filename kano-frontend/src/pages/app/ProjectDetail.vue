@@ -110,6 +110,49 @@
       </div>
     </header>
 
+    <v-alert
+      v-if="noFeaturesAlert"
+      type="warning"
+      variant="tonal"
+      closable
+      class="mb-3"
+      data-testid="generate-poll-no-features-alert"
+      @click:close="noFeaturesAlert = false"
+    >
+      {{ copy('pm.projects.detail.generatePoll.noFeatures') }}
+    </v-alert>
+
+    <v-alert
+      v-if="generateError"
+      type="error"
+      variant="tonal"
+      closable
+      class="mb-3"
+      data-testid="generate-poll-error-alert"
+      @click:close="generateError = false"
+    >
+      {{ copy('pm.projects.detail.generatePoll.error') }}
+    </v-alert>
+
+    <div v-if="!isViewingPast" class="d-flex align-center mb-4">
+      <v-btn
+        color="primary"
+        size="large"
+        prepend-icon="mdi-link-plus"
+        :disabled="activeFeatureCount === 0 || generating"
+        :loading="generating"
+        :aria-label="copy('pm.projects.detail.generatePoll.button')"
+        data-testid="generate-poll-button"
+        :text="copy('pm.projects.detail.generatePoll.button')"
+        @click="onGenerate"
+      />
+      <v-tooltip
+        v-if="activeFeatureCount === 0"
+        activator="parent"
+        :text="copy('pm.projects.detail.generatePoll.disabledTooltip')"
+      />
+    </div>
+
     <v-card class="pa-4" data-testid="project-features-panel">
       <h2 class="text-h6 mb-3">{{ copy('pm.projectDetail.features.title') }}</h2>
       <template v-if="!isViewingPast">
@@ -174,7 +217,7 @@
 
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import EpochBumpBanner from '@/components/EpochBumpBanner.vue'
 import EpochBumpDialog from '@/components/EpochBumpDialog.vue'
@@ -182,15 +225,50 @@ import EpochSelector from '@/components/EpochSelector.vue'
 import FeatureListEditor, {
   type EpochBumpEventPayload,
 } from '@/components/FeatureListEditor.vue'
-import { KanoApiError, NotFoundError } from '@/api/types'
+import { KanoApiError, NotFoundError, PollRequiresFeaturesError } from '@/api/types'
 import { useCopy } from '@/composables/useCopy'
+import { usePollsStore } from '@/stores/polls'
 import { useProjectsStore } from '@/stores/projects'
 
 type Field = 'name' | 'version'
 
 const copy = useCopy()
 const route = useRoute()
+const router = useRouter()
 const store = useProjectsStore()
+const pollsStore = usePollsStore()
+
+const activeFeatureCount = computed(() => store.current?.active_features?.length ?? 0)
+const generating = ref(false)
+const noFeaturesAlert = ref(false)
+const generateError = ref(false)
+
+async function onGenerate() {
+  if (!store.current) return
+  noFeaturesAlert.value = false
+  generateError.value = false
+  generating.value = true
+  try {
+    const poll = await pollsStore.createPoll(store.current.id, {
+      name: store.current.name,
+      version: store.current.version,
+    })
+    await router.push({
+      name: 'poll-share',
+      params: { id: store.current.id, pollId: poll.id },
+    })
+  } catch (err) {
+    if (err instanceof PollRequiresFeaturesError) {
+      noFeaturesAlert.value = true
+    } else {
+      generateError.value = true
+      // Re-throw non-typed errors so the global handler can log them.
+      if (!(err instanceof KanoApiError)) throw err
+    }
+  } finally {
+    generating.value = false
+  }
+}
 
 const editingField = ref<Field | null>(null)
 const draft = reactive<{ name: string; version: string }>({ name: '', version: '' })

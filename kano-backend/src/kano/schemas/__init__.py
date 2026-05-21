@@ -6,6 +6,12 @@ from kano.schemas.feature import (
     FeatureSummary,
     FeatureUpdate,
 )
+from kano.schemas.poll import (
+    PollPublic,
+    PollPublicFeature,
+    PollSummary,
+    PollSummaryWithProject,
+)
 from kano.schemas.project import (
     ProjectCreate,
     ProjectDetailResponse,
@@ -19,6 +25,10 @@ __all__ = [
     "FeatureResponse",
     "FeatureSummary",
     "FeatureUpdate",
+    "PollPublic",
+    "PollPublicFeature",
+    "PollSummary",
+    "PollSummaryWithProject",
     "ProjectCreate",
     "ProjectDetailResponse",
     "ProjectResponse",
