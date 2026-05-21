@@ -66,6 +66,26 @@ const routes: RouteRecordRaw[] = [
     meta: { layout: 'respondent' },
   },
   {
+    // The `:index(\\d+)` regex restricts the param to digits so malformed
+    // URLs 404 at the router instead of reaching the component.
+    path: '/poll/:uuid/q/:index(\\d+)',
+    name: 'poll-question',
+    component: () => import('@/pages/poll/Question.vue'),
+    meta: { layout: 'respondent' },
+  },
+  {
+    path: '/poll/:uuid/submit-confirm',
+    name: 'poll-submit-confirm',
+    component: () => import('@/pages/poll/SubmitConfirm.vue'),
+    meta: { layout: 'respondent' },
+  },
+  {
+    path: '/poll/:uuid/thanks',
+    name: 'poll-thanks',
+    component: () => import('@/pages/poll/Thanks.vue'),
+    meta: { layout: 'respondent' },
+  },
+  {
     path: '/:pathMatch(.*)*',
     component: () => import('@/pages/common/NotFound.vue'),
     meta: { layout: 'pm' },

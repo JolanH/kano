@@ -19,14 +19,17 @@ from kano.schemas.project import (
     ProjectSummary,
     ProjectUpdate,
 )
+from kano.schemas.submission import AnswerIn, PollSubmission
 
 __all__ = [
+    "AnswerIn",
     "FeatureCreate",
     "FeatureResponse",
     "FeatureSummary",
     "FeatureUpdate",
     "PollPublic",
     "PollPublicFeature",
+    "PollSubmission",
     "PollSummary",
     "PollSummaryWithProject",
     "ProjectCreate",

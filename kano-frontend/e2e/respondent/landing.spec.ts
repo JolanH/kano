@@ -1,7 +1,7 @@
 /**
- * Story 3-8 — Respondent landing acceptance (live stub / expired / not-found)
- * with axe-core gates across all three states and mobile-viewport overflow
- * checks. Same fetch-mocking strategy as the PM e2e specs.
+ * Story 4-4 — Respondent landing acceptance (real LiveLanding replaces the
+ * Story 3-8 LivePollStub) with axe-core gates across the four states
+ * (live, expired, not-found, error) and mobile-viewport overflow checks.
  *
  * Note on viewport: Playwright's `devices['iPhone SE']` preset would also
  * work; an explicit 360×640 viewport on a chromium project keeps the spec
@@ -59,6 +59,16 @@ async function mockNotFound(page: Page) {
   )
 }
 
+async function mockServerError(page: Page) {
+  await page.route(`**/api/v1/polls/${POLL_ID}`, (route) =>
+    route.fulfill({
+      status: 500,
+      contentType: 'application/problem+json',
+      body: JSON.stringify(problemDetails(500, 'internal-server-error')),
+    }),
+  )
+}
+
 async function axeClean(page: Page) {
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa'])
@@ -68,15 +78,33 @@ async function axeClean(page: Page) {
 
 test.use({ viewport: { width: 360, height: 640 } })
 
-test.describe('Story 3-8 — Respondent landing', () => {
-  test('live poll → stub renders + data-stub marker + axe clean', async ({ page }) => {
+test.describe('Story 4-4 — Respondent landing', () => {
+  test('live poll → LiveLanding renders + no data-stub marker + Begin nav', async ({ page }) => {
     await mockLive(page)
     await page.goto(`/poll/${POLL_ID}`)
     await expect(page.getByTestId('poll-landing')).toBeVisible()
-    await expect(page.getByTestId('live-poll-stub')).toBeVisible()
-    // The structural marker that Story 4-4 will key off of.
-    expect(await page.getByTestId('poll-landing').getAttribute('data-stub')).toBe('true')
+    await expect(page.getByTestId('live-landing')).toBeVisible()
+
+    // Regression guard: the Story 3-8 stub marker must not survive the swap.
+    expect(await page.getByTestId('poll-landing').getAttribute('data-stub')).toBeNull()
+
+    const trust = page.getByTestId('live-landing-trust-line')
+    await expect(trust).toBeVisible()
+    await expect(trust).toContainText('Tixeo')
+    await expect(trust).toContainText('shapes our roadmap')
+
+    const begin = page.getByTestId('live-landing-begin')
+    await expect(begin).toBeVisible()
+    const box = await begin.boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.height).toBeGreaterThanOrEqual(44)
+    expect(box!.width).toBeGreaterThanOrEqual(44)
+
     await axeClean(page)
+
+    await begin.click()
+    await expect(page).toHaveURL(new RegExp(`/poll/${POLL_ID}/q/0$`))
+    await expect(page.getByTestId('poll-question-placeholder')).toBeVisible()
   })
 
   test('expired poll → contact mailto + axe clean', async ({ page }) => {
@@ -98,10 +126,18 @@ test.describe('Story 3-8 — Respondent landing', () => {
     await axeClean(page)
   })
 
-  test('no horizontal overflow at 360 px width', async ({ page }) => {
+  test('server error → PollLoadError + retry + axe clean', async ({ page }) => {
+    await mockServerError(page)
+    await page.goto(`/poll/${POLL_ID}`)
+    await expect(page.getByTestId('poll-load-error')).toBeVisible()
+    await expect(page.getByTestId('poll-load-error-retry')).toBeVisible()
+    await axeClean(page)
+  })
+
+  test('no horizontal overflow at 360 px width (live)', async ({ page }) => {
     await mockLive(page)
     await page.goto(`/poll/${POLL_ID}`)
-    await expect(page.getByTestId('live-poll-stub')).toBeVisible()
+    await expect(page.getByTestId('live-landing')).toBeVisible()
     const noOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
     )

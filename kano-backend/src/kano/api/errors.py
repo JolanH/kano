@@ -24,6 +24,7 @@ from kano.exceptions import (
     PartialSubmission,
     PollExpired,
     PollRequiresFeatures,
+    SubmissionFailed,
 )
 
 if TYPE_CHECKING:
@@ -66,6 +67,48 @@ def _kano_error_handler(exc: KanoError) -> Response:
     )
 
 
+def _partial_submission_handler(exc: PartialSubmission) -> Response:
+    """422 envelope echoing the missing/unexpected/duplicates lists.
+
+    The respondent SPA (Story 4.7) uses ``missing`` to scroll the user to
+    the first un-answered question, so the extra fields are part of the
+    public contract — not just diagnostic noise.
+    """
+
+    response = _problem_response(
+        status=exc.status_code,
+        type_slug=exc.type_slug,
+        title=exc.title,
+        detail=str(exc) if str(exc) else None,
+    )
+    payload = response.get_json() or {}
+    payload["poll_id"] = str(exc.poll_id)
+    payload["missing"] = [str(k) for k in exc.missing]
+    payload["unexpected"] = [str(k) for k in exc.unexpected]
+    payload["duplicates"] = [str(k) for k in exc.duplicates]
+    response.set_data(jsonify(payload).get_data())
+    return response
+
+
+def _submission_failed_handler(exc: SubmissionFailed) -> Response:
+    """500 envelope. Underlying ``cause`` logged at ERROR, never on the wire."""
+
+    _logger.error(
+        "submission_failed",
+        extra={
+            "poll_id": str(exc.poll_id),
+            "cause_type": type(exc.cause).__name__ if exc.cause else None,
+            "cause_message": str(exc.cause) if exc.cause else None,
+        },
+    )
+    return _problem_response(
+        status=exc.status_code,
+        type_slug=exc.type_slug,
+        title=exc.title,
+        detail="The submission could not be recorded due to an internal error.",
+    )
+
+
 def _epoch_bump_handler(exc: EpochBumpRequired) -> Response:
     """409 envelope with the extra fields PM-SPA uses to render the bump dialog."""
 
@@ -87,7 +130,9 @@ def register_error_handlers(app: Flask) -> None:
     """Register ``application/problem+json`` handlers for all exception types."""
 
     app.register_error_handler(EpochBumpRequired, _epoch_bump_handler)
-    for exc_cls in (PollExpired, PartialSubmission, EntityNotFound, PollRequiresFeatures):
+    app.register_error_handler(PartialSubmission, _partial_submission_handler)
+    app.register_error_handler(SubmissionFailed, _submission_failed_handler)
+    for exc_cls in (PollExpired, EntityNotFound, PollRequiresFeatures):
         app.register_error_handler(exc_cls, _kano_error_handler)
 
     @app.errorhandler(ValidationError)

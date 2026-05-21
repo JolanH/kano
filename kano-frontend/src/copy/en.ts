@@ -51,12 +51,23 @@ export const en = {
   'pm.category.doub': 'Doubtful',
 
   // Respondent Likert option labels (FR22 — plain-language replacements for
-  // the Kano-methodology jargon).
+  // the Kano-methodology jargon). The wording is Story 4-5 / epics line
+  // 1126: lowercase past the first option is intentional (UX register is
+  // conversational, not interrogative). The historical numeric keys are
+  // preserved so any inline `respondent.likert.${value}` consumer still
+  // resolves.
   'respondent.likert.1': "I'd love it",
-  'respondent.likert.2': 'Nice to have',
-  'respondent.likert.3': 'Neutral',
-  'respondent.likert.4': 'I can live without it',
-  'respondent.likert.5': 'I would dislike it',
+  'respondent.likert.2': 'nice-to-have',
+  'respondent.likert.3': 'neutral',
+  'respondent.likert.4': 'can live without it',
+  'respondent.likert.5': 'would dislike it',
+  // KanoLikert (Story 4-5) — interpolated question templates + error copy.
+  'respondent.likert.question.functional':
+    'How do you feel if {featureName} is available?',
+  'respondent.likert.question.dysfunctional':
+    'How do you feel if {featureName} is not available?',
+  'respondent.likert.error.unanswered':
+    'Please select an answer before continuing.',
 
   // Respondent flow chrome (Epic 4)
   'respondent.progress': 'Question {current} of {total}',
@@ -209,13 +220,18 @@ export const en = {
   'pm.polls.analysisPlaceholder':
     "Analysis view ships in Epic 5 — for now, the expired poll's responses are preserved in the database.",
 
-  // Respondent landing (Story 3-8). Live-poll surface is a stub that
-  // Story 4-4 will replace; expired + not-found components ship to
-  // production quality and are reused by Story 4-4 verbatim.
+  // Respondent landing (Story 3-8 / 4-4). The stub-era `landing.stub.*`
+  // keys are gone — Story 4-4 deleted the LivePollStub component.
+  // `expired.*` / `notFound.*` / `loadError.*` are reused unchanged.
   'respondent.landing.loading': 'Loading…',
-  'respondent.landing.stub.title': 'This poll is ready',
-  'respondent.landing.stub.body':
-    'A short survey is being prepared. Please check back shortly.',
+  'respondent.landing.brand': 'Tixeo',
+  // Trust line — UX-spec line 685 / epics line 1108 exact wording. The
+  // separators are middle dots (U+00B7), not pipes or hyphens; the
+  // em-dash in "2–3" is U+2013. Three beats: brand anchor, honest time
+  // cost, value exchange.
+  'respondent.landing.trustLine': 'Tixeo · 2–3 minutes · shapes our roadmap',
+  'respondent.landing.beginCta': 'Begin',
+  'respondent.landing.beginAriaLabel': 'Begin the poll',
   'respondent.expired.contactCta': 'Get in touch with our product team',
   'respondent.notFound.title': "We couldn't find that poll",
   'respondent.notFound.body':
@@ -224,7 +240,36 @@ export const en = {
   'respondent.loadError.body':
     'Something on our end went wrong. Please try again in a moment.',
   'respondent.loadError.retry': 'Try again',
-  'respondent.landing.stub.expiresAt': 'This survey is open until {date}.',
+
+  // Placeholder until Story 4-6 ships the real Question screen — kept
+  // for any leftover reference; the Question route itself is no longer a
+  // placeholder.
+  'respondent.question.placeholder': 'The first question will appear here shortly.',
+
+  // Question route chrome (Story 4-6).
+  'respondent.common.loading': 'Loading…',
+  // Honest-progress label per UX-spec §Flow Optimization Principle 7.
+  'respondent.flow.progressLabel': 'Question {current} of {total}',
+  'respondent.flow.progressBarAriaLabel': 'Poll progress',
+  // Em-dash U+2014 is intentional (epics line 1151).
+  'respondent.flow.halfway': 'Halfway there — this is genuinely helpful',
+
+  // SubmitConfirm + Thanks (Story 4-7). The placeholder key from Story
+  // 4-6 is preserved for any leftover reference.
+  'respondent.submitConfirm.placeholder':
+    "Almost done — Story 4-7 will land the submit confirmation here.",
+  'respondent.submitConfirm.title': 'Review & submit',
+  'respondent.submitConfirm.body':
+    "You've answered every question. Send your input when you're ready.",
+  'respondent.submitConfirm.submitCta': 'Submit',
+  'respondent.submitConfirm.backCta': 'Back',
+  'respondent.submitConfirm.missingRedirect':
+    "Some answers are missing — we've taken you back",
+  'respondent.submitConfirm.error.generic': 'Something went wrong. Please try again.',
+
+  // Thanks page (Story 4-7). Exact title per epics line 1177. No CTAs.
+  'respondent.thanks.title': 'Thanks — your input is on the record',
+  'respondent.thanks.body': 'Your product manager will see this on a short horizon.',
 } as const
 
 export type CopyKey = keyof typeof en

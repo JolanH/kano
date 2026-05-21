@@ -1,6 +1,6 @@
 # Story 4.1: Submission and Response models with Pydantic schemas
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -22,8 +22,8 @@ so that the respondent submission endpoint has a typed contract that mirrors the
 
 ## Tasks / Subtasks
 
-- [ ] `src/kano/models/submission.py` (AC: #1, #7)
-  - [ ] Declarative model:
+- [x] `src/kano/models/submission.py` (AC: #1, #7)
+  - [x] Declarative model:
     ```python
     class Submission(Base):
         __tablename__ = "submissions"
@@ -37,9 +37,9 @@ so that the respondent submission endpoint has a typed contract that mirrors the
             nullable=False,
         )
     ```
-  - [ ] Verify against migration 0001 — no drift (no extra columns, no missed ones)
-- [ ] Extend `src/kano/models/response.py` (AC: #2, #3, #7)
-  - [ ] The file already defines `Category` (Story 2.6). Append the `Response` model below the enum — do **not** move or rewrite the enum:
+  - [x] Verify against migration 0001 — no drift (no extra columns, no missed ones)
+- [x] Extend `src/kano/models/response.py` (AC: #2, #3, #7)
+  - [x] The file already defines `Category` (Story 2.6). Append the `Response` model below the enum — do **not** move or rewrite the enum:
     ```python
     class Response(Base):
         __tablename__ = "responses"
@@ -55,12 +55,12 @@ so that the respondent submission endpoint has a typed contract that mirrors the
             String(1), nullable=False
         )
     ```
-  - [ ] `Category` is stored as the 1-char `str` value (`M`/`L`/`E`/`I`/`C`/`D`) — Story 2.6 defined it as `class Category(str, Enum)` so this serialization is direct. Do NOT use PG `ENUM`; the CHECK constraints live in the migration per architecture §Naming line 517.
-  - [ ] Composite PK is declared via `primary_key=True` on both columns (SQLAlchemy auto-composes). Range/value CHECK constraints live in migration 0001 — do not redeclare at the ORM layer.
-- [ ] `src/kano/models/__init__.py` (AC: #7)
-  - [ ] Re-export `Submission` and `Response` (keep ordering alphabetical or match existing convention)
-- [ ] `src/kano/schemas/submission.py` (AC: #4, #5, #6)
-  - [ ] Classes:
+  - [x] `Category` is stored as the 1-char `str` value (`M`/`L`/`E`/`I`/`C`/`D`) — Story 2.6 defined it as `class Category(str, Enum)` so this serialization is direct. Do NOT use PG `ENUM`; the CHECK constraints live in the migration per architecture §Naming line 517.
+  - [x] Composite PK is declared via `primary_key=True` on both columns (SQLAlchemy auto-composes). Range/value CHECK constraints live in migration 0001 — do not redeclare at the ORM layer.
+- [x] `src/kano/models/__init__.py` (AC: #7)
+  - [x] Re-export `Submission` and `Response` (keep ordering alphabetical or match existing convention)
+- [x] `src/kano/schemas/submission.py` (AC: #4, #5, #6)
+  - [x] Classes:
     ```python
     class AnswerIn(BaseModel):
         feature_key: UUID
@@ -70,17 +70,17 @@ so that the respondent submission endpoint has a typed contract that mirrors the
     class PollSubmission(BaseModel):
         answers: list[AnswerIn] = Field(min_length=1)
     ```
-  - [ ] No `model_config` needed — this is an inbound DTO, never built from ORM instances.
-  - [ ] No `Field(alias=...)` anywhere.
-- [ ] Unit tests
-  - [ ] `tests/unit/test_submission_schemas.py`:
+  - [x] No `model_config` needed — this is an inbound DTO, never built from ORM instances.
+  - [x] No `Field(alias=...)` anywhere.
+- [x] Unit tests
+  - [x] `tests/unit/test_submission_schemas.py`:
     - `PollSubmission.model_validate({"answers": [{"feature_key": "018f...", "fq_answer": 3, "dq_answer": 2}]})` succeeds
     - Out-of-range `fq_answer=0` or `fq_answer=6` raises `ValidationError`
     - Non-integer `fq_answer="3"` coerces per Pydantic default (acceptable) OR rejects — pin whichever behavior Pydantic 2 gives us and assert it explicitly so it's frozen
     - Missing `answers` field raises `ValidationError`
     - Empty `answers: []` raises `ValidationError` (min_length=1)
     - Extra unknown keys in an answer entry — assert Pydantic default behavior (ignored by default; explicitly test to pin)
-  - [ ] `tests/unit/test_submission_model.py` (lightweight — full behavior lives in Story 4.2 integration tests):
+  - [x] `tests/unit/test_submission_model.py` (lightweight — full behavior lives in Story 4.2 integration tests):
     - Instantiate `Submission(poll_id=uuid4())` — `id` and `submitted_at` populate from defaults on flush
 
 ## Dev Notes
@@ -149,7 +149,39 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+claude-opus-4-7[1m]
+
 ### Debug Log References
+- `tests/unit/test_submission_schemas.py` — 20 tests pass
+- `tests/unit/test_submission_model.py` — 5 tests pass
+- Full backend suite (193 tests) — green; no regressions
+
 ### Completion Notes List
+- `Submission` and `Response` ORM models were already in the tree (created
+  during earlier Epic-2/Epic-3 work) and match migration 0001 exactly, so
+  no model edits were needed beyond verifying drift-free shape.
+- The existing `Response` model declares `CheckConstraint(...)` entries in
+  `__table_args__` for `fq_answer`, `dq_answer` and `category`. The story
+  spec recommends migration-only CHECKs, but the constraints in the model
+  resolve to the same `ck_responses_*` names that migration 0001 already
+  installs (via SQLAlchemy `NAMING_CONVENTION`), so there's no drift risk
+  in practice; leaving them untouched preserves Story 2.6's behaviour.
+- New file: `src/kano/schemas/submission.py` with `AnswerIn` + `PollSubmission`.
+  No `Field(alias=...)`; no `model_config` (pure inbound DTO).
+- `__init__.py` re-exports both schemas alongside existing Poll/Project/Feature.
+- Pinned Pydantic 2 coercion behaviour explicitly in the test suite
+  (`"3"` → `3` is accepted; `"three"` rejected) so any future `strict=True`
+  flip is a deliberate decision.
+- Pinned `extra="ignore"` default (unknown keys silently dropped) — same
+  reason.
+
 ### File List
+- `kano-backend/src/kano/schemas/submission.py` (new)
+- `kano-backend/src/kano/schemas/__init__.py` (add `AnswerIn`, `PollSubmission` re-exports)
+- `kano-backend/tests/unit/test_submission_schemas.py` (new)
+- `kano-backend/tests/unit/test_submission_model.py` (new)
+- `.claude/settings.local.json` (permission rules for pytest/ruff/mypy)
+
+### Change Log
+- 2026-05-21: Initial implementation. Schemas + tests landed; models
+  verified drift-free against migration 0001.

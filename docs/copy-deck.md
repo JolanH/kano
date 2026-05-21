@@ -64,33 +64,50 @@ Token suffix mirrors the backend `Category` enum (`MANDATORY` / `LINEAR` /
 | Key | English | Context |
 |---|---|---|
 
-## Respondent Likert option labels (FR22)
+## Respondent Likert option labels (FR22 / Story 4-5)
 
 These five replace the Kano-methodology jargon ("functional/dysfunctional
 satisfaction on a 1-5 scale") with plain language. They drive `<KanoLikert>`
-(Story 4-5).
+(Story 4-5). Lowercase past the first option is intentional — Story 4-5
+Dev Notes locks the conversational register from epics line 1126.
 
 | Key | English | Likert position |
 |---|---|---|
 | `respondent.likert.1` | I'd love it | 1 |
-| `respondent.likert.2` | Nice to have | 2 |
-| `respondent.likert.3` | Neutral | 3 |
-| `respondent.likert.4` | I can live without it | 4 |
-| `respondent.likert.5` | I would dislike it | 5 |
+| `respondent.likert.2` | nice-to-have | 2 |
+| `respondent.likert.3` | neutral | 3 |
+| `respondent.likert.4` | can live without it | 4 |
+| `respondent.likert.5` | would dislike it | 5 |
+| `respondent.likert.question.functional` | How do you feel if {featureName} is available? | Functional-question template (interpolated per feature) |
+| `respondent.likert.question.dysfunctional` | How do you feel if {featureName} is not available? | Dysfunctional-question template (interpolated per feature) |
+| `respondent.likert.error.unanswered` | Please select an answer before continuing. | Inline error rendered in the `showError` variant |
 
 ## Respondent flow chrome
 
 | Key | English | Context |
 |---|---|---|
 | `respondent.progress` | Question {current} of {total} | Progress label per question (Story 4-6) |
-| `respondent.thankYou.title` | Thanks for your input! | Submit-success page (Story 4-7) |
-| `respondent.thankYou.body` | Your responses have been recorded. | Subtitle on the same page |
+| `respondent.thankYou.title` | Thanks for your input! | (Legacy preregistered key; superseded by `respondent.thanks.*` in Story 4-7 but kept for backward compatibility) |
+| `respondent.thankYou.body` | Your responses have been recorded. | (Legacy preregistered key; superseded by `respondent.thanks.body` in Story 4-7) |
+| `respondent.submitConfirm.title` | Review & submit | Submit-confirm page heading (Story 4-7) |
+| `respondent.submitConfirm.body` | You've answered every question. Send your input when you're ready. | Submit-confirm body copy |
+| `respondent.submitConfirm.submitCta` | Submit | Primary CTA on submit-confirm |
+| `respondent.submitConfirm.backCta` | Back | Secondary action on submit-confirm |
+| `respondent.submitConfirm.missingRedirect` | Some answers are missing — we've taken you back | Brief notice rendered before the 422 redirect-to-missing transition |
+| `respondent.submitConfirm.error.generic` | Something went wrong. Please try again. | Inline error for 400/404/500/network on submit |
+| `respondent.thanks.title` | Thanks — your input is on the record | Thanks page heading (epics line 1177 exact wording) |
+| `respondent.thanks.body` | Your product manager will see this on a short horizon. | Thanks page body (UX-DR25 short-horizon closing line) |
 | `respondent.expired.title` | This poll is closed | Expired-link page (Story 3-8 / 4-4) |
 | `respondent.expired.body` | The link you used is no longer accepting responses. | Subtitle on the same page |
 | `respondent.cta.next` | Next | Likert "next question" CTA (Story 4-5 / 4-6) |
 | `respondent.cta.back` | Back | Previous-question CTA (Story 4-6) |
 | `respondent.cta.submit` | Submit | Final-submission CTA (Story 4-7) |
 | `respondent.error.generic` | We couldn't save your response. Please try again. | Submission failure (Story 4-3 error path) |
+| `respondent.common.loading` | Loading… | Generic spinner aria-label across respondent screens |
+| `respondent.flow.progressLabel` | Question {current} of {total} | Honest-progress label per UX-spec §Flow Optimization Principle 7 |
+| `respondent.flow.progressBarAriaLabel` | Poll progress | `v-progress-linear` aria-label on the Question route |
+| `respondent.flow.halfway` | Halfway there — this is genuinely helpful | One-shot acknowledgement at `index === N` (em-dash U+2014) |
+| `respondent.submitConfirm.placeholder` | Almost done — Story 4-7 will land the submit confirmation here. | Story 4-7 replaces this placeholder |
 
 ## Dev-only theme audit page (Story 1.8)
 
@@ -246,22 +263,24 @@ Card surface where the PM copies the poll URL and previews the QR code.
 | `pm.polls.empty.cta` | Create your first project | Empty-state CTA → `/app/projects` |
 | `pm.polls.analysisPlaceholder` | Analysis view ships in Epic 5 — for now, the expired poll's responses are preserved in the database. | Analysis placeholder card body (Epic 5 replaces) |
 
-## Respondent landing (Story 3-8)
+## Respondent landing (Story 4-4)
 
-Live-poll component (`LivePollStub.vue`) is a stub that Story 4-4 will replace; expired + not-found surfaces ship to production quality and are reused verbatim.
+Story 3-8's `LivePollStub.vue` was deleted in Story 4-4 and replaced by `LiveLanding.vue` — a brand-anchored single-CTA landing. The `landing.stub.*` keys are gone with the component; `expired.*`, `notFound.*`, and `loadError.*` are reused unchanged.
 
 | Key | English | Context |
 |---|---|---|
 | `respondent.landing.loading` | Loading… | `v-progress-circular` `aria-label` |
-| `respondent.landing.stub.title` | This poll is ready | LivePollStub headline |
-| `respondent.landing.stub.body` | A short survey is being prepared. Please check back shortly. | LivePollStub body |
+| `respondent.landing.brand` | Tixeo | LiveLanding brand-mark text |
+| `respondent.landing.trustLine` | Tixeo · 2–3 minutes · shapes our roadmap | LiveLanding single trust line (middle-dot U+00B7 separators, en-dash U+2013) |
+| `respondent.landing.beginCta` | Begin | LiveLanding primary CTA text |
+| `respondent.landing.beginAriaLabel` | Begin the poll | LiveLanding Begin button aria-label |
 | `respondent.expired.contactCta` | Get in touch with our product team | Mailto button label on expired + not-found |
 | `respondent.notFound.title` | We couldn't find that poll | PollNotFound headline |
 | `respondent.notFound.body` | The link may have been typed incorrectly. If you think this is an error, please reach out. | PollNotFound body |
 | `respondent.loadError.title` | We couldn't load this poll right now | PollLoadError headline (transient 5xx / network) |
 | `respondent.loadError.body` | Something on our end went wrong. Please try again in a moment. | PollLoadError body |
 | `respondent.loadError.retry` | Try again | PollLoadError retry button |
-| `respondent.landing.stub.expiresAt` | This survey is open until {date}. | LivePollStub closes-on line (consumes `PollPublic.expires_at`) |
+| `respondent.question.placeholder` | The first question will appear here shortly. | Question.vue placeholder (Story 4-6 replaces) |
 | `pm.polls.empty.noProjectsBody` | Create a project, add features, and generate your first poll URL. | PM polls empty state — zero projects |
 | `pm.polls.empty.noProjectsCta` | Create your first project | PM polls empty state CTA — zero projects |
 | `pm.polls.empty.hasProjectsBody` | Open a project to add features and generate a poll URL when you’re ready. | PM polls empty state — projects exist, no polls |

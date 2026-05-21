@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import uuid
 
 from flask import Flask
 from flask.testing import FlaskClient
@@ -43,14 +42,3 @@ def test_public_endpoint_decorator_exempts_route_from_csrf(
     assert json.loads(response.data) == {"ok": True}
 
 
-def test_polls_submit_unrouted_returns_404_not_csrf_400(
-    app: Flask,
-    client: FlaskClient,
-) -> None:
-    """Story 4-3 will register the real route. Until then the URL 404s."""
-
-    poll_id = uuid.uuid4()
-    response = client.post(f"/api/v1/polls/{poll_id}/submit", json={})
-
-    assert response.status_code == 404
-    assert response.status_code != 403

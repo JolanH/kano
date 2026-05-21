@@ -1,6 +1,6 @@
 # Story 4.3: Public poll submission endpoint (CSRF-exempt)
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -23,8 +23,8 @@ so that my input is persisted with Kano categorization computed server-side.
 
 ## Tasks / Subtasks
 
-- [ ] Extend `src/kano/api/polls.py` (AC: #1, #2, #3, #4, #5, #6, #7, #9)
-  - [ ] Add handler alongside existing `POST /projects/<uuid:project_id>/polls` (Story 3.2), `GET /projects/<uuid:project_id>/polls` (Story 3.3), `GET /polls/<uuid:poll_id>` (Story 3.4):
+- [x] Extend `src/kano/api/polls.py` (AC: #1, #2, #3, #4, #5, #6, #7, #9)
+  - [x] Add handler alongside existing `POST /projects/<uuid:project_id>/polls` (Story 3.2), `GET /projects/<uuid:project_id>/polls` (Story 3.3), `GET /polls/<uuid:poll_id>` (Story 3.4):
     ```python
     @polls_bp.post("/polls/<uuid:poll_id>/submit")
     @csrf.exempt  # or whichever pattern Story 1.3 established; mirror Story 3.4's choice
@@ -39,16 +39,16 @@ so that my input is persisted with Kano categorization computed server-side.
         )
         return "", 204
     ```
-  - [ ] Code comment: `# CSRF-exempt per architecture §Authentication & Security: public respondent endpoints (same rationale as GET /api/v1/polls/<uuid> — Story 3.4)`
-  - [ ] Pydantic validation failure inside `model_validate` propagates as `ValidationError`, which Story 1.3's error adapter turns into 400 with Problem Details. No manual catch.
-  - [ ] Domain exceptions (`EntityNotFound`, `PollExpired`, `PartialSubmission`, `SubmissionFailed`) propagate to the registry in `api/errors.py` extended by Story 4.2 → 404 / 410 / 422 / 500. No manual catch.
-- [ ] Wire CSRF + CORS exemption (AC: #6, #7)
-  - [ ] Mirror Story 3.4's approach exactly — whichever way the GET endpoint opted out, the POST endpoint opts out the same way. If Story 3.4 used `@csrf.exempt`, add the same decorator here. If it registered a path in `CSRF_EXEMPT_PATHS`, add `/api/v1/polls/<uuid>/submit` there too.
-  - [ ] CORS: if Story 1.3's `Flask-CORS` config maps `/api/v1/polls/<uuid>` to `origins="*"` (or an equivalent public-profile), extend the match to cover `/api/v1/polls/<uuid>/submit`. Pattern: `/api/v1/polls/<uuid:poll_id>/*` as a single public-CORS resource is acceptable.
-  - [ ] **Do not** disable CSRF globally. **Do not** exempt `/api/v1/*`. Only the two public poll paths (GET + POST submit).
-- [ ] OpenAPI documentation (AC: #10)
-  - [ ] Add `PollSubmission` + `AnswerIn` to `components.schemas` referencing `src/kano/schemas/submission.py`
-  - [ ] Path `/api/v1/polls/{poll_id}/submit`:
+  - [x] Code comment: `# CSRF-exempt per architecture §Authentication & Security: public respondent endpoints (same rationale as GET /api/v1/polls/<uuid> — Story 3.4)`
+  - [x] Pydantic validation failure inside `model_validate` propagates as `ValidationError`, which Story 1.3's error adapter turns into 400 with Problem Details. No manual catch.
+  - [x] Domain exceptions (`EntityNotFound`, `PollExpired`, `PartialSubmission`, `SubmissionFailed`) propagate to the registry in `api/errors.py` extended by Story 4.2 → 404 / 410 / 422 / 500. No manual catch.
+- [x] Wire CSRF + CORS exemption (AC: #6, #7)
+  - [x] Mirror Story 3.4's approach exactly — whichever way the GET endpoint opted out, the POST endpoint opts out the same way. If Story 3.4 used `@csrf.exempt`, add the same decorator here. If it registered a path in `CSRF_EXEMPT_PATHS`, add `/api/v1/polls/<uuid>/submit` there too.
+  - [x] CORS: if Story 1.3's `Flask-CORS` config maps `/api/v1/polls/<uuid>` to `origins="*"` (or an equivalent public-profile), extend the match to cover `/api/v1/polls/<uuid>/submit`. Pattern: `/api/v1/polls/<uuid:poll_id>/*` as a single public-CORS resource is acceptable.
+  - [x] **Do not** disable CSRF globally. **Do not** exempt `/api/v1/*`. Only the two public poll paths (GET + POST submit).
+- [x] OpenAPI documentation (AC: #10)
+  - [x] Add `PollSubmission` + `AnswerIn` to `components.schemas` referencing `src/kano/schemas/submission.py`
+  - [x] Path `/api/v1/polls/{poll_id}/submit`:
     - `post` operation, `security: []` (explicitly no CSRF)
     - Request body: `application/json` → `$ref: "#/components/schemas/PollSubmission"`
     - 204 response: empty body, description "Submission accepted; no content"
@@ -56,33 +56,33 @@ so that my input is persisted with Kano categorization computed server-side.
     - 404: `ProblemDetails` (`type=entity-not-found`)
     - 410: `ProblemDetails` (`type=poll-expired`)
     - 422: `ProblemDetails` (`type=partial-submission`) — body describes the `missing`/`unexpected`/`duplicates` extension fields
-- [ ] Integration tests (AC: #1, #2, #3, #4, #5, #6, #8)
-  - [ ] `tests/integration/test_poll_submit_api.py::test_submit_poll_success`
+- [x] Integration tests (AC: #1, #2, #3, #4, #5, #6, #8)
+  - [x] `tests/integration/test_poll_submit_api.py::test_submit_poll_success`
     - Seed: project + 3 features on epoch 1 + non-expired poll
     - POST with complete body, no CSRF header, no session cookie
     - Assert 204, empty body, 1 `submission` row, 3 `response` rows, each `response.category` matches `compute_category(fq, dq)` for its answer
     - Assert `response.feature_id` resolves correctly via `feature_key` lookup in `(project_id, epoch)`
-  - [ ] `test_submit_poll_partial_missing_returns_422`
+  - [x] `test_submit_poll_partial_missing_returns_422`
     - 3-feature poll, body with 2 answers → 422, Problem Details `type=...partial-submission`, `missing` array non-empty, `unexpected` empty, 0 rows persisted
-  - [ ] `test_submit_poll_partial_extra_returns_422`
+  - [x] `test_submit_poll_partial_extra_returns_422`
     - 3-feature poll, body with 4 answers → 422, `unexpected` non-empty, 0 rows
-  - [ ] `test_submit_poll_duplicate_keys_returns_422`
+  - [x] `test_submit_poll_duplicate_keys_returns_422`
     - body has 3 answers with one repeated `feature_key` → 422, `duplicates` non-empty, 0 rows
-  - [ ] `test_submit_poll_invalid_range_returns_400`
+  - [x] `test_submit_poll_invalid_range_returns_400`
     - body with `fq_answer=0` → 400 Pydantic validation Problem Details; 0 rows
-  - [ ] `test_submit_poll_empty_answers_returns_400`
+  - [x] `test_submit_poll_empty_answers_returns_400`
     - `{"answers": []}` → 400 (Pydantic `min_length=1`); 0 rows
-  - [ ] `test_submit_poll_missing_answers_field_returns_400`
+  - [x] `test_submit_poll_missing_answers_field_returns_400`
     - `{}` → 400; 0 rows
-  - [ ] `test_submit_poll_expired_returns_410`
+  - [x] `test_submit_poll_expired_returns_410`
     - poll with `expires_at = now - 1 minute` → 410 Problem Details `type=...poll-expired`; 0 rows
-  - [ ] `test_submit_poll_unknown_uuid_returns_404`
+  - [x] `test_submit_poll_unknown_uuid_returns_404`
     - random UUID → 404 Problem Details `type=entity-not-found`; 0 rows
-  - [ ] `test_submit_poll_csrf_exempt`
+  - [x] `test_submit_poll_csrf_exempt`
     - Fresh test client; POST without calling `/api/csrf-token` first and without any cookies → asserts 204 on happy path (not 403)
-  - [ ] `test_submit_poll_no_pii_persisted` (AC #8)
+  - [x] `test_submit_poll_no_pii_persisted` (AC #8)
     - Happy-path POST → introspect `submission` and `response` table columns via `sqlalchemy.inspect`; assert there is no column named `email`, `name`, `ip`, `user_agent`, `user_id`, or any free-text field on either. This is a static-schema assertion — trivially true given migration 0001, but valuable as a regression gate if a future migration adds a column.
-  - [ ] `test_submit_poll_emits_structured_log`
+  - [x] `test_submit_poll_emits_structured_log`
     - Capture structlog output via `structlog.testing.capture_logs()`; POST success; assert one log entry with `event="submission_recorded"`, `poll_id`, `submission_id`, `answer_count` keys — and that NO log entry contains `fq_answer`, `dq_answer`, or `feature_key` values
 
 ## Dev Notes
@@ -164,7 +164,44 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+claude-opus-4-7[1m]
+
 ### Debug Log References
+- `tests/integration/test_poll_submit_api.py` — 12 tests pass
+- Full backend suite (219 tests) — green
+
 ### Completion Notes List
+- The PUBLIC_RESPONDENT_PATHS tuple in `middleware/security.py` already
+  registered `/api/v1/polls/[^/]+/submit` for the public CORS profile
+  (added speculatively in Story 1.3 / 3.4), so CORS wiring needed no new
+  code. The `@public_endpoint` decorator handled CSRF exemption — same
+  mechanism Story 3.4 used for the sibling GET.
+- Removed the stale placeholder test
+  `test_polls_submit_unrouted_returns_404_not_csrf_400` from
+  `tests/integration/test_csrf.py`. Its purpose ("confirm the
+  not-yet-wired route 404s rather than 403s") is moot now that the route
+  is live and exercised by 12 real tests in `test_poll_submit_api.py`.
+- The 422 envelope from `_partial_submission_handler` (added in Story
+  4.2) is exercised end-to-end: `missing`/`unexpected`/`duplicates` lists
+  all round-trip as JSON UUIDs. OpenAPI documents the extension fields
+  via `allOf` against `ProblemDetails`.
+- `request.get_json(silent=False)` mirrors Story 1.3's existing handler
+  posture — malformed JSON raises at parse time and Flask returns 400 via
+  the registered `HTTPException` handler.
+- Structlog event keys: `event="submission_recorded"`, `poll_id`,
+  `submission_id`, `answer_count`. Test asserts no `fq_answer`,
+  `dq_answer`, or `feature_key` value appears anywhere in the captured
+  log stream.
+
 ### File List
+- `kano-backend/src/kano/api/polls.py` (extend: add `submit_poll`
+  handler + `structlog`, `request`, `PollSubmission` imports)
+- `kano-backend/openapi.yaml` (extend: `/api/v1/polls/{poll_id}/submit`
+  path + `PollSubmission`, `AnswerIn` schema components)
+- `kano-backend/tests/integration/test_poll_submit_api.py` (new)
+- `kano-backend/tests/integration/test_csrf.py` (delete stale
+  unrouted-404 placeholder test + cleanup unused `uuid` import)
+
+### Change Log
+- 2026-05-21: Endpoint live. CSRF-exempt, CORS-permissive, 204 on
+  success, full Problem Details coverage for every failure branch.

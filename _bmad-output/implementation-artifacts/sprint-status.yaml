@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-22
-last_updated: 2026-05-21  # epic 3 adversarial review fix-ups landed; bundle gates wired
+last_updated: 2026-05-21  # epic 4 dev pass complete — stories 4-1..4-8 → review
 project: kano
 project_key: NOKEY
 tracking_system: file-system
@@ -94,14 +94,14 @@ development_status:
 
   # Epic 4: Respondent Poll Experience & Submission
   epic-4: in-progress
-  4-1-submission-and-response-models-with-pydantic-schemas: ready-for-dev
-  4-2-poll-service-record-full-submission-atomic-transaction: ready-for-dev
-  4-3-public-poll-submission-endpoint-csrf-exempt: ready-for-dev
-  4-4-respondent-landing-page-replacing-the-e3-stub: ready-for-dev
-  4-5-kanolikert-component-with-auto-advance-and-keyboard-1-5: ready-for-dev
-  4-6-one-question-per-screen-respondent-flow-with-honest-progress: ready-for-dev
-  4-7-terminal-submit-with-inline-missing-answer-error-and-thank-you-page: ready-for-dev
-  4-8-respondent-flow-accessibility-close-out-and-manual-gates: ready-for-dev
+  4-1-submission-and-response-models-with-pydantic-schemas: review
+  4-2-poll-service-record-full-submission-atomic-transaction: review
+  4-3-public-poll-submission-endpoint-csrf-exempt: review
+  4-4-respondent-landing-page-replacing-the-e3-stub: review
+  4-5-kanolikert-component-with-auto-advance-and-keyboard-1-5: review
+  4-6-one-question-per-screen-respondent-flow-with-honest-progress: review
+  4-7-terminal-submit-with-inline-missing-answer-error-and-thank-you-page: review
+  4-8-respondent-flow-accessibility-close-out-and-manual-gates: review
   epic-4-retrospective: optional
 
   # Epic 5: Analysis & Insight

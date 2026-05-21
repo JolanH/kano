@@ -1,49 +1,44 @@
 // @vitest-environment jsdom
 /**
- * Respondent landing (Story 3-8) — branch on the public-read API response.
+ * Respondent landing (Story 4-4 replacement of the Story 3-8 stub).
  *
- * - 200 → LivePollStub
- * - 410 → ExpiredPoll
- * - 404 → PollNotFound
+ * Branch coverage on `fetchState` from `usePollPublicStore`:
+ * - loading → spinner
+ * - loaded → LiveLanding with Tixeo trust line + Begin
+ * - expired → ExpiredPoll (reused from Story 3-8)
+ * - not-found → PollNotFound (reused from Story 3-8)
+ * - error → PollLoadError with retry (reused from Story 3-8)
  *
  * Vuetify primitives stubbed (no Vuetify install / CSS) so the spec runs
  * fast under jsdom.
  */
 
-import { flushPromises, mount } from '@vue/test-utils'
+import { setActivePinia, createPinia } from 'pinia'
+import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 
 import Landing from '@/pages/poll/Landing.vue'
-import {
-  KanoApiError,
-  NotFoundError,
-  ServerError,
-  type PollPublic,
-  type ProblemDetails,
-} from '@/api/types'
+import type { PollPublic } from '@/api/types'
+import { usePollPublicStore } from '@/stores/pollPublic'
 
+const pushMock = vi.fn()
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { uuid: 'test-poll-id' } }),
+  useRouter: () => ({ push: pushMock }),
 }))
 
-const getMock = vi.fn()
-vi.mock('@/composables/useApi', () => ({
-  useApi: () => ({
-    get: (path: string) => getMock(path),
-    post: () => Promise.resolve({ data: null, requestId: 'r', status: 200 }),
-    patch: () => Promise.resolve({ data: null, requestId: 'r', status: 200 }),
-    delete: () => Promise.resolve({ data: null, requestId: 'r', status: 204 }),
-    put: () => Promise.resolve({ data: null, requestId: 'r', status: 204 }),
-    resetCsrf: () => undefined,
-  }),
-}))
+const samplePollPublic: PollPublic = {
+  id: 'test-poll-id',
+  expires_at: '2026-05-27T12:00:00Z',
+  features: [{ feature_key: 'fk-1', name: 'Auto-save', description: null }],
+}
 
 const passthrough = (name: string) =>
   defineComponent({
     name,
     setup(_, { slots, attrs }) {
-      return () => h('div', { 'data-stub': name, ...attrs }, slots.default?.())
+      return () => h('div', { 'data-stub-component': name, ...attrs }, slots.default?.())
     },
   })
 
@@ -55,14 +50,16 @@ const VProgressStub = defineComponent({
 })
 
 const VBtnStub = defineComponent({
-  props: ['text', 'href', 'size', 'variant', 'color'],
+  props: ['text', 'size', 'color'],
   setup(props, { attrs }) {
     return () =>
       h(
-        'a',
+        'button',
         {
-          href: props.href,
           'data-testid': attrs['data-testid'] ?? undefined,
+          'aria-label': attrs['aria-label'] ?? undefined,
+          type: 'button',
+          onClick: attrs.onClick as ((e: MouseEvent) => void) | undefined,
         },
         props.text,
       )
@@ -77,104 +74,84 @@ const globalStubs = {
   'v-btn': VBtnStub,
 }
 
-const samplePollPublic: PollPublic = {
-  id: 'test-poll-id',
-  expires_at: '2026-05-27T12:00:00Z',
-  features: [
-    { feature_key: 'fk-1', name: 'Auto-save', description: null },
-  ],
+function mountLanding() {
+  return mount(Landing, { global: { stubs: globalStubs } })
 }
 
-function makeProblem(status: number, type: string): ProblemDetails {
-  return {
-    type: `https://kano.example.com/problems/${type}`,
-    title: type,
-    status,
-    detail: null,
-    instance: `/api/v1/polls/test-poll-id`,
-    request_id: 'rid',
-  }
+function seedStore(
+  patch: Partial<ReturnType<typeof usePollPublicStore>['$state']> = {},
+) {
+  const store = usePollPublicStore()
+  store.$patch({ fetchState: 'idle', poll: null, error: null, ...patch })
+  return store
 }
 
 beforeEach(() => {
-  getMock.mockReset()
+  setActivePinia(createPinia())
+  pushMock.mockReset()
 })
 
-describe('Respondent Landing', () => {
-  test('shows loading state before the fetch resolves', async () => {
-    // Never-resolving promise keeps the loading state in place.
-    let resolveFn: ((v: { data: PollPublic; requestId: string; status: number }) => void) | null =
-      null
-    getMock.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveFn = resolve
-        }),
-    )
-    const wrapper = mount(Landing, { global: { stubs: globalStubs } })
-    // Before flush: progressbar present.
+describe('Respondent Landing (Story 4-4)', () => {
+  test('absence of data-stub marker (regression guard for the Story 3-8 swap)', async () => {
+    seedStore({ fetchState: 'loaded', poll: samplePollPublic })
+    const wrapper = mountLanding()
+    // Story 3-8's structural breadcrumb must not survive the swap.
+    expect(wrapper.html()).not.toContain('data-stub="true"')
+  })
+
+  test('loading → progress spinner', async () => {
+    seedStore({ fetchState: 'loading' })
+    const wrapper = mountLanding()
     expect(wrapper.find('[role="progressbar"]').exists()).toBe(true)
-    // Resolve to unblock the unmount.
-    resolveFn?.({ data: samplePollPublic, requestId: 'r', status: 200 })
-    await flushPromises()
   })
 
-  test('200 → renders LivePollStub with data-stub marker', async () => {
-    getMock.mockImplementation(() =>
-      Promise.resolve({ data: samplePollPublic, requestId: 'r', status: 200 }),
-    )
-    const wrapper = mount(Landing, { global: { stubs: globalStubs } })
-    await flushPromises()
-    expect(wrapper.find('[data-testid="live-poll-stub"]').exists()).toBe(true)
-    expect(wrapper.find('[data-stub="true"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('This poll is ready')
+  test('loaded → LiveLanding renders trust line + Begin button', async () => {
+    seedStore({ fetchState: 'loaded', poll: samplePollPublic })
+    const wrapper = mountLanding()
+    expect(wrapper.find('[data-testid="live-landing"]').exists()).toBe(true)
+    const trust = wrapper.find('[data-testid="live-landing-trust-line"]')
+    expect(trust.exists()).toBe(true)
+    expect(trust.text()).toContain('Tixeo')
+    expect(trust.text()).toContain('shapes our roadmap')
+    const begin = wrapper.find('[data-testid="live-landing-begin"]')
+    expect(begin.exists()).toBe(true)
+    expect(begin.attributes('aria-label')).toBe('Begin the poll')
   })
 
-  test('410 → renders ExpiredPoll with mailto contact', async () => {
-    // 410 maps to ConflictError class but we look at .status; instantiate
-    // a generic KanoApiError with status=410.
-    getMock.mockImplementation(() =>
-      Promise.reject(new KanoApiError(makeProblem(410, 'poll-expired'), 410)),
-    )
-    const wrapper = mount(Landing, { global: { stubs: globalStubs } })
-    await flushPromises()
+  test('Begin click routes to /poll/:uuid/q/0', async () => {
+    seedStore({ fetchState: 'loaded', poll: samplePollPublic })
+    const wrapper = mountLanding()
+    await wrapper.find('[data-testid="live-landing-begin"]').trigger('click')
+    expect(pushMock).toHaveBeenCalledWith({
+      name: 'poll-question',
+      params: { uuid: 'test-poll-id', index: 0 },
+    })
+  })
+
+  test('expired → ExpiredPoll renders', async () => {
+    seedStore({ fetchState: 'expired' })
+    const wrapper = mountLanding()
     expect(wrapper.find('[data-testid="expired-poll"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Get in touch with our product team')
-    const contact = wrapper.find('[data-testid="expired-poll-contact"]')
-    expect(contact.exists()).toBe(true)
-    expect(contact.attributes('href')?.startsWith('mailto:')).toBe(true)
   })
 
-  test('404 → renders PollNotFound', async () => {
-    getMock.mockImplementation(() =>
-      Promise.reject(new NotFoundError(makeProblem(404, 'entity-not-found'), 404)),
-    )
-    const wrapper = mount(Landing, { global: { stubs: globalStubs } })
-    await flushPromises()
+  test('not-found → PollNotFound renders', async () => {
+    seedStore({ fetchState: 'not-found' })
+    const wrapper = mountLanding()
     expect(wrapper.find('[data-testid="poll-not-found"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain("We couldn't find that poll")
   })
 
-  test('5xx surfaces PollLoadError with retry, not PollNotFound', async () => {
-    // Regression for the adversarial review: previously, any non-410/404
-    // error was rendered as "We couldn't find that poll" — which masks
-    // deploy outages as URL typos. Now 5xx + network errors get their own
-    // surface with a Try-again button.
-    getMock.mockImplementation(() =>
-      Promise.reject(new ServerError(makeProblem(500, 'internal-server-error'), 500)),
-    )
-    const wrapper = mount(Landing, { global: { stubs: globalStubs } })
-    await flushPromises()
+  test('error → PollLoadError renders with retry', async () => {
+    seedStore({ fetchState: 'error' })
+    const wrapper = mountLanding()
     expect(wrapper.find('[data-testid="poll-load-error"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="poll-not-found"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="poll-load-error-retry"]').exists()).toBe(true)
   })
 
-  test('network-style rejection (non-KanoApiError) also surfaces PollLoadError', async () => {
-    getMock.mockImplementation(() => Promise.reject(new TypeError('network down')))
-    const wrapper = mount(Landing, { global: { stubs: globalStubs } })
-    await flushPromises()
-    expect(wrapper.find('[data-testid="poll-load-error"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="poll-not-found"]').exists()).toBe(false)
+  test('retry on error → invokes loadPoll again', async () => {
+    const store = seedStore({ fetchState: 'error' })
+    const loadSpy = vi.spyOn(store, 'loadPoll').mockResolvedValue()
+    const wrapper = mountLanding()
+    await wrapper.find('[data-testid="poll-load-error-retry"]').trigger('click')
+    expect(loadSpy).toHaveBeenCalledWith('test-poll-id')
   })
 })

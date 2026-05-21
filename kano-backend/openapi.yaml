@@ -340,6 +340,81 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
 
+  /api/v1/polls/{poll_id}/submit:
+    parameters:
+      - in: path
+        name: poll_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: submitPoll
+      summary: Respondent submission (CSRF-exempt, no auth, no PII)
+      description: |
+        Atomic write of one complete submission + N response rows. The body
+        must answer every feature in the poll's pinned (project_id, epoch)
+        active set exactly once; missing, duplicate, or unexpected
+        `feature_key`s produce 422 with the `partial-submission` Problem
+        Details type. Pydantic shape failures (out-of-range Likert,
+        non-integer answer, empty `answers` list) produce 400. Same public
+        CORS / CSRF policy as the sibling `GET /api/v1/polls/{poll_id}`.
+        Stores no PII per NFR8.
+      tags: [polls]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PollSubmission'
+      responses:
+        '204':
+          description: Submission accepted; no content
+        '400':
+          description: Pydantic validation failed (shape, range, or empty answers)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Poll not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '410':
+          description: Poll has closed (expires_at in the past)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: |
+            Submission does not match the poll's feature set. Payload
+            extends `ProblemDetails` with `poll_id`, `missing`, `unexpected`,
+            and `duplicates` arrays so the SPA can route the user back to
+            the offending question(s).
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ProblemDetails'
+                  - type: object
+                    properties:
+                      poll_id:
+                        type: string
+                        format: uuid
+                      missing:
+                        type: array
+                        items: { type: string, format: uuid }
+                      unexpected:
+                        type: array
+                        items: { type: string, format: uuid }
+                      duplicates:
+                        type: array
+                        items: { type: string, format: uuid }
+
   /api/v1/projects/{project_id}:
     parameters:
       - in: path
@@ -633,6 +708,37 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PollPublicFeature'
+    AnswerIn:
+      type: object
+      description: One (Functional, Dysfunctional) Likert pair for a single feature.
+      required: [feature_key, fq_answer, dq_answer]
+      properties:
+        feature_key:
+          type: string
+          format: uuid
+        fq_answer:
+          type: integer
+          minimum: 1
+          maximum: 5
+        dq_answer:
+          type: integer
+          minimum: 1
+          maximum: 5
+    PollSubmission:
+      type: object
+      description: |
+        Inbound respondent submission. Carries no respondent identifier
+        per NFR8 — only Likert values keyed by `feature_key`. Shape-level
+        validation only; the service layer enforces that `answers` covers
+        every feature in the poll's pinned `(project_id, epoch)` set
+        exactly once.
+      required: [answers]
+      properties:
+        answers:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/AnswerIn'
     EpochBumpRequiredProblem:
       allOf:
         - $ref: '#/components/schemas/ProblemDetails'

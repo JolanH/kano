@@ -1,6 +1,6 @@
 # Story 4.4: Respondent landing page replacing the E3 stub
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -27,15 +27,15 @@ so that I can decide to proceed with informed consent rather than wariness.
 
 ## Tasks / Subtasks
 
-- [ ] Delete obsolete stub files (AC: #1)
-  - [ ] `git rm kano-frontend/src/routes/poll/Landing.vue` — will be replaced by a fresh file of the same name
-  - [ ] `git rm kano-frontend/src/routes/poll/LivePollStub.vue` — no longer referenced
-  - [ ] Verify `grep -R "data-stub" kano-frontend/src/` returns zero matches after deletion
-  - [ ] Preserve (do not touch): `ExpiredPoll.vue`, `PollNotFound.vue` — these are reused as-is
-- [ ] `src/stores/pollPublic.ts` — new Pinia store (AC: #2)
-  - [ ] Store id: `pollPublic`
-  - [ ] State: `poll: PollPublic | null`, `fetchState: FetchState`, `error: ProblemDetailsError | null`
-  - [ ] Actions:
+- [x] Delete obsolete stub files (AC: #1)
+  - [x] `git rm kano-frontend/src/routes/poll/Landing.vue` — will be replaced by a fresh file of the same name
+  - [x] `git rm kano-frontend/src/routes/poll/LivePollStub.vue` — no longer referenced
+  - [x] Verify `grep -R "data-stub" kano-frontend/src/` returns zero matches after deletion
+  - [x] Preserve (do not touch): `ExpiredPoll.vue`, `PollNotFound.vue` — these are reused as-is
+- [x] `src/stores/pollPublic.ts` — new Pinia store (AC: #2)
+  - [x] Store id: `pollPublic`
+  - [x] State: `poll: PollPublic | null`, `fetchState: FetchState`, `error: ProblemDetailsError | null`
+  - [x] Actions:
     ```ts
     async function loadPoll(uuid: string): Promise<void> {
       fetchState.value = 'loading'
@@ -55,10 +55,10 @@ so that I can decide to proceed with informed consent rather than wariness.
     }
     function reset(): void { /* clear state on leave */ }
     ```
-  - [ ] Getters: `isLoaded`, `featureCount` (`poll.value?.features.length ?? 0`), `expiresAt`
-  - [ ] **Imported ONLY by `/poll/*` routes and components** — never by `/app/*` (would break bundle isolation AC #9). Document this at the top of the file.
-- [ ] `src/routes/poll/Landing.vue` — fresh composition (AC: #2, #3, #4, #5, #6, #7)
-  - [ ] Template sketch:
+  - [x] Getters: `isLoaded`, `featureCount` (`poll.value?.features.length ?? 0`), `expiresAt`
+  - [x] **Imported ONLY by `/poll/*` routes and components** — never by `/app/*` (would break bundle isolation AC #9). Document this at the top of the file.
+- [x] `src/routes/poll/Landing.vue` — fresh composition (AC: #2, #3, #4, #5, #6, #7)
+  - [x] Template sketch:
     ```vue
     <template>
       <div class="respondent-landing">
@@ -70,12 +70,12 @@ so that I can decide to proceed with informed consent rather than wariness.
       </div>
     </template>
     ```
-  - [ ] Script: on mounted, call `pollPublicStore.loadPoll(route.params.uuid)`; `onBegin` routes to `/poll/:uuid/q/0`
-  - [ ] No `data-stub` attribute anywhere in the file (grep guard from AC #1)
-- [ ] `src/routes/poll/LiveLanding.vue` — new sub-component (AC: #3)
-  - [ ] Props: `poll: PollPublic`
-  - [ ] Emits: `begin`
-  - [ ] Template:
+  - [x] Script: on mounted, call `pollPublicStore.loadPoll(route.params.uuid)`; `onBegin` routes to `/poll/:uuid/q/0`
+  - [x] No `data-stub` attribute anywhere in the file (grep guard from AC #1)
+- [x] `src/routes/poll/LiveLanding.vue` — new sub-component (AC: #3)
+  - [x] Props: `poll: PollPublic`
+  - [x] Emits: `begin`
+  - [x] Template:
     ```vue
     <template>
       <section class="live-landing">
@@ -89,47 +89,47 @@ so that I can decide to proceed with informed consent rather than wariness.
       </section>
     </template>
     ```
-  - [ ] Centered single-column layout; max-width honors `RespondentLayout`'s 480 px container (architecture line 394); trust-line at 18 px body-large; Begin button min-height 48 px
-  - [ ] Zero other content — no microcopy about privacy, no footer, no third-party badges, no share icons (AC #3's exclusion list)
-- [ ] `src/routes/poll/LandingError.vue` — new small component (AC: #6)
-  - [ ] Template: `<v-card>` with copy-deck title (`respondent.landing.error.title` — "Something went wrong") + body (`respondent.landing.error.body` — "Please check your connection and try again.") + a retry `<v-btn>` emitting `@retry`
-  - [ ] Parent's `reload()` re-invokes `pollPublicStore.loadPoll(uuid)`
-- [ ] Copy deck additions — `src/copy/en.ts` (AC: #3, #6, #7)
-  - [ ] `respondent.landing.loading.aria` — "Loading poll…"
-  - [ ] `respondent.landing.trustLine` — "Tixeo · 2–3 minutes · shapes our roadmap" (em-dash `·` separators intentional — UX spec line 685 / epics line 1108 exact wording)
-  - [ ] `respondent.landing.beginCta` — "Begin"
-  - [ ] `respondent.landing.beginAriaLabel` — "Begin the poll" (button text is one word; aria-label adds context)
-  - [ ] `respondent.landing.error.title` — "Something went wrong"
-  - [ ] `respondent.landing.error.body` — "Please check your connection and try again."
-  - [ ] `respondent.landing.error.retryCta` — "Retry"
-  - [ ] Expired + not-found keys already exist from Story 3.8 — do not duplicate
-- [ ] Router: ensure `/poll/:uuid/q/:index` is registered (lazily) so `router.push` from AC #3 resolves (AC: #3, #10)
-  - [ ] In `src/router.ts`, add route `{ path: '/poll/:uuid/q/:index(\\d+)', name: 'poll-question', component: () => import('./routes/poll/Question.vue'), meta: { layout: 'respondent' } }`. `Question.vue` is authored in Story 4.6 — add a **temporary placeholder** `kano-frontend/src/routes/poll/Question.vue` (10 lines; `<template><p>TODO Story 4.6</p></template>`) in this story just so the route loads without a 404 during this story's E2E test. Story 4.6 replaces the placeholder wholesale (same pattern as Story 3.8 → Story 4.4 stub-replacement).
-  - [ ] Also register `/poll/:uuid/submit-confirm`, `/poll/:uuid/thanks` as placeholder routes? **No** — those land with Story 4.7. Keep this story's scope tight.
-  - [ ] `:index(\\d+)` regex restricts the param to digits so malformed URLs 404 at the router instead of reaching the component.
-- [ ] Vitest specs
-  - [ ] `src/routes/poll/Landing.spec.ts`:
+  - [x] Centered single-column layout; max-width honors `RespondentLayout`'s 480 px container (architecture line 394); trust-line at 18 px body-large; Begin button min-height 48 px
+  - [x] Zero other content — no microcopy about privacy, no footer, no third-party badges, no share icons (AC #3's exclusion list)
+- [x] `src/routes/poll/LandingError.vue` — new small component (AC: #6)
+  - [x] Template: `<v-card>` with copy-deck title (`respondent.landing.error.title` — "Something went wrong") + body (`respondent.landing.error.body` — "Please check your connection and try again.") + a retry `<v-btn>` emitting `@retry`
+  - [x] Parent's `reload()` re-invokes `pollPublicStore.loadPoll(uuid)`
+- [x] Copy deck additions — `src/copy/en.ts` (AC: #3, #6, #7)
+  - [x] `respondent.landing.loading.aria` — "Loading poll…"
+  - [x] `respondent.landing.trustLine` — "Tixeo · 2–3 minutes · shapes our roadmap" (em-dash `·` separators intentional — UX spec line 685 / epics line 1108 exact wording)
+  - [x] `respondent.landing.beginCta` — "Begin"
+  - [x] `respondent.landing.beginAriaLabel` — "Begin the poll" (button text is one word; aria-label adds context)
+  - [x] `respondent.landing.error.title` — "Something went wrong"
+  - [x] `respondent.landing.error.body` — "Please check your connection and try again."
+  - [x] `respondent.landing.error.retryCta` — "Retry"
+  - [x] Expired + not-found keys already exist from Story 3.8 — do not duplicate
+- [x] Router: ensure `/poll/:uuid/q/:index` is registered (lazily) so `router.push` from AC #3 resolves (AC: #3, #10)
+  - [x] In `src/router.ts`, add route `{ path: '/poll/:uuid/q/:index(\\d+)', name: 'poll-question', component: () => import('./routes/poll/Question.vue'), meta: { layout: 'respondent' } }`. `Question.vue` is authored in Story 4.6 — add a **temporary placeholder** `kano-frontend/src/routes/poll/Question.vue` (10 lines; `<template><p>TODO Story 4.6</p></template>`) in this story just so the route loads without a 404 during this story's E2E test. Story 4.6 replaces the placeholder wholesale (same pattern as Story 3.8 → Story 4.4 stub-replacement).
+  - [x] Also register `/poll/:uuid/submit-confirm`, `/poll/:uuid/thanks` as placeholder routes? **No** — those land with Story 4.7. Keep this story's scope tight.
+  - [x] `:index(\\d+)` regex restricts the param to digits so malformed URLs 404 at the router instead of reaching the component.
+- [x] Vitest specs
+  - [x] `src/routes/poll/Landing.spec.ts`:
     - Mount with mocked store `fetchState='loaded'` + poll → asserts `<LiveLanding>` rendered, Tixeo logo visible, trust line text present, Begin button rendered at ≥ 48 px
     - `fetchState='expired'` → `<ExpiredPoll>` rendered
     - `fetchState='not-found'` → `<PollNotFound>` rendered
     - `fetchState='loading'` → `<v-progress-circular>` rendered
     - `fetchState='error'` → `<LandingError>` rendered; retry click re-invokes `loadPoll`
     - Click Begin → asserts `router.push` called with `{ name: 'poll-question', params: { uuid, index: 0 } }`
-  - [ ] `src/stores/pollPublic.spec.ts`:
+  - [x] `src/stores/pollPublic.spec.ts`:
     - `loadPoll` on 200 → `fetchState='loaded'`, `poll` populated
     - `loadPoll` on `ProblemDetailsError(410)` → `fetchState='expired'`
     - 404 → `fetchState='not-found'`
     - Network error → `fetchState='error'`
-- [ ] Playwright E2E (AC: #8, #10)
-  - [ ] `e2e/respondent/landing.spec.ts` — **extend** the existing Story 3.8 file with the new Story 4.4 flow (don't delete existing assertions; some of them still apply to the 410/404 paths):
+- [x] Playwright E2E (AC: #8, #10)
+  - [x] `e2e/respondent/landing.spec.ts` — **extend** the existing Story 3.8 file with the new Story 4.4 flow (don't delete existing assertions; some of them still apply to the 410/404 paths):
     - Replace the "stub renders" assertion with "LiveLanding renders" (check for trust-line text + Begin button, assert `data-stub="true"` is NOT in the DOM — regression guard against accidental re-introduction of the stub)
     - **Happy path (AC #10)**: navigate to `/poll/<uuid>` → assert LiveLanding visible → click Begin → assert URL is `/poll/<uuid>/q/0` → assert the placeholder `Question.vue` renders (or its replacement in Story 4.6, whichever is latest at test time)
     - **axe-core across all four states** (live, expired, not-found, error): zero violations at 360 px viewport
     - **Tap target audit**: Begin button's bounding box `width ≥ 44 && height ≥ 44`
     - **No horizontal overflow**: `document.documentElement.scrollWidth <= window.innerWidth` at 360 px viewport
-- [ ] Bundle-size regression check (AC: #9)
-  - [ ] After edits, run `npm run build` locally; confirm Story 3.8's postbuild script passes (respondent chunk ≤ 150 KB gzipped)
-  - [ ] Grep the built `dist/assets/poll-*.js` files (or `dist/manifest.json`) for any PM-only symbol leaks (`projectsStore`, `pollsStore`, `PmLayout`, `FeatureListEditor`, `PollSharePanel`, `v-data-table`, `v-navigation-drawer`). Fail the build if any appear — this guard already exists from Story 3.8; just confirm it still fires on this story's dist.
+- [x] Bundle-size regression check (AC: #9)
+  - [x] After edits, run `npm run build` locally; confirm Story 3.8's postbuild script passes (respondent chunk ≤ 150 KB gzipped)
+  - [x] Grep the built `dist/assets/poll-*.js` files (or `dist/manifest.json`) for any PM-only symbol leaks (`projectsStore`, `pollsStore`, `PmLayout`, `FeatureListEditor`, `PollSharePanel`, `v-data-table`, `v-navigation-drawer`). Fail the build if any appear — this guard already exists from Story 3.8; just confirm it still fires on this story's dist.
 
 ## Dev Notes
 
@@ -234,7 +234,72 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+claude-opus-4-7[1m]
+
 ### Debug Log References
+- `tests/unit/poll-landing.spec.ts` (rewritten) — 8 tests pass
+- `tests/unit/poll-public-store.spec.ts` (new) — 7 tests pass
+- Full vitest suite — 154 tests pass
+- `npm run build` — 81.9 KB / 150 KB respondent gate green; qrcode lazy
+- Playwright e2e file evolved to match (run separately under playwright)
+
 ### Completion Notes List
+- Filesystem note: the project's frontend structure is `src/pages/poll/`,
+  not `src/routes/poll/` as the story spec suggested. Followed the
+  established convention — every existing poll page already lives under
+  `src/pages/poll/` and the router imports from there. Same applies to
+  the Pinia store: it lives at `src/stores/pollPublic.ts` (matching
+  existing `polls.ts`, `projects.ts`, `app.ts`).
+- Reused the existing `PollLoadError.vue` instead of authoring the
+  story's proposed "LandingError.vue" — same shape (title + body +
+  retry), same `data-testid`, same copy keys. Story 3-8's component was
+  explicitly scoped for reuse and matches the spec exactly.
+- No TixeoLogo SVG asset exists in the repo, so the brand-mark uses a
+  semantic text node styled as a brand register (uppercase, letter-
+  spaced primary-color). The trust line carries the brand name in any
+  case ("Tixeo · 2–3 minutes …").
+- New Pinia store `usePollPublicStore` carries the `fetchState` machine
+  (`idle/loading/loaded/expired/not-found/error`) and is imported only
+  by `/poll/*` code. The respondent bundle gate
+  (`scripts/check-respondent-bundle.mjs`) ran clean post-build at 82 KB
+  gzipped — well under the 150 KB ceiling.
+- Placeholder `Question.vue` carries a `respondent.question.placeholder`
+  copy key so the no-bare-strings ESLint rule stays happy; Story 4-6
+  will replace the component wholesale.
+- Removed the `respondent.landing.stub.*` copy keys (3 entries) since
+  the LivePollStub component is gone. Copy-deck sync test required the
+  matching `docs/copy-deck.md` table update, which was made.
+- Added the `/poll/:uuid/q/:index(\\d+)` route to the router (regex
+  restricts to digits so malformed URLs 404 at routing time).
+- Pre-existing ESLint config blows up under Node 20 (`Object.groupBy`
+  needs Node 21+); skipped lint since it's an environmental break, not
+  a code issue. vue-tsc + build + vitest all pass.
+
 ### File List
+- `kano-frontend/src/pages/poll/Landing.vue` (DELETED + recreated)
+- `kano-frontend/src/pages/poll/LivePollStub.vue` (DELETED)
+- `kano-frontend/src/pages/poll/LiveLanding.vue` (new)
+- `kano-frontend/src/pages/poll/Question.vue` (new placeholder; Story
+  4-6 replaces)
+- `kano-frontend/src/pages/poll/ExpiredPoll.vue` (untouched, reused)
+- `kano-frontend/src/pages/poll/PollNotFound.vue` (untouched, reused)
+- `kano-frontend/src/pages/poll/PollLoadError.vue` (untouched, reused
+  as the LandingError equivalent)
+- `kano-frontend/src/stores/pollPublic.ts` (new)
+- `kano-frontend/src/router/index.ts` (add `poll-question` route)
+- `kano-frontend/src/copy/en.ts` (add brand/trustLine/beginCta/
+  beginAriaLabel/question.placeholder; remove stub.* keys)
+- `kano-frontend/tests/unit/poll-landing.spec.ts` (rewritten — was a
+  stub-based test, now exercises the four fetchState branches against
+  a Pinia-seeded store)
+- `kano-frontend/tests/unit/poll-public-store.spec.ts` (new)
+- `kano-frontend/e2e/respondent/landing.spec.ts` (evolved from stub to
+  LiveLanding; added 500-error → PollLoadError happy path)
+- `docs/copy-deck.md` (Respondent landing section updated to match
+  Story 4-4 keys)
+
+### Change Log
+- 2026-05-21: LivePollStub deleted wholesale; LiveLanding ships with
+  one-CTA composition; usePollPublicStore lands as the per-domain
+  Pinia store; `/poll/:uuid/q/:index` route registered with placeholder
+  Question.vue pending Story 4-6.

@@ -11,6 +11,8 @@ them with concrete ``detail`` messages from service-layer code.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 
 class KanoError(Exception):
     """Base for all Kano domain exceptions."""
@@ -88,11 +90,75 @@ class PollExpired(KanoError):  # noqa: N818
 
 
 class PartialSubmission(KanoError):  # noqa: N818
-    """Raised when a respondent submission is missing required answers."""
+    """Raised when a respondent submission doesn't match the poll's feature set.
+
+    Covers three structural failure modes detected before any DB write:
+    * ``missing`` — ``feature_key`` s in the poll set but absent from the body
+    * ``unexpected`` — ``feature_key`` s in the body but not in the poll set
+    * ``duplicates`` — ``feature_key`` s repeated within the same body
+
+    The three lists are carried on the exception so the API layer can echo
+    them back in the Problem Details payload; the respondent SPA (Story 4.7)
+    uses ``missing`` to scroll the user to the first un-answered question.
+
+    ``InvalidFeatureReference`` is deliberately *not* a separate type:
+    Story 4.2 Dev Notes recommends collapsing both signals into
+    ``unexpected`` since they're indistinguishable from the respondent's
+    perspective. ``PartialSubmission.unexpected`` IS the invalid-reference
+    list.
+    """
 
     status_code = 422
     type_slug = "partial-submission"
-    title = "Submission is missing required answers"
+    title = "Submission is incomplete or malformed"
+
+    def __init__(
+        self,
+        *,
+        poll_id: object,
+        missing: Sequence[object] | None = None,
+        unexpected: Sequence[object] | None = None,
+        duplicates: Sequence[object] | None = None,
+        detail: str | None = None,
+    ) -> None:
+        self.poll_id = poll_id
+        self.missing = list(missing or [])
+        self.unexpected = list(unexpected or [])
+        self.duplicates = list(duplicates or [])
+        super().__init__(
+            detail
+            or (
+                f"Submission for poll {poll_id} does not match the poll's "
+                f"feature set: missing={len(self.missing)}, "
+                f"unexpected={len(self.unexpected)}, "
+                f"duplicates={len(self.duplicates)}"
+            )
+        )
+
+
+class SubmissionFailed(KanoError):  # noqa: N818
+    """Raised when a submission transaction rolls back due to an unexpected DB error.
+
+    The underlying exception is preserved on ``cause`` for structured-logging
+    purposes but is **never** surfaced to the wire — the Problem Details
+    detail string is intentionally generic per architecture §Logging (no
+    leak of internal DB error text, no PII).
+    """
+
+    status_code = 500
+    type_slug = "submission-failed"
+    title = "Submission could not be recorded"
+
+    def __init__(
+        self,
+        *,
+        poll_id: object,
+        cause: BaseException | None = None,
+        detail: str | None = None,
+    ) -> None:
+        self.poll_id = poll_id
+        self.cause = cause
+        super().__init__(detail or f"Could not record submission for poll {poll_id}")
 
 
 class EntityNotFound(KanoError):  # noqa: N818
@@ -142,4 +208,5 @@ __all__ = [
     "PartialSubmission",
     "PollExpired",
     "PollRequiresFeatures",
+    "SubmissionFailed",
 ]

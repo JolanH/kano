@@ -1,6 +1,6 @@
 # Story 4.2: poll_service.record_full_submission atomic transaction
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -21,13 +21,13 @@ so that FR25's silent-discard-of-partials rule is enforceable by construction (t
 
 ## Tasks / Subtasks
 
-- [ ] Extend `src/kano/exceptions.py`
-  - [ ] `class PartialSubmission(Exception):` — attributes: `poll_id: UUID`, `missing: list[UUID]` (feature_keys expected but absent), `unexpected: list[UUID]` (feature_keys present but not in the poll set), `duplicates: list[UUID]` (feature_keys repeated in the body)
-  - [ ] `class InvalidFeatureReference(Exception):` — attributes: `poll_id: UUID`, `feature_key: UUID`. See Dev Notes for whether to make this a subclass of `PartialSubmission` or distinct.
-  - [ ] `class SubmissionFailed(Exception):` — attributes: `poll_id: UUID`, `cause: Exception | None` (the underlying DB error for structured logging)
-  - [ ] `PollExpired` and `EntityNotFound` already exist (Stories 3.4 and 2.4) — reuse, do not redefine
-- [ ] Extend `src/kano/services/poll_service.py` (AC: #1, #2, #3, #4, #5, #6, #8)
-  - [ ] New function alongside existing `create_poll` and `get_poll_public` (Stories 3.2, 3.4):
+- [x] Extend `src/kano/exceptions.py`
+  - [x] `class PartialSubmission(Exception):` — attributes: `poll_id: UUID`, `missing: list[UUID]` (feature_keys expected but absent), `unexpected: list[UUID]` (feature_keys present but not in the poll set), `duplicates: list[UUID]` (feature_keys repeated in the body)
+  - [x] `class InvalidFeatureReference(Exception):` — attributes: `poll_id: UUID`, `feature_key: UUID`. See Dev Notes for whether to make this a subclass of `PartialSubmission` or distinct.
+  - [x] `class SubmissionFailed(Exception):` — attributes: `poll_id: UUID`, `cause: Exception | None` (the underlying DB error for structured logging)
+  - [x] `PollExpired` and `EntityNotFound` already exist (Stories 3.4 and 2.4) — reuse, do not redefine
+- [x] Extend `src/kano/services/poll_service.py` (AC: #1, #2, #3, #4, #5, #6, #8)
+  - [x] New function alongside existing `create_poll` and `get_poll_public` (Stories 3.2, 3.4):
     ```python
     def record_full_submission(poll_id: UUID, body: PollSubmission) -> UUID:
         poll = db.session.get(Poll, poll_id)
@@ -85,16 +85,16 @@ so that FR25's silent-discard-of-partials rule is enforceable by construction (t
             db.session.rollback()
             raise SubmissionFailed(poll_id=poll_id, cause=cause) from cause
     ```
-  - [ ] Import `from kano.services.kano_matrix import compute_category` (Story 1.5)
-  - [ ] `datetime.now(tz=UTC)` — never `datetime.utcnow()` per Story 3.2 Dev Notes / architecture §Naming
-  - [ ] Transaction boundary: one `commit()` after all inserts. If any insert raises, the outer `except` triggers rollback — SQLAlchemy will un-stage the pending `submission` + responses since nothing was committed yet.
-- [ ] Extend `src/kano/api/errors.py` Problem Details registry (used by Story 4.3)
-  - [ ] `PartialSubmission` → 422 `type=https://kano.example.com/problems/partial-submission`, `title=Submission is incomplete or malformed`, `detail` listing the missing/unexpected/duplicate feature_keys, `status=422`
-  - [ ] `InvalidFeatureReference` → 422 `type=https://kano.example.com/problems/invalid-feature-reference`, `title=Feature reference does not belong to this poll`, `detail` naming the offending `feature_key`, `status=422`
-  - [ ] `SubmissionFailed` → 500 `type=https://kano.example.com/problems/submission-failed`, `title=Submission could not be recorded`, `detail` generic (no leak of the underlying `cause` string to the wire — log it via structlog only), `status=500`
-  - [ ] Note: the 422 `type` values map directly to Story 4.7's client-side Problem Details parsing (the SPA routes the user back to the offending question based on `type` + the missing/unexpected payload).
-- [ ] Integration tests (AC: #2, #3, #4, #5, #6, #7, #8)
-  - [ ] `tests/integration/test_poll_service_submissions.py`:
+  - [x] Import `from kano.services.kano_matrix import compute_category` (Story 1.5)
+  - [x] `datetime.now(tz=UTC)` — never `datetime.utcnow()` per Story 3.2 Dev Notes / architecture §Naming
+  - [x] Transaction boundary: one `commit()` after all inserts. If any insert raises, the outer `except` triggers rollback — SQLAlchemy will un-stage the pending `submission` + responses since nothing was committed yet.
+- [x] Extend `src/kano/api/errors.py` Problem Details registry (used by Story 4.3)
+  - [x] `PartialSubmission` → 422 `type=https://kano.example.com/problems/partial-submission`, `title=Submission is incomplete or malformed`, `detail` listing the missing/unexpected/duplicate feature_keys, `status=422`
+  - [x] `InvalidFeatureReference` → 422 `type=https://kano.example.com/problems/invalid-feature-reference`, `title=Feature reference does not belong to this poll`, `detail` naming the offending `feature_key`, `status=422`
+  - [x] `SubmissionFailed` → 500 `type=https://kano.example.com/problems/submission-failed`, `title=Submission could not be recorded`, `detail` generic (no leak of the underlying `cause` string to the wire — log it via structlog only), `status=500`
+  - [x] Note: the 422 `type` values map directly to Story 4.7's client-side Problem Details parsing (the SPA routes the user back to the offending question based on `type` + the missing/unexpected payload).
+- [x] Integration tests (AC: #2, #3, #4, #5, #6, #7, #8)
+  - [x] `tests/integration/test_poll_service_submissions.py`:
     - `test_record_full_submission_happy_path`: seed project + 3 features on epoch 1 + non-expired poll → call with 3 correct answers → assert returns UUID, `submission` row count = 1, `response` row count = 3, each response has the expected `category` per matrix
     - `test_record_full_submission_partial_missing`: 3-feature poll, body has 2 answers → asserts `PartialSubmission` with correct `missing` list, `SELECT COUNT(*) FROM submissions` before == after (zero)
     - `test_record_full_submission_partial_extra`: body has 4 answers for a 3-feature poll (one not in the set) → asserts `PartialSubmission` with `unexpected` non-empty; zero rows persisted
@@ -177,7 +177,45 @@ Files:
 ## Dev Agent Record
 
 ### Agent Model Used
-{{agent_model_name_version}}
+claude-opus-4-7[1m]
+
 ### Debug Log References
+- `tests/integration/test_poll_service_submissions.py` — 15 tests pass
+  (8 happy-path cells + 4 partial/duplicate/extra/cross-project + 2 expired/
+  unknown + 1 snapshot-frozen-across-bump)
+- Full backend suite (208 tests) — green; no regressions
+
 ### Completion Notes List
+- Followed Story 4.2 Dev Notes recommendation: collapsed
+  `InvalidFeatureReference` into `PartialSubmission.unexpected`. There's no
+  downstream consumer that needs to distinguish them on the wire, so the
+  extra exception class would just be dead weight. The 422 envelope from
+  `_partial_submission_handler` carries `missing`, `unexpected`,
+  `duplicates` lists so Story 4.7's client parser has all the routing
+  information it needs from one type slug.
+- `SubmissionFailed.cause` is preserved on the exception for structured
+  logging but stripped from the wire payload. The 500 detail string is
+  generic ("could not be recorded due to an internal error") — no leak of
+  internal DB error text per architecture §Logging.
+- The transactional contract is the wrap-everything-in-a-single-`try`
+  pattern with explicit `flush()` between the parent insert and the child
+  inserts. Structural validation runs *before* `session.add()` so a 422
+  never leaves orphaned pending state.
+- Snapshot-frozen-across-epoch-bump test pairs with Story 3.2's creation
+  side and Story 3.4's read side — proves the three-sided contract that a
+  poll stays pinned to its creation epoch for its full lifecycle.
+
 ### File List
+- `kano-backend/src/kano/exceptions.py` (extend: `PartialSubmission` init
+  with `missing`/`unexpected`/`duplicates`; new `SubmissionFailed`)
+- `kano-backend/src/kano/api/errors.py` (extend: register
+  `_partial_submission_handler` and `_submission_failed_handler`)
+- `kano-backend/src/kano/services/poll_service.py` (extend: new
+  `record_full_submission` function + imports for Response, PollSubmission,
+  compute_category, PartialSubmission, SubmissionFailed)
+- `kano-backend/tests/integration/test_poll_service_submissions.py` (new)
+
+### Change Log
+- 2026-05-21: Initial implementation. `record_full_submission` lands with
+  one-shot transaction + structural-validation-first pattern; 15
+  integration tests cover happy path + every failure branch.
