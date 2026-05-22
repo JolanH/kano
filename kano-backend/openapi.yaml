@@ -340,6 +340,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
 
+  /api/v1/polls/{poll_id}/analysis:
+    parameters:
+      - in: path
+        name: poll_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getPollAnalysis
+      summary: Public PollAnalysis read (CSRF-exempt, CORS-open, 200-on-expired)
+      description: |
+        Returns the fully computed analysis snapshot for one poll — single
+        request, no client-side aggregation. Same public surface contract as
+        the sibling `GET /api/v1/polls/{poll_id}` (Story 3.4): no CSRF, no
+        session cookie, UUIDv4 is the only access control.
+
+        Unlike Story 3.4's respondent read, this endpoint returns 200 (not
+        410) on expired polls — analysis remains readable past the 7-day TTL
+        per FR32 so PMs can review results after expiry. The
+        `distribution` map always carries all six category keys
+        (`M`, `L`, `E`, `I`, `C`, `D`) — zero-padded where unseen — so
+        Story 5.4's stacked bar always has six segments to render. Ties on
+        `dominant_categories` (FR35) surface all winners, sorted by category
+        code; an empty list with `dominant_percentage: 0.0` signals the
+        FR37 empty state.
+      tags: [polls]
+      security: []
+      responses:
+        '200':
+          description: PollAnalysis envelope (populated or empty-state shape)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollAnalysis'
+        '404':
+          description: Poll not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
   /api/v1/polls/{poll_id}/submit:
     parameters:
       - in: path
@@ -742,6 +784,87 @@ components:
           minItems: 1
           items:
             $ref: '#/components/schemas/AnswerIn'
+    FeatureAnalysis:
+      type: object
+      description: |
+        Per-feature analysis row. `distribution` always carries all six
+        Kano category keys (`M`, `L`, `E`, `I`, `C`, `D`) — zero-padded
+        where the feature has no responses for a given category, so the
+        Story 5.4 stacked-bar component can always address six segments
+        by key. `dominant_categories` is a list to honor FR35 tie-handling:
+        a single winner is a 1-element list; a 2-way tie is a 2-element
+        list (sorted by category code); a feature with zero responses is
+        the empty list paired with `dominant_percentage: 0.0` (FR37
+        empty state).
+      required:
+        - feature_key
+        - name
+        - description
+        - distribution
+        - dominant_categories
+        - dominant_percentage
+      properties:
+        feature_key:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        distribution:
+          type: object
+          required: [M, L, E, I, C, D]
+          additionalProperties: false
+          properties:
+            M:
+              type: integer
+              minimum: 0
+            L:
+              type: integer
+              minimum: 0
+            E:
+              type: integer
+              minimum: 0
+            I:
+              type: integer
+              minimum: 0
+            C:
+              type: integer
+              minimum: 0
+            D:
+              type: integer
+              minimum: 0
+        dominant_categories:
+          type: array
+          items:
+            type: string
+            enum: [M, L, E, I, C, D]
+        dominant_percentage:
+          type: number
+          minimum: 0
+          maximum: 100
+    PollAnalysis:
+      type: object
+      description: |
+        Top-level analysis envelope returned by
+        `GET /api/v1/polls/{poll_id}/analysis`. Mirrors the Pydantic
+        `PollAnalysis.model_dump(mode="json")` output from Story 5.1.
+      required: [poll_id, epoch, total_submissions, features]
+      properties:
+        poll_id:
+          type: string
+          format: uuid
+        epoch:
+          type: integer
+          minimum: 1
+        total_submissions:
+          type: integer
+          minimum: 0
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureAnalysis'
     EpochBumpRequiredProblem:
       allOf:
         - $ref: '#/components/schemas/ProblemDetails'

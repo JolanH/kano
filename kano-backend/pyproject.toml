@@ -60,3 +60,6 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+markers = [
+    "slow: longer-running integration tests (e.g. seeded perf smokes). CI runs the full suite; local runs may filter with `-m 'not slow'`.",
+]

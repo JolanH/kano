@@ -1,6 +1,6 @@
 # Story 5.1: services/analysis.build_analysis with single GROUP BY query
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -33,8 +33,8 @@ so that NFR3 is enforced by construction — no per-feature iteration in the app
 
 ## Tasks / Subtasks
 
-- [ ] Pydantic schemas (AC: #2, #3, #4, #5)
-  - [ ] New file `src/kano/schemas/analysis.py`:
+- [x] Pydantic schemas (AC: #2, #3, #4, #5)
+  - [x] New file `src/kano/schemas/analysis.py`:
     ```python
     from pydantic import BaseModel, ConfigDict
     from uuid import UUID
@@ -56,10 +56,10 @@ so that NFR3 is enforced by construction — no per-feature iteration in the app
 
         model_config = ConfigDict(frozen=True)
     ```
-  - [ ] Do NOT use `from_attributes=True` — `PollAnalysis` is a service-layer DTO assembled explicitly from query rows, not an ORM projection (mirrors `PollPublic` precedent from Story 3.1 line 54–56).
-  - [ ] `Category` reuses the `Literal["M","L","E","I","C","D"]` alias from `kano.services.kano_matrix` (Story 1.5). Do **not** redefine.
-- [ ] Service function (AC: #1, #2, #3, #4, #5, #6, #7)
-  - [ ] New file `src/kano/services/analysis.py`:
+  - [x] Do NOT use `from_attributes=True` — `PollAnalysis` is a service-layer DTO assembled explicitly from query rows, not an ORM projection (mirrors `PollPublic` precedent from Story 3.1 line 54–56).
+  - [x] `Category` reuses the `Literal["M","L","E","I","C","D"]` alias from `kano.services.kano_matrix` (Story 1.5). Do **not** redefine.
+- [x] Service function (AC: #1, #2, #3, #4, #5, #6, #7)
+  - [x] New file `src/kano/services/analysis.py`:
     ```python
     from uuid import UUID
     from sqlalchemy import select, func, literal
@@ -125,7 +125,7 @@ so that NFR3 is enforced by construction — no per-feature iteration in the app
             features=features_list,
         )
     ```
-  - [ ] Shape helper (pure, testable separately):
+  - [x] Shape helper (pure, testable separately):
     ```python
     def _shape_rows(rows) -> list[FeatureAnalysis]:
         """Group DB rows by feature_id, pad distribution with zeros for all 6
@@ -136,18 +136,18 @@ so that NFR3 is enforced by construction — no per-feature iteration in the app
         """
         ...
     ```
-  - [ ] `total_submissions` strategy — pick ONE in Dev Notes and implement; prefer **max-per-feature** (no extra query) with a correctness proof via the AC #9 full-poll test. If max-per-feature proves brittle under partials, fall back to an explicit second query (`SELECT COUNT(*) FROM submissions WHERE poll_id = :poll_id`) and relax AC #1's "exactly 1 query" to "exactly 1 GROUP BY query" — but do NOT cross that bridge without evidence.
-- [ ] Dominant-category computation (AC: #4)
-  - [ ] Pure function `_dominant(distribution: dict[Category, int], total: int) -> tuple[list[Category], float]`:
+  - [x] `total_submissions` strategy — pick ONE in Dev Notes and implement; prefer **max-per-feature** (no extra query) with a correctness proof via the AC #9 full-poll test. If max-per-feature proves brittle under partials, fall back to an explicit second query (`SELECT COUNT(*) FROM submissions WHERE poll_id = :poll_id`) and relax AC #1's "exactly 1 query" to "exactly 1 GROUP BY query" — but do NOT cross that bridge without evidence.
+- [x] Dominant-category computation (AC: #4)
+  - [x] Pure function `_dominant(distribution: dict[Category, int], total: int) -> tuple[list[Category], float]`:
     - If `total == 0`: return `([], 0.0)`
     - Find `max_count = max(distribution.values())`
     - If `max_count == 0`: return `([], 0.0)` (defensive; should not occur when total > 0)
     - `winners = sorted([cat for cat, count in distribution.items() if count == max_count])` — sort stable for deterministic wire output
     - `pct = round(max_count / total * 100, 1)` — 1 decimal place (see Dev Notes on rounding)
     - Return `(winners, pct)`
-  - [ ] Unit-test this helper directly in `tests/unit/test_analysis_dominant.py` — zero, single winner, 2-tie, 3-tie, 6-way tie (degenerate), rounding edge cases (33.3333 → 33.3)
-- [ ] Integration tests — query-count gate (AC: #8)
-  - [ ] `tests/integration/test_analysis_service.py::test_build_analysis_single_group_by_query`:
+  - [x] Unit-test this helper directly in `tests/unit/test_analysis_dominant.py` — zero, single winner, 2-tie, 3-tie, 6-way tie (degenerate), rounding edge cases (33.3333 → 33.3)
+- [x] Integration tests — query-count gate (AC: #8)
+  - [x] `tests/integration/test_analysis_service.py::test_build_analysis_single_group_by_query`:
     ```python
     import pytest
     from sqlalchemy import event
@@ -168,9 +168,9 @@ so that NFR3 is enforced by construction — no per-feature iteration in the app
         group_by_queries = [q for q in query_recorder if "GROUP BY" in q.upper()]
         assert len(group_by_queries) == 1, f"Expected 1 GROUP BY query, got {len(group_by_queries)}: {group_by_queries}"
     ```
-  - [ ] Separate the `session.get(Poll)` from the count — the fixture discounts `SELECT ... FROM polls WHERE id = ...` queries (filter for `GROUP BY` in the statement). Document the pattern in a code comment.
-- [ ] Integration tests — correctness matrix (AC: #5, #7, #9)
-  - [ ] Parametrize `tests/integration/test_analysis_service.py::test_build_analysis_shapes`:
+  - [x] Separate the `session.get(Poll)` from the count — the fixture discounts `SELECT ... FROM polls WHERE id = ...` queries (filter for `GROUP BY` in the statement). Document the pattern in a code comment.
+- [x] Integration tests — correctness matrix (AC: #5, #7, #9)
+  - [x] Parametrize `tests/integration/test_analysis_service.py::test_build_analysis_shapes`:
     ```python
     @pytest.mark.parametrize("scenario", [
         "zero_submissions",
@@ -183,17 +183,17 @@ so that NFR3 is enforced by construction — no per-feature iteration in the app
     def test_build_analysis_shapes(scenario, db_session):
         ...
     ```
-  - [ ] `zero_submissions`: seed poll with 3 features, 0 submissions → assert `total_submissions == 0`, each feature has `distribution={M:0, L:0, E:0, I:0, C:0, D:0}`, `dominant_categories == []`, `dominant_percentage == 0.0`
-  - [ ] `single_dominant`: 1 feature, 10 submissions, 7 with category=M, 2 with P, 1 with D → `dominant_categories == [M]`, `dominant_percentage == 70.0`, `distribution` includes all 6 keys with correct counts (M:7, L:0, E:2, I:0, C:0, D:1 — assuming P=Performance=L, Delighter=E; verify against the matrix)
-  - [ ] `two_way_tie`: 5 submissions, 2×M, 2×L, 1×E → `dominant_categories == [L, M]` sorted, `dominant_percentage == 40.0`
-  - [ ] `three_way_tie`: 3 submissions, 1×M, 1×L, 1×E → `dominant_categories == [E, L, M]` sorted, `dominant_percentage` ≈ `33.3`
-  - [ ] `all_same_category`: 5 submissions all Indifferent (I) → `dominant_categories == [I]`, `dominant_percentage == 100.0`, other categories 0
-  - [ ] `zero_responses_for_some_features`: 3-feature poll, 2 submissions that only covered features 1 and 2 (not possible under the full-submission contract of Story 4.2, but simulate via direct DB insert to test the query layer resiliency) → feature 3's distribution is all zeros, `dominant_categories == []`, but features 1 and 2 have correct data
-  - [ ] `test_build_analysis_expired_poll`: poll with `expires_at = now - 1 day` + 3 submissions → assert `build_analysis` returns full analysis (FR32 — analysis outlives expiry)
-  - [ ] `test_build_analysis_unknown_poll_raises_entity_not_found`: random UUID → assert `EntityNotFound` raised, message includes `"poll"` and the UUID
-  - [ ] `test_build_analysis_snapshot_frozen_after_epoch_bump`: seed poll at epoch 1 with 2 features + 3 submissions → bump project to epoch 2 (adding a feature via Story 2.7's path) → call `build_analysis` on the original poll → assert returned `features` contains only the 2 epoch-1 features, not the 3 epoch-2 features; mirrors the snapshot-frozen tests in Stories 3.2/3.4/4.2
-- [ ] Query plan assertion (AC: #10)
-  - [ ] `tests/integration/test_analysis_query_plan.py`:
+  - [x] `zero_submissions`: seed poll with 3 features, 0 submissions → assert `total_submissions == 0`, each feature has `distribution={M:0, L:0, E:0, I:0, C:0, D:0}`, `dominant_categories == []`, `dominant_percentage == 0.0`
+  - [x] `single_dominant`: 1 feature, 10 submissions, 7 with category=M, 2 with P, 1 with D → `dominant_categories == [M]`, `dominant_percentage == 70.0`, `distribution` includes all 6 keys with correct counts (M:7, L:0, E:2, I:0, C:0, D:1 — assuming P=Performance=L, Delighter=E; verify against the matrix)
+  - [x] `two_way_tie`: 5 submissions, 2×M, 2×L, 1×E → `dominant_categories == [L, M]` sorted, `dominant_percentage == 40.0`
+  - [x] `three_way_tie`: 3 submissions, 1×M, 1×L, 1×E → `dominant_categories == [E, L, M]` sorted, `dominant_percentage` ≈ `33.3`
+  - [x] `all_same_category`: 5 submissions all Indifferent (I) → `dominant_categories == [I]`, `dominant_percentage == 100.0`, other categories 0
+  - [x] `zero_responses_for_some_features`: 3-feature poll, 2 submissions that only covered features 1 and 2 (not possible under the full-submission contract of Story 4.2, but simulate via direct DB insert to test the query layer resiliency) → feature 3's distribution is all zeros, `dominant_categories == []`, but features 1 and 2 have correct data
+  - [x] `test_build_analysis_expired_poll`: poll with `expires_at = now - 1 day` + 3 submissions → assert `build_analysis` returns full analysis (FR32 — analysis outlives expiry)
+  - [x] `test_build_analysis_unknown_poll_raises_entity_not_found`: random UUID → assert `EntityNotFound` raised, message includes `"poll"` and the UUID
+  - [x] `test_build_analysis_snapshot_frozen_after_epoch_bump`: seed poll at epoch 1 with 2 features + 3 submissions → bump project to epoch 2 (adding a feature via Story 2.7's path) → call `build_analysis` on the original poll → assert returned `features` contains only the 2 epoch-1 features, not the 3 epoch-2 features; mirrors the snapshot-frozen tests in Stories 3.2/3.4/4.2
+- [x] Query plan assertion (AC: #10)
+  - [x] `tests/integration/test_analysis_query_plan.py`:
     ```python
     def test_analysis_query_uses_feature_index(seeded_poll, db_session):
         # Build the same statement the service builds; extract compiled SQL
@@ -205,9 +205,9 @@ so that NFR3 is enforced by construction — no per-feature iteration in the app
         assert "ix_feature_project_id_epoch" in plan or "Index Scan" in plan, plan
         assert "Seq Scan on feature" not in plan, f"Analysis query fell back to Seq Scan: {plan}"
     ```
-  - [ ] Note: the assertion needs a seeded dataset large enough that the planner picks the index over a seq scan on tiny tables. Seed ≥50 features and ≥200 responses across ≥5 polls (reuse the Story 5.8 seeder if it lands before this test; otherwise add a small helper in `tests/conftest.py` — document the reuse intent).
-- [ ] Logging (per architecture §Process Patterns)
-  - [ ] Emit one structlog line at INFO on the service entry/exit — `event="build_analysis"`, `poll_id=...`, `feature_count=...`, `total_submissions=...`, bound to `request_id`. No PII.
+  - [x] Note: the assertion needs a seeded dataset large enough that the planner picks the index over a seq scan on tiny tables. Seed ≥50 features and ≥200 responses across ≥5 polls (reuse the Story 5.8 seeder if it lands before this test; otherwise add a small helper in `tests/conftest.py` — document the reuse intent).
+- [x] Logging (per architecture §Process Patterns)
+  - [x] Emit one structlog line at INFO on the service entry/exit — `event="build_analysis"`, `poll_id=...`, `feature_count=...`, `total_submissions=...`, bound to `request_id`. No PII.
 
 ## Dev Notes
 
@@ -303,10 +303,37 @@ The `services/analysis.py` slot is reserved in architecture §Structure Patterns
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-opus-4-7 (1M context)
 
 ### Debug Log References
 
+- Initial EXPLAIN plan on a 50-feature dataset still picked Seq Scan (the planner correctly judges a 50-row table cheaper to seq-scan than to index-seek). Resolved by `SET LOCAL enable_seqscan = OFF` before the EXPLAIN — the test now asks "is the index reachable from this query?" rather than "does the planner happen to pick it on tiny data?". The negative `Seq Scan on features` assertion still catches the regression where the index is dropped, since the planner would have no alternative.
+- `func.count()` (i.e. SQL `count(*)`) used to match Story spec verbatim; the count value for LEFT-JOIN NULL-category rows is irrelevant because `_shape_rows` filters those rows out before populating the distribution. Same correctness as `count(Response.submission_id)`, but stays aligned with the AC #1 SQL.
+- Initial unit-test parametrize for sevenths rounding asserted M as the unique winner with `M=1, L=6, total=7` — that makes L the winner. Replaced with three explicit majority cases (4/7, 5/7, 6/7) where M is the unique max, covering the same rounding paths cleanly.
+
 ### Completion Notes List
 
+- **AC #1 satisfied**: `build_analysis` issues exactly one GROUP BY query plus the orthogonal `session.get(Poll)` lookup. The cursor-event integration test (`tests/integration/test_analysis_service.py::TestSingleGroupByQueryGate::test_build_analysis_emits_exactly_one_group_by_query`) pins the count at 1 GROUP BY statement.
+- **AC #2–#5 satisfied**: `PollAnalysis` / `FeatureAnalysis` schemas are service-layer DTOs with all six `Category` keys padded into every distribution; `dominant_categories` returns sorted ties; `dominant_percentage` rounds to 1 decimal. Zero-submission scenarios return `total_submissions=0` with empty dominants per AC #5.
+- **AC #6 satisfied**: unknown `poll_id` raises `EntityNotFound("poll", id)` before any analysis query runs.
+- **AC #7 satisfied**: expired polls return full analysis — `build_analysis` makes no expiry check (FR32 — analysis outlives the submission TTL).
+- **AC #8 satisfied**: query-count gate via SQLAlchemy `before_cursor_execute` event listener filtered by `"GROUP BY"` substring. Documented inline why the filter cleanly discounts `session.get(Poll)`.
+- **AC #9 satisfied**: parametrized correctness matrix (6 scenarios) + 3 lifecycle/boundary tests + snapshot-frozen test mirror the test discipline established in Stories 3.2 / 3.4 / 4.2.
+- **AC #10 satisfied**: EXPLAIN test with `enable_seqscan = OFF` forces the planner to expose whether the `ix_features_project_id_epoch` index is usable from this statement; negative assertion on `Seq Scan on features` catches index-drop regressions.
+- **`total_submissions` strategy**: max-per-feature; correctness rests on FR24/FR25 (every full submission produces one response per active feature). The `zero_responses_for_some_features` test exercises the partial-data path explicitly and confirms `max` picks the correct ceiling from healthy features. Did not need to fall back to the second-COUNT query.
+- **Coverage**: 100% line + 100% branch on both `kano.services.analysis` (65 stmts) and `kano.schemas.analysis` (18 stmts), exceeding the PRD §Technical Success ≥85%/100% gate for the `analysis` module.
+- **Logging**: one INFO structlog emit on service exit — `event="build_analysis"`, `poll_id`, `feature_count`, `total_submissions`. Bound to `request_id` automatically via the middleware contextvar (no per-callsite binding needed). No PII in the payload.
+- **Lint/types**: ruff + mypy --strict + black all clean on the new files. Full test suite: 247 passed (no regressions).
+
 ### File List
+
+- `kano-backend/src/kano/schemas/analysis.py` (new — `PollAnalysis`, `FeatureAnalysis` DTOs)
+- `kano-backend/src/kano/schemas/__init__.py` (modified — export the two new schemas)
+- `kano-backend/src/kano/services/analysis.py` (new — `build_analysis`, `_shape_rows`, `_dominant`, `_ALL_CATEGORIES`)
+- `kano-backend/tests/unit/test_analysis_dominant.py` (new — pure-function coverage of `_dominant`, 15 tests)
+- `kano-backend/tests/integration/test_analysis_service.py` (new — query-count gate + correctness matrix + lifecycle + snapshot-frozen, 10 tests)
+- `kano-backend/tests/integration/test_analysis_query_plan.py` (new — EXPLAIN plan assertion against the `ix_features_project_id_epoch` index, 1 test)
+
+### Change Log
+
+- 2026-05-22: Initial implementation of `services.analysis.build_analysis` with single-GROUP-BY query, six-key distribution padding, sorted-tie dominant computation, max-per-feature `total_submissions`, and the three accompanying test modules. 100% coverage on both new src modules; 247/247 suite green.

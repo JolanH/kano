@@ -122,6 +122,14 @@ export function classifyApiError(problem: ProblemDetails, status: number): KanoA
  * without aliasing — architecture §Format Patterns.
  */
 
+/**
+ * Kano-matrix category wire codes. Mirror of the backend
+ * `kano.services.kano_matrix.Category` enum values — letter codes only
+ * cross the wire; the human-readable names live in `src/copy/en.ts` under
+ * `pm.category.*` and are resolved at render time by `<CatBadge>`.
+ */
+export type Category = 'M' | 'L' | 'E' | 'I' | 'C' | 'D'
+
 export interface ProjectSummary {
   id: string
   name: string

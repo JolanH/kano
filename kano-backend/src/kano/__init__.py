@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from flask import Flask
 
+from kano.api.analysis import analysis_bp
 from kano.api.csrf import csrf_bp
 from kano.api.errors import register_error_handlers
 from kano.api.features import features_bp
@@ -41,7 +42,10 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     app.register_blueprint(csrf_bp)
     app.register_blueprint(projects_bp)
     app.register_blueprint(features_bp)
+    # polls_bp and analysis_bp expose routes matched by PUBLIC_RESPONDENT_PATHS
+    # in middleware/security.py — keep that tuple in sync when adding routes.
     app.register_blueprint(polls_bp)
+    app.register_blueprint(analysis_bp)
 
     return app
 

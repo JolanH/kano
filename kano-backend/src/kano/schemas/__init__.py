@@ -1,5 +1,6 @@
 """Pydantic request/response schemas. Mirror the ORM models in shape, not identity."""
 
+from kano.schemas.analysis import FeatureAnalysis, PollAnalysis
 from kano.schemas.feature import (
     FeatureCreate,
     FeatureResponse,
@@ -23,10 +24,12 @@ from kano.schemas.submission import AnswerIn, PollSubmission
 
 __all__ = [
     "AnswerIn",
+    "FeatureAnalysis",
     "FeatureCreate",
     "FeatureResponse",
     "FeatureSummary",
     "FeatureUpdate",
+    "PollAnalysis",
     "PollPublic",
     "PollPublicFeature",
     "PollSubmission",

@@ -10,8 +10,9 @@ and inherited from ``app.config.from_object`` in ``create_app``.
 
 CORS has two distinct regimes:
 
-* ``/api/v1/polls/<uuid>`` (and Story 4-3's ``/api/v1/polls/<uuid>/submit``)
-  are public respondent surfaces — they may be hit from any origin. The
+* ``/api/v1/polls/<uuid>`` (Story 3.4), ``/api/v1/polls/<uuid>/submit``
+  (Story 4.3), and ``/api/v1/polls/<uuid>/analysis`` (Story 5.2) are public
+  respondent / shared-link surfaces — they may be hit from any origin. The
   UUIDv4 is the only authentication; no session cookie crosses these
   requests. Story 3.4 AC #6 + architecture §Authentication & Security:
   ``origins='*'``, ``supports_credentials=False`` (the two are mutually
@@ -50,12 +51,22 @@ def public_endpoint(view: F) -> F:
     return cast(F, csrf.exempt(view))
 
 
-# Path patterns that constitute the public respondent surface. Kept as a
-# tuple at module scope so tests can introspect the contract directly and
-# Story 4-3 can extend the list when the submit endpoint lands.
+# Path patterns that constitute the public respondent / shared-link surface.
+# Kept as a tuple at module scope so tests can introspect the contract
+# directly. Extended by Story 4-3 (submit) and Story 5-2 (analysis).
+#
+# Anchored with ``$`` so each pattern matches exactly one route — Flask-CORS
+# uses ``re.match`` (not ``re.fullmatch``) under the hood, and without ``$``
+# the bare ``/api/v1/polls/[^/]+`` would also match ``/submit`` and
+# ``/analysis`` (the trailing segment falls outside the regex but the prefix
+# match still succeeds). Flask-CORS happens to sort patterns by specificity
+# today, so the deployed behavior is correct either way; anchoring removes
+# the latent shadowing trap and lets a fourth public path be appended
+# without worrying about declaration / sort order.
 PUBLIC_RESPONDENT_PATHS: tuple[str, ...] = (
-    r"/api/v1/polls/[^/]+",
-    r"/api/v1/polls/[^/]+/submit",
+    r"/api/v1/polls/[^/]+$",
+    r"/api/v1/polls/[^/]+/submit$",
+    r"/api/v1/polls/[^/]+/analysis$",
 )
 
 

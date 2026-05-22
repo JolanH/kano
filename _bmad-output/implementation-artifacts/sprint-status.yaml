@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-22
-last_updated: 2026-05-22  # epic 4 closed — stories 4-1..4-8 → done; manual VO iOS / TalkBack Android signoff for 4-8 still owed (tracked in deferred-work.md)
+last_updated: 2026-05-22  # 5-3 dev complete → review (CatBadge component + Category wire type + theme-audit regression row + 8-test Vitest spec; suffix vocabulary lands on `cont`/`doub` per the Story 1-5 (5,1)→D reconciliation, NOT the original story body's `rev`/`que`; 232/232 frontend unit tests green). 5-2 dev complete → review (public PollAnalysis endpoint as thin wrapper over 5.1; 12 new tests green, 257/258 suite — 1 pre-existing app-factory log-isolation flake reproduces on main). 5-1 dev complete → review earlier today (single GROUP BY analysis service). Epic 4 closed earlier today.
 project: kano
 project_key: NOKEY
 tracking_system: file-system
@@ -112,9 +112,9 @@ development_status:
 
   # Epic 5: Analysis & Insight
   epic-5: in-progress
-  5-1-services-analysis-build-analysis-with-single-group-by-query: ready-for-dev
-  5-2-public-poll-analysis-endpoint: ready-for-dev
-  5-3-catbadge-component-for-kano-category-rendering: ready-for-dev
+  5-1-services-analysis-build-analysis-with-single-group-by-query: review
+  5-2-public-poll-analysis-endpoint: review
+  5-3-catbadge-component-for-kano-category-rendering: review
   5-4-kanostackedbar-svg-with-kanostackedbartable-accessible-fallback: ready-for-dev
   5-5-analysis-page-table-composition-with-dominant-tie-empty-state-confidence-beat: ready-for-dev
   5-6-percategorypanels-secondary-cross-index: ready-for-dev

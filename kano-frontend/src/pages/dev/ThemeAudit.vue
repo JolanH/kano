@@ -23,6 +23,22 @@
           <div class="text-caption text-on-surface-variant">{{ swatch.token }}</div>
         </div>
       </div>
+      <!--
+        Visual-regression diff between this row and the raw swatch grid
+        above is what catches a drift between CatBadge's token consumption
+        and the theme's source-of-truth palette.
+      -->
+      <div
+        class="cat-badge-row d-flex flex-wrap mt-4"
+        data-testid="theme-audit-cat-badges"
+        style="gap: 16px;"
+      >
+        <CatBadge
+          v-for="code in CATEGORY_CODES"
+          :key="code"
+          :category="code"
+        />
+      </div>
     </section>
 
     <!-- ============================ Typography ============================ -->
@@ -264,6 +280,8 @@
 <script lang="ts" setup>
 import { reactive, ref } from 'vue'
 
+import CatBadge from '@/components/CatBadge.vue'
+import { CATEGORY_CODES } from '@/components/cat-badge.constants'
 import { useCopy } from '@/composables/useCopy'
 import { tixeoColors, type TixeoColorToken } from '@/theme/tixeo'
 import { tixeoOverrides } from '@/theme/overrides-evidence'

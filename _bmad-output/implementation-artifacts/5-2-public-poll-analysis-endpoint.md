@@ -1,6 +1,6 @@
 # Story 5.2: Public poll analysis endpoint
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -23,8 +23,8 @@ so that the analysis page renders from a single request with no client-side aggr
 
 ## Tasks / Subtasks
 
-- [ ] Blueprint route (AC: #1, #4, #5, #6, #7)
-  - [ ] Extend `src/kano/api/analysis.py` (new file, or extend if the blueprint slot reserved in architecture §Structure exists):
+- [x] Blueprint route (AC: #1, #4, #5, #6, #7)
+  - [x] Extend `src/kano/api/analysis.py` (new file, or extend if the blueprint slot reserved in architecture §Structure exists):
     ```python
     from uuid import UUID
     from flask import Blueprint, current_app
@@ -46,14 +46,14 @@ so that the analysis page renders from a single request with no client-side aggr
         )
         return analysis.model_dump(mode="json"), 200
     ```
-  - [ ] Register the blueprint in `src/kano/__init__.py` (`create_app()` factory) — ordering does not matter relative to the other public blueprints (`polls` for 3.4, `responses` for 4.3); group them together with a comment `# public / CSRF-exempt blueprints`.
-  - [ ] CSRF exemption: follow whichever of the two patterns Story 1.3 + 3.4 established (per-view `@csrf.exempt` decorator OR path allowlist in `middleware/security.py`). Do NOT introduce a third pattern. Add a code comment pointing at this AC and at architecture line 300.
-  - [ ] CORS: ensure Flask-CORS is configured so that `/api/v1/polls/*/analysis` accepts any origin. Most likely this happens automatically because `/api/v1/polls/<uuid>` already matches the permissive pattern from Story 3.4; verify with a cross-origin integration test.
-- [ ] Error handler wiring (AC: #4)
-  - [ ] `EntityNotFound("poll", poll_id)` is already mapped to 404 Problem Details in `src/kano/api/errors.py` (Story 2.4 / 3.4). Verify the registry entry exists; add a comment in this story's code pointing at it. Do **not** add a second error handler — the shared one suffices.
-  - [ ] Spot-check: the Problem Details `type` URL for the 404 case is `https://kano.example.com/problems/entity-not-found`; title "Poll not found"; detail describes the UUID and includes `request_id`.
-- [ ] Integration tests (AC: #1, #2, #3, #4, #5, #6)
-  - [ ] `tests/integration/test_analysis_api.py::test_get_analysis_happy_path`:
+  - [x] Register the blueprint in `src/kano/__init__.py` (`create_app()` factory) — ordering does not matter relative to the other public blueprints (`polls` for 3.4, `responses` for 4.3); group them together with a comment `# public / CSRF-exempt blueprints`.
+  - [x] CSRF exemption: follow whichever of the two patterns Story 1.3 + 3.4 established (per-view `@csrf.exempt` decorator OR path allowlist in `middleware/security.py`). Do NOT introduce a third pattern. Add a code comment pointing at this AC and at architecture line 300.
+  - [x] CORS: ensure Flask-CORS is configured so that `/api/v1/polls/*/analysis` accepts any origin. Most likely this happens automatically because `/api/v1/polls/<uuid>` already matches the permissive pattern from Story 3.4; verify with a cross-origin integration test.
+- [x] Error handler wiring (AC: #4)
+  - [x] `EntityNotFound("poll", poll_id)` is already mapped to 404 Problem Details in `src/kano/api/errors.py` (Story 2.4 / 3.4). Verify the registry entry exists; add a comment in this story's code pointing at it. Do **not** add a second error handler — the shared one suffices.
+  - [x] Spot-check: the Problem Details `type` URL for the 404 case is `https://kano.example.com/problems/entity-not-found`; title "Poll not found"; detail describes the UUID and includes `request_id`.
+- [x] Integration tests (AC: #1, #2, #3, #4, #5, #6)
+  - [x] `tests/integration/test_analysis_api.py::test_get_analysis_happy_path`:
     - Seed: project + 3 features on epoch 1 + non-expired poll + 5 submissions with known Likert → known category distribution
     - GET `/api/v1/polls/<id>/analysis` without CSRF header or session
     - Assert 200; body keys exactly `{"poll_id", "epoch", "total_submissions", "features"}`
@@ -61,21 +61,21 @@ so that the analysis page renders from a single request with no client-side aggr
     - Assert each feature has exactly `{"feature_key", "name", "description", "distribution", "dominant_categories", "dominant_percentage"}`
     - Assert `distribution` always has exactly 6 keys: `{"M", "L", "E", "I", "C", "D"}` (verify against known input → known counts)
     - Assert `dominant_categories` is a list (not a string), and `dominant_percentage` is a number (float)
-  - [ ] `test_get_analysis_zero_submissions`: seed 3-feature poll with 0 submissions → GET → assert 200, `total_submissions == 0`, each feature `distribution` all zeros, `dominant_categories == []`, `dominant_percentage == 0.0`
-  - [ ] `test_get_analysis_tie_handling`: seed poll with 4 submissions, 2 × M, 2 × L on one feature → GET → assert that feature's `dominant_categories == ["L", "M"]` (sorted), `dominant_percentage == 50.0`
-  - [ ] `test_get_analysis_unknown_poll_returns_404`: random UUID → assert 404, Problem Details body, `type=...entity-not-found`, `request_id` present
-  - [ ] `test_get_analysis_expired_poll_returns_200`: poll with `expires_at = now - 1 day` + 3 submissions → assert 200 with full payload (contrast with Story 3.4's 410-on-expired for `GET /api/v1/polls/:uuid`)
-  - [ ] `test_get_analysis_csrf_exempt`: fresh test client, never calls `/api/csrf-token`, GET without `X-CSRF-Token` → asserts 200 not 403
-  - [ ] `test_get_analysis_cors_open`: GET with `Origin: https://random-third-party.example` → asserts 200 and `Access-Control-Allow-Origin` header in response (value `*` or echoing the Origin — whichever Flask-CORS is configured to emit for this path)
-  - [ ] `test_get_analysis_snapshot_frozen_after_epoch_bump`: seed poll on epoch 1 with 2 features + 3 submissions → bump project to epoch 2 via Story 2.7 → GET the original poll's analysis → assert returned `epoch == 1`, `features` contains only the 2 epoch-1 features (parallel to Story 3.4's frozen-snapshot test)
-- [ ] Performance smoke (AC: #8)
-  - [ ] `tests/integration/test_analysis_api_perf.py::test_get_analysis_under_500ms`:
+  - [x] `test_get_analysis_zero_submissions`: seed 3-feature poll with 0 submissions → GET → assert 200, `total_submissions == 0`, each feature `distribution` all zeros, `dominant_categories == []`, `dominant_percentage == 0.0`
+  - [x] `test_get_analysis_tie_handling`: seed poll with 4 submissions, 2 × M, 2 × L on one feature → GET → assert that feature's `dominant_categories == ["L", "M"]` (sorted), `dominant_percentage == 50.0`
+  - [x] `test_get_analysis_unknown_poll_returns_404`: random UUID → assert 404, Problem Details body, `type=...entity-not-found`, `request_id` present
+  - [x] `test_get_analysis_expired_poll_returns_200`: poll with `expires_at = now - 1 day` + 3 submissions → assert 200 with full payload (contrast with Story 3.4's 410-on-expired for `GET /api/v1/polls/:uuid`)
+  - [x] `test_get_analysis_csrf_exempt`: fresh test client, never calls `/api/csrf-token`, GET without `X-CSRF-Token` → asserts 200 not 403
+  - [x] `test_get_analysis_cors_open`: GET with `Origin: https://random-third-party.example` → asserts 200 and `Access-Control-Allow-Origin` header in response (value `*` or echoing the Origin — whichever Flask-CORS is configured to emit for this path)
+  - [x] `test_get_analysis_snapshot_frozen_after_epoch_bump`: seed poll on epoch 1 with 2 features + 3 submissions → bump project to epoch 2 via Story 2.7 → GET the original poll's analysis → assert returned `epoch == 1`, `features` contains only the 2 epoch-1 features (parallel to Story 3.4's frozen-snapshot test)
+- [x] Performance smoke (AC: #8)
+  - [x] `tests/integration/test_analysis_api_perf.py::test_get_analysis_under_500ms`:
     - Seed: 20 features + 500 submissions × 20 responses each = 10,000 response rows
     - Time 10 consecutive GETs via `time.perf_counter()`; assert 95th percentile < 500 ms
     - Mark with `@pytest.mark.slow` to allow skipping in fast-feedback local runs; CI runs the full suite
-  - [ ] This is a **backend-only** perf gate. The end-to-end NFR1 (3s p95 total) is Story 5.8 via Playwright navigation timing. This smoke is early-warning; if 500 ms is already blown server-side, the 3s total gate is unreachable.
-- [ ] OpenAPI documentation (AC: #9)
-  - [ ] Extend `kano-backend/openapi.yaml`:
+  - [x] This is a **backend-only** perf gate. The end-to-end NFR1 (3s p95 total) is Story 5.8 via Playwright navigation timing. This smoke is early-warning; if 500 ms is already blown server-side, the 3s total gate is unreachable.
+- [x] OpenAPI documentation (AC: #9)
+  - [x] Extend `kano-backend/openapi.yaml`:
     - Path `/polls/{poll_id}/analysis`:
       - `get` operation
       - `security: []` (no CSRF, no auth)
@@ -119,8 +119,8 @@ so that the analysis page renders from a single request with no client-side aggr
           items: { type: string, enum: [M, L, E, I, C, D] }
         dominant_percentage: { type: number, minimum: 0, maximum: 100 }
       ```
-- [ ] Logging (AC: #10)
-  - [ ] Emit one structlog line at INFO per successful request (per architecture §Logging line 443). Event key `poll_analysis_read`. No respondent data; no feature descriptions that could leak internal wording; keep it to counts + IDs only.
+- [x] Logging (AC: #10)
+  - [x] Emit one structlog line at INFO per successful request (per architecture §Logging line 443). Event key `poll_analysis_read`. No respondent data; no feature descriptions that could leak internal wording; keep it to counts + IDs only.
 
 ## Dev Notes
 
@@ -227,10 +227,35 @@ Files:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-opus-4-7[1m]
 
 ### Debug Log References
 
+- Initial run: handler-missing `404 https://kano.example.com/problems/http-404` confirmed RED phase (route absent).
+- Post-implementation: 11/11 integration tests in `test_analysis_api.py` green; 1/1 perf smoke in `test_analysis_api_perf.py` green; p95 well under the 500 ms ceiling on the testcontainer 20×500 seed (~tens of ms).
+- Pre-existing flake (not introduced by 5.2): `test_app_factory.py::test_structured_request_log_emits_one_line_with_expected_keys` fails when run after `test_poll_submit_api.py`. Reproduced on `main` (commit `d6ec637`) with my changes stashed — test-isolation leak between structlog and Flask's logging config, orthogonal to this story.
+- Pre-existing mypy errors in `test_polls_api.py`, `test_polls_public_api.py`, `test_poll_submit_api.py`, `test_submission_model.py` (14 total) — not touched by this story.
+
 ### Completion Notes List
 
+- **Handler shape** matches the Dev Notes "thin wrapper" guidance verbatim: ~10 lines, no `try/except`, lets `EntityNotFound` from `build_analysis` bubble to the shared registry in `kano.api.errors`.
+- **CSRF exemption** uses the existing `@public_endpoint` decorator from `kano.middleware.security` — same pattern Stories 3.4 (`get_poll_public`) and 4.3 (`submit_poll`) use. No third pattern introduced.
+- **CORS open** extended `PUBLIC_RESPONDENT_PATHS` with `r"/api/v1/polls/[^/]+/analysis"`. Flask-CORS legitimately renders the response header as `*` or by echoing the Origin (both valid for `origins="*"`); the test accepts either and additionally asserts `Access-Control-Allow-Credentials != "true"` so the PM session cookie cannot leak to a public surface.
+- **404 spot-check**: the shared `EntityNotFound` handler emits `type=https://kano.example.com/problems/entity-not-found`, `status=404`, the title is the registry-shared `"Entity not found"` (NOT a story-specific `"Poll not found"` — the story spec's "Poll not found" title is a documentation slip; introducing a second handler would diverge from the precedent the story explicitly forbids). The `detail` carries the UUID via the service's `EntityNotFound(f"Poll {poll_id} not found")`, and `request_id` is non-null per the request-ID middleware contract.
+- **Logging**: one `poll_analysis_read` line per successful read with `poll_id`, `epoch`, `feature_count`, `total_submissions`. NFR8 guarded by a test that seeds a `name`/`description` with sentinel substrings and asserts they never appear in the structlog output.
+- **OpenAPI**: added the `/polls/{poll_id}/analysis` path (`security: []`, 200 `PollAnalysis` / 404 `ProblemDetails`) and `components.schemas.PollAnalysis` + `FeatureAnalysis` mirroring the Pydantic shape from 5.1.
+- **Perf smoke marker**: added `slow` to `pyproject.toml`'s `[tool.pytest.ini_options].markers` so `--strict-markers` accepts the new marker. CI runs the full suite by default; local fast-feedback runs can opt out with `pytest -m "not slow"`.
+
 ### File List
+
+- `kano-backend/src/kano/api/analysis.py` — new — public analysis blueprint + handler
+- `kano-backend/src/kano/__init__.py` — modified — register `analysis_bp` in `create_app()`
+- `kano-backend/src/kano/middleware/security.py` — modified — extend `PUBLIC_RESPONDENT_PATHS` + docstring with the analysis path
+- `kano-backend/openapi.yaml` — modified — add `/polls/{poll_id}/analysis` path + `PollAnalysis` / `FeatureAnalysis` schemas
+- `kano-backend/pyproject.toml` — modified — register `slow` pytest marker
+- `kano-backend/tests/integration/test_analysis_api.py` — new — 11 integration tests (happy / empty / tie / 404 / expired / CSRF / CORS / preflight / snapshot-frozen / logging × 2)
+- `kano-backend/tests/integration/test_analysis_api_perf.py` — new — 20×500 seed, p95 <500 ms backend smoke (`@pytest.mark.slow`)
+
+## Change Log
+
+- 2026-05-22 — Implemented the public `GET /api/v1/polls/:uuid/analysis` endpoint as a thin wrapper over Story 5.1's `build_analysis` service. Added 11 integration tests + 1 perf smoke covering the full AC matrix (happy path / zero submissions / FR35 tie / 404 / FR32 expired-200 / CSRF-exempt / CORS-open / preflight / frozen-snapshot / structlog-with-no-PII). Extended OpenAPI with the path and the `PollAnalysis` / `FeatureAnalysis` schemas. Registered a `slow` pytest marker so the perf smoke is opt-out for local fast-feedback runs while CI runs the full suite. Status → review.
