@@ -104,11 +104,13 @@ draft answers are non-null; halfway microcopy was removed.
 | 6 | Dysfunctional KanoLikert legend announces "How do you feel if {feature} is not available?" |  |  | |
 | 7 | Each of 5 options announces with its plain-language label in order, inside each Likert |  |  | |
 | 8 | Keyboard 1–5 selects the matching option in the currently focused Likert |  |  | KanoLikert's @keydown is scoped to the fieldset, so 1–5 routes to whichever one has focus |
-| 9 | Answering only one Likert does NOT advance the page; focus remains available to answer the other |  |  | Per-feature auto-advance gate |
-| 10 | After BOTH answers are set, auto-advance routes to next feature index (or `/submit-confirm` on the last one) |  |  | |
-| 11 | Esc / Backspace navigates back to previous feature index; both previously-selected answers remain selected |  |  | Question.vue's onKeydown |
-| 12 | Tap target ≥ 44×44 on every option card in both Likerts |  |  | |
-| 13 | Focused option has a visible focus ring in both Likerts |  |  | |
+| 9 | Answering only one Likert leaves the Next/Submit button disabled; focus remains available to answer the other |  |  | Button is `:disabled` until both answers picked |
+| 10 | After BOTH answers are set, the button enables; activating it routes to the next feature index (or `/submit-confirm` on the last one) |  |  | Explicit advance — no auto-navigation |
+| 11 | Button label reads "Next" on non-final features and "Submit" on the last feature |  |  | `respondent.cta.next` / `respondent.cta.submit` |
+| 12 | Button is keyboard-reachable (Tab order after both Likerts) and Enter activates it |  |  | |
+| 13 | Esc / Backspace navigates back to previous feature index; both previously-selected answers remain selected |  |  | Question.vue's onKeydown |
+| 14 | Tap target ≥ 44×44 on every option card in both Likerts AND on the Next/Submit button |  |  | |
+| 15 | Focused option has a visible focus ring in both Likerts; same for the button |  |  | |
 
 ### Screen: `/poll/:uuid/q/:index?showError=1` (KanoLikert error variant)
 

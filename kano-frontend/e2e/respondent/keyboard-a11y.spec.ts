@@ -59,27 +59,30 @@ test.describe('Respondent flow — keyboard-only', () => {
     await page.keyboard.press('Enter')
     await page.waitForURL(new RegExp(`/poll/${POLL_ID}/q/0$`))
 
-    // Per-feature progression: 3 features, each with both Likerts on
-    // one screen. For each feature: Tab to the functional Likert and
-    // press `3`, then Tab to the dysfunctional Likert and press `3`.
-    // Auto-advance fires only after BOTH answers are set; last feature
-    // routes to /submit-confirm.
+    // Per-feature progression with explicit Next button: 3 features,
+    // each with both Likerts on one screen. For each feature: focus the
+    // functional Likert's first radio + press `3`, focus the
+    // dysfunctional Likert's first radio + press `3`, then focus the
+    // Next button + press Enter. Last feature's button reads "Submit"
+    // and routes to /submit-confirm.
     for (let i = 0; i < 3; i++) {
       await expect(page.getByTestId('question-screen')).toBeVisible()
-      // Move focus into the functional Likert's first radio.
       await page
         .getByTestId('kano-likert-functional')
         .locator('input[type="radio"]')
         .first()
         .focus()
       await page.keyboard.press('3')
-      // Move focus into the dysfunctional Likert's first radio.
       await page
         .getByTestId('kano-likert-dysfunctional')
         .locator('input[type="radio"]')
         .first()
         .focus()
       await page.keyboard.press('3')
+      const nextBtn = page.getByTestId('feature-next')
+      await expect(nextBtn).toBeEnabled()
+      await nextBtn.focus()
+      await page.keyboard.press('Enter')
       const nextUrl =
         i === 2
           ? new RegExp(`/poll/${POLL_ID}/submit-confirm$`)
@@ -117,62 +120,10 @@ test.describe('Respondent flow — keyboard-only', () => {
   })
 })
 
-test.describe('Respondent flow — reduced-motion + keyboard', () => {
-  // Absolute-timing assertions ("auto-advance < 50 ms") are flaky in CI
-  // — router transitions plus reactivity ticks can blow past any tight
-  // budget regardless of the 150 ms `setTimeout` being skipped. Instead
-  // we measure BOTH a default-motion and a reduced-motion run and assert
-  // the *delta* exceeds roughly the confirmationMs delay (150 ms minus
-  // a noise floor). That's what Story 4.5's contract actually claims.
-
-  async function measureAutoAdvance(page: Page): Promise<number> {
-    // Per-feature progression: auto-advance fires only when BOTH Likerts
-    // are answered. We pre-set the functional answer via focus + press,
-    // then time the dysfunctional press → URL transition. Reduced motion
-    // skips KanoLikert's 150 ms confirmation timer; the delta between
-    // default and reduced runs should clear ≥ 100 ms.
-    await seedPoll(page)
-    await page.goto(`/poll/${POLL_ID}/q/0`)
-    await expect(page.getByTestId('question-screen')).toBeVisible()
-    await page
-      .getByTestId('kano-likert-functional')
-      .locator('input[type="radio"]')
-      .first()
-      .focus()
-    await page.keyboard.press('3')
-    await page
-      .getByTestId('kano-likert-dysfunctional')
-      .locator('input[type="radio"]')
-      .first()
-      .focus()
-    const start = Date.now()
-    await page.keyboard.press('3')
-    await page.waitForURL(new RegExp(`/poll/${POLL_ID}/q/1$`))
-    return Date.now() - start
-  }
-
-  test('reduced motion is meaningfully faster than default motion', async ({
-    browser,
-  }) => {
-    const defaultContext = await browser.newContext({
-      ...devices['iPhone SE'],
-    })
-    const reducedContext = await browser.newContext({
-      ...devices['iPhone SE'],
-      reducedMotion: 'reduce',
-    })
-    try {
-      const defaultMs = await measureAutoAdvance(await defaultContext.newPage())
-      const reducedMs = await measureAutoAdvance(await reducedContext.newPage())
-      // The 150 ms confirmation is the only deterministic source of
-      // additional latency between the two runs; assert the delta clears
-      // at least 100 ms (leaves 50 ms headroom for noise). If reduced
-      // ever becomes SLOWER than default, that's a regression worth
-      // failing on.
-      expect(defaultMs - reducedMs).toBeGreaterThanOrEqual(100)
-    } finally {
-      await defaultContext.close()
-      await reducedContext.close()
-    }
-  })
-})
+// The reduced-motion auto-advance measurement test was removed when the
+// per-feature page switched to an explicit Next button. KanoLikert still
+// honors `prefers-reduced-motion: reduce` for its in-component option
+// commit timer (Story 4-5 contract), but that no longer drives a URL
+// transition we can measure end-to-end. The relevant unit coverage for
+// KanoLikert's reduced-motion behavior lives in
+// `tests/unit/kano-likert.spec.ts`.

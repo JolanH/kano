@@ -22,7 +22,7 @@ so that the per-feature framing feels coherent (each screen is one feature, not 
 
 1. **Given** a poll with N features, **when** the `/poll/:uuid/q/:index` route renders (with `:index` an integer from 0 to N-1), **then** ONE feature page renders the feature name + optional description + TWO `<KanoLikert>` components — `question="functional"` then `question="dysfunctional"` — both bound to the same feature at `features[index]` per FR21.
 2. A `v-progress-linear` bar at the top of the route renders true fraction — e.g., "Feature 5 of 8" text above the bar and `:model-value="(index + 1) / N * 100"` for the fill (FR23 + UX-spec §Flow Optimization Principle 7 honest-progress, applied at the per-feature granularity since each screen represents one tick of progress).
-3. **Auto-advance** fires only when BOTH Likert pickers on the page have a non-null draft entry. Each KanoLikert's `@auto-advance` event triggers a re-check; if either answer is still null the navigation is suppressed, letting the respondent finish answering in either order without a premature page jump. Once both are answered, `router.push` routes to `/poll/:uuid/q/:index+1` (client-side, no reload).
+3. **Explicit Next/Submit button** drives advance between feature screens. The button sits at the bottom of the feature page and stays `:disabled` until BOTH draft answers are non-null. Label is `respondent.cta.next` ("Next") on non-final features and `respondent.cta.submit` ("Submit") on the last feature; the click handler routes to `/poll/:uuid/q/:index+1` or `/poll/:uuid/submit-confirm` accordingly (client-side, no reload). KanoLikert's `@auto-advance` event still fires in-component after its 150 ms confirmation timer but is **no longer wired** in Question.vue — the page is button-driven by design (user direction 2026-05-22).
 4. **Tap-back navigation**: browser Back button, Esc, or Backspace navigates to `/poll/:uuid/q/:index-1`; both previously-selected answers remain selected (editable) per FR24 reversible-before-commit. At `:index=0`, Back navigates to `/poll/:uuid` (landing).
 5. **No halfway microcopy.** Under per-feature progression with fewer screens (N instead of 2N), mid-flow encouragement is dropped per user direction — the flow stays quiet by design. The `respondent.flow.halfway` copy key is removed.
 6. **Answer draft** is held in a Pinia store `useResponseDraftStore` (NOT `sessionStorage`, NOT `localStorage`) with state `answers: Record<feature_key, { fq_answer: number | null, dq_answer: number | null }>`. Closing the tab silently discards the draft per FR25; there is no "resume where you left off" prompt in v1.
@@ -357,6 +357,20 @@ claude-opus-4-7[1m]
   out-of-range guard; useResponseDraftStore lands the in-memory
   answer draft; submit-confirm placeholder route registered for
   Story 4-7.
+- 2026-05-22 (later): **Explicit Next/Submit button amendment** —
+  replaced the per-feature auto-advance gate with a bottom-of-page
+  button. Button is `:disabled` until both Likerts are answered;
+  label is "Next" until the last feature, "Submit" on the last;
+  click routes to next feature or to `/submit-confirm` respectively.
+  KanoLikert's auto-advance event is no longer wired to Question.vue
+  (intra-component option commit still applies). Existing copy keys
+  `respondent.cta.next` / `respondent.cta.submit` were reused. Unit
+  spec rewritten (auto-advance test block → button-click test block,
+  9 cases). keyboard-a11y full-flow loop evolved (focus Next +
+  Enter); `measureAutoAdvance` reduced-motion test removed (URL
+  transitions no longer fire on auto-advance — KanoLikert's
+  reduced-motion contract is covered by the unit spec instead).
+  Vitest: 224 / 224. vue-tsc: clean.
 - 2026-05-22: **Per-feature progression amendment** — inverted the
   flow from per-question (2N screens) to per-feature (N screens, both
   Likerts per screen). Question.vue rewritten with two KanoLikert

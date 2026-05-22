@@ -47,24 +47,38 @@
       >
         {{ currentFeature.description }}
       </p>
-      <KanoLikert
-        question="functional"
-        :feature="currentFeature"
-        :model-value="functionalAnswer"
-        :show-error="showFunctionalError"
-        data-testid="kano-likert-functional"
-        @update:model-value="onSelect('functional', $event)"
-        @auto-advance="onAutoAdvance"
-      />
-      <KanoLikert
-        question="dysfunctional"
-        :feature="currentFeature"
-        :model-value="dysfunctionalAnswer"
-        :show-error="showDysfunctionalError"
-        data-testid="kano-likert-dysfunctional"
-        @update:model-value="onSelect('dysfunctional', $event)"
-        @auto-advance="onAutoAdvance"
-      />
+
+      <hr/>
+
+      <div class="likert-pair" data-testid="likert-pair">
+        <KanoLikert
+          question="functional"
+          :feature="currentFeature"
+          :model-value="functionalAnswer"
+          :show-error="showFunctionalError"
+          data-testid="kano-likert-functional"
+          @update:model-value="onSelect('functional', $event)"
+        />
+        <KanoLikert
+          question="dysfunctional"
+          :feature="currentFeature"
+          :model-value="dysfunctionalAnswer"
+          :show-error="showDysfunctionalError"
+          data-testid="kano-likert-dysfunctional"
+          @update:model-value="onSelect('dysfunctional', $event)"
+        />
+      </div>
+      <div class="feature-actions">
+        <v-btn
+          size="large"
+          color="primary"
+          class="feature-next-cta"
+          data-testid="feature-next"
+          :disabled="!bothAnswered"
+          :text="isLastFeature ? copy('respondent.cta.submit') : copy('respondent.cta.next')"
+          @click="onNext"
+        />
+      </div>
     </section>
   </div>
 </template>
@@ -134,6 +148,13 @@ const dysfunctionalAnswer = computed(() => {
   return draft.getAnswer(currentFeature.value.feature_key, 'dysfunctional')
 })
 
+const bothAnswered = computed(
+  () => functionalAnswer.value !== null && dysfunctionalAnswer.value !== null,
+)
+const isLastFeature = computed(
+  () => featureCount.value > 0 && indexNum.value === featureCount.value - 1,
+)
+
 // Per-Likert error display: the `?showError=1` sentinel (set by
 // SubmitConfirm's missing-answer guard) flags the page; each Likert
 // renders its error variant only while its own draft entry is null.
@@ -197,24 +218,19 @@ function onSelect(question: LikertQuestion, value: number): void {
   clearShowErrorQuery()
 }
 
-function onAutoAdvance(_value: number): void {
-  if (!currentFeature.value) return
-  // Per-feature progression: advance only when both Likerts have draft
-  // entries. The other Likert may not have fired its auto-advance yet,
-  // so this guard is what makes "answer in either order" feel natural.
-  const fk = currentFeature.value.feature_key
-  const fq = draft.getAnswer(fk, 'functional')
-  const dq = draft.getAnswer(fk, 'dysfunctional')
-  if (fq === null || dq === null) return
-
-  const nextIndex = indexNum.value + 1
-  if (nextIndex >= featureCount.value) {
+function onNext(): void {
+  // Explicit per-feature advance — replaces the auto-advance gate.
+  // Button is disabled until `bothAnswered`, so callers can't reach
+  // this with a partial draft, but we guard anyway for keyboard / a11y
+  // tooling that might dispatch the click bypassing `:disabled`.
+  if (!bothAnswered.value) return
+  if (isLastFeature.value) {
     router.push({ name: 'poll-submit-confirm', params: { uuid: uuid.value } })
     return
   }
   router.push({
     name: 'poll-question',
-    params: { uuid: uuid.value, index: nextIndex },
+    params: { uuid: uuid.value, index: indexNum.value + 1 },
   })
 }
 
@@ -281,7 +297,9 @@ defineExpose({
   draft,
   reload,
   goBack,
-  onAutoAdvance,
+  onNext,
+  bothAnswered,
+  isLastFeature,
   featureCount,
 })
 </script>
@@ -316,5 +334,23 @@ defineExpose({
   font-size: 0.875rem;
   color: rgba(var(--v-theme-on-surface, 33 33 33), 0.7);
   margin: 0;
+}
+
+.likert-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.feature-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.feature-next-cta {
+  min-height: 48px;
+  min-width: 160px;
 }
 </style>

@@ -117,6 +117,12 @@ const KanoLikertStub = defineComponent({
             {
               type: 'button',
               'data-testid': `simulate-select-${props.question}`,
+              // KanoLikert's auto-advance event is still emitted in
+              // production after the 150 ms confirmation timer, but the
+              // parent (Question.vue) no longer reacts to it for
+              // navigation — the explicit Next button drives advance.
+              // The stub fires both events so this spec can still verify
+              // that listeners are absent / ignored.
               onClick: () => {
                 emit('update:modelValue', pickValue)
                 emit('auto-advance', pickValue)
@@ -125,6 +131,25 @@ const KanoLikertStub = defineComponent({
             'pick 3',
           ),
         ],
+      )
+  },
+})
+
+const VBtnStub = defineComponent({
+  name: 'VBtn',
+  props: ['text', 'disabled', 'size', 'color'],
+  setup(props, { attrs }) {
+    return () =>
+      h(
+        'button',
+        {
+          type: 'button',
+          'data-testid': attrs['data-testid'] as string,
+          disabled: props.disabled || undefined,
+          'data-disabled': props.disabled ? 'true' : 'false',
+          onClick: attrs.onClick as ((e: MouseEvent) => void) | undefined,
+        },
+        props.text,
       )
   },
 })
@@ -174,6 +199,7 @@ const globalStubs = {
   'v-progress-linear': VProgressLinearStub,
   'v-radio-group': VRadioGroupStub,
   'v-radio': VRadioStub,
+  'v-btn': VBtnStub,
 }
 
 const POLL: PollPublic = {
@@ -251,83 +277,105 @@ describe('Question route — progress', () => {
   })
 })
 
-describe('Question route — auto-advance fires only when BOTH answered', () => {
-  test('answering functional alone does NOT navigate', async () => {
+describe('Question route — explicit Next button gates advance', () => {
+  test('button is disabled when no answers are picked', async () => {
+    seedLoadedPoll()
+    const wrapper = mount(Question, { global: { stubs: globalStubs } })
+    await flushPromises()
+    const btn = wrapper.find('[data-testid="feature-next"]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.attributes('disabled')).toBeDefined()
+  })
+
+  test('button is still disabled after only functional is answered', async () => {
     seedLoadedPoll()
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
     await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
     await flushPromises()
-    expect(pushMock).not.toHaveBeenCalled()
+    expect(
+      wrapper.find('[data-testid="feature-next"]').attributes('disabled'),
+    ).toBeDefined()
   })
 
-  test('answering dysfunctional alone does NOT navigate', async () => {
+  test('button is still disabled after only dysfunctional is answered', async () => {
     seedLoadedPoll()
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
     await wrapper.find('[data-testid="simulate-select-dysfunctional"]').trigger('click')
     await flushPromises()
-    expect(pushMock).not.toHaveBeenCalled()
+    expect(
+      wrapper.find('[data-testid="feature-next"]').attributes('disabled'),
+    ).toBeDefined()
   })
 
-  test('answering both → advances to next feature index', async () => {
+  test('button enables once BOTH answers are picked', async () => {
     seedLoadedPoll()
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
     await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
     await wrapper.find('[data-testid="simulate-select-dysfunctional"]').trigger('click')
     await flushPromises()
+    expect(
+      wrapper.find('[data-testid="feature-next"]').attributes('disabled'),
+    ).toBeUndefined()
+  })
+
+  test('KanoLikert auto-advance event does NOT navigate (button-only advance)', async () => {
+    // KanoLikert still emits auto-advance after its 150 ms confirmation
+    // timer (in-component contract from Story 4-5), but Question.vue no
+    // longer listens. Stub fires both events on click; navigation must
+    // not happen until the Next button is pressed.
+    seedLoadedPoll()
+    const wrapper = mount(Question, { global: { stubs: globalStubs } })
+    await flushPromises()
+    await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
+    await wrapper.find('[data-testid="simulate-select-dysfunctional"]').trigger('click')
+    await flushPromises()
+    expect(pushMock).not.toHaveBeenCalled()
+  })
+
+  test('clicking Next advances to next feature index', async () => {
+    seedLoadedPoll()
+    const wrapper = mount(Question, { global: { stubs: globalStubs } })
+    await flushPromises()
+    await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
+    await wrapper.find('[data-testid="simulate-select-dysfunctional"]').trigger('click')
+    await wrapper.find('[data-testid="feature-next"]').trigger('click')
     expect(pushMock).toHaveBeenCalledWith({
       name: 'poll-question',
       params: { uuid: 'poll-uuid', index: 1 },
     })
   })
 
-  test('answering both on LAST feature → routes to submit-confirm', async () => {
+  test('clicking Next on LAST feature routes to submit-confirm', async () => {
     seedLoadedPoll()
     setIndex(2) // last feature index for N=3
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
     await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
     await wrapper.find('[data-testid="simulate-select-dysfunctional"]').trigger('click')
-    await flushPromises()
+    await wrapper.find('[data-testid="feature-next"]').trigger('click')
     expect(pushMock).toHaveBeenCalledWith({
       name: 'poll-submit-confirm',
       params: { uuid: 'poll-uuid' },
     })
   })
 
-  test('answering dysfunctional first, then functional → still advances', async () => {
+  test('button label is "Next" on non-final features', async () => {
     seedLoadedPoll()
+    setIndex(0)
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
-    await wrapper.find('[data-testid="simulate-select-dysfunctional"]').trigger('click')
-    await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
-    await flushPromises()
-    expect(pushMock).toHaveBeenCalledWith({
-      name: 'poll-question',
-      params: { uuid: 'poll-uuid', index: 1 },
-    })
+    expect(wrapper.find('[data-testid="feature-next"]').text()).toBe('Next')
   })
 
-  test('back-nav + change a single answer of already-complete pair → re-advances', async () => {
-    // User returns to a feature where both answers were already set (e.g.,
-    // from feature 2 back to feature 0), changes the functional answer →
-    // both are still non-null, so the page auto-advances forward again.
-    // This mirrors the per-question flow's "revisit re-advance" behavior.
+  test('button label is "Submit" on the last feature', async () => {
     seedLoadedPoll()
-    const draft = useResponseDraftStore()
-    draft.initForPoll('poll-uuid', ['fk-a', 'fk-b', 'fk-c'])
-    draft.setAnswer('fk-a', 'functional', 1)
-    draft.setAnswer('fk-a', 'dysfunctional', 5)
+    setIndex(2) // N=3 → last
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
-    await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
-    await flushPromises()
-    expect(pushMock).toHaveBeenCalledWith({
-      name: 'poll-question',
-      params: { uuid: 'poll-uuid', index: 1 },
-    })
+    expect(wrapper.find('[data-testid="feature-next"]').text()).toBe('Submit')
   })
 })
 

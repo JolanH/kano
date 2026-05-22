@@ -100,31 +100,31 @@ describe('KanoLikert', () => {
       .findAll('[data-testid^="kano-likert-option-"]')
       .map((el) => el.text())
     expect(labels).toEqual([
-      "I'd love it",
-      'nice-to-have',
-      'neutral',
-      'can live without it',
-      'would dislike it',
+      'Love it',
+      'Like it',
+      'Neutral',
+      'Dislike it',
+      'Hate it',
     ])
   })
 
-  test('question text interpolates the feature name', async () => {
+  test('functional question template renders from the copy deck', async () => {
     const wrapper = mount(KanoLikert, {
       props: { question: 'functional', feature, modelValue: null },
       global: { stubs: globalStubs },
     })
     expect(wrapper.find('legend').text()).toBe(
-      'How do you feel if Auto-save is available?',
+      'How would you feel if feature is available?',
     )
   })
 
-  test('dysfunctional question uses the "not available" template', async () => {
+  test('dysfunctional question template renders from the copy deck', async () => {
     const wrapper = mount(KanoLikert, {
       props: { question: 'dysfunctional', feature, modelValue: null },
       global: { stubs: globalStubs },
     })
     expect(wrapper.find('legend').text()).toBe(
-      'How do you feel if Auto-save is not available?',
+      'How would you feel if feature is not available?',
     )
   })
 

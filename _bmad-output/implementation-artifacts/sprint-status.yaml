@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-22
-last_updated: 2026-05-21  # epic 4 dev pass complete — stories 4-1..4-8 → review
+last_updated: 2026-05-22  # epic 4 closed — stories 4-1..4-8 → done; manual VO iOS / TalkBack Android signoff for 4-8 still owed (tracked in deferred-work.md)
 project: kano
 project_key: NOKEY
 tracking_system: file-system
@@ -93,15 +93,21 @@ development_status:
   epic-3-retrospective: optional
 
   # Epic 4: Respondent Poll Experience & Submission
-  epic-4: in-progress
-  4-1-submission-and-response-models-with-pydantic-schemas: review
-  4-2-poll-service-record-full-submission-atomic-transaction: review
-  4-3-public-poll-submission-endpoint-csrf-exempt: review
-  4-4-respondent-landing-page-replacing-the-e3-stub: review
-  4-5-kanolikert-component-with-auto-advance-and-keyboard-1-5: review
-  4-6-one-question-per-screen-respondent-flow-with-honest-progress: review
-  4-7-terminal-submit-with-inline-missing-answer-error-and-thank-you-page: review
-  4-8-respondent-flow-accessibility-close-out-and-manual-gates: review
+  # Closed 2026-05-22. Note: 4-6 includes two post-review amendments
+  # (per-feature progression + explicit Next/Submit button) and 4-4
+  # includes the methodology-explainer amendment — both folded into
+  # the same `done` state. 4-8 manual a11y signoff (VoiceOver iOS +
+  # TalkBack Android) is the one outstanding gate; tracked in
+  # _bmad-output/.../deferred-work.md, owed before Story 5-8 ships.
+  epic-4: done
+  4-1-submission-and-response-models-with-pydantic-schemas: done
+  4-2-poll-service-record-full-submission-atomic-transaction: done
+  4-3-public-poll-submission-endpoint-csrf-exempt: done
+  4-4-respondent-landing-page-replacing-the-e3-stub: done
+  4-5-kanolikert-component-with-auto-advance-and-keyboard-1-5: done
+  4-6-one-question-per-screen-respondent-flow-with-honest-progress: done
+  4-7-terminal-submit-with-inline-missing-answer-error-and-thank-you-page: done
+  4-8-respondent-flow-accessibility-close-out-and-manual-gates: done
   epic-4-retrospective: optional
 
   # Epic 5: Analysis & Insight

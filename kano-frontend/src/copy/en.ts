@@ -56,16 +56,16 @@ export const en = {
   // conversational, not interrogative). The historical numeric keys are
   // preserved so any inline `respondent.likert.${value}` consumer still
   // resolves.
-  'respondent.likert.1': "I'd love it",
-  'respondent.likert.2': 'nice-to-have',
-  'respondent.likert.3': 'neutral',
-  'respondent.likert.4': 'can live without it',
-  'respondent.likert.5': 'would dislike it',
+  'respondent.likert.1': "Love it",
+  'respondent.likert.2': 'Like it',
+  'respondent.likert.3': 'Neutral',
+  'respondent.likert.4': "Dislike it",
+  'respondent.likert.5': "Hate it",
   // KanoLikert (Story 4-5) — interpolated question templates + error copy.
   'respondent.likert.question.functional':
-    'How do you feel if {featureName} is available?',
+    'How would you feel if feature is available?',
   'respondent.likert.question.dysfunctional':
-    'How do you feel if {featureName} is not available?',
+    'How would you feel if feature is not available?',
   'respondent.likert.error.unanswered':
     'Please select an answer before continuing.',
 

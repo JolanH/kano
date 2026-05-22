@@ -71,7 +71,10 @@ const routes: RouteRecordRaw[] = [
     path: '/poll/:uuid/q/:index(\\d+)',
     name: 'poll-question',
     component: () => import('@/pages/poll/Question.vue'),
-    meta: { layout: 'respondent' },
+    // `wideRespondent` widens the RespondentLayout container so the
+    // per-feature page can fit its two Likerts side-by-side on desktop.
+    // The other respondent routes keep the mobile-narrow 480 px default.
+    meta: { layout: 'respondent', wideRespondent: true },
   },
   {
     path: '/poll/:uuid/submit-confirm',
