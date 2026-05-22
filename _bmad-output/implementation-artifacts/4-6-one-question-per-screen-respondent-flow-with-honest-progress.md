@@ -1,26 +1,37 @@
-# Story 4.6: One-question-per-screen respondent flow with honest progress
+# Story 4.6: One-feature-per-screen respondent flow with honest progress
+
+> **2026-05-22 amendment — per-feature progression.** This story
+> originally shipped a one-question-per-screen flow (2N screens for N
+> features). Per user direction it was inverted to per-feature
+> progression: each route screen now renders ONE feature with BOTH
+> Likert pickers (functional + dysfunctional) visible at once;
+> auto-advance fires only when both draft answers are non-null;
+> progress denominates features (N) instead of questions (2N); halfway
+> microcopy was removed entirely. ACs and tasks below are amended in
+> place — the original 2026-05-21 implementation is fully superseded.
 
 Status: review
 
 ## Story
 
 As Marcus,
-I want to answer one question per screen with a progress bar, tap-back navigation, and a halfway acknowledgement that feels honest and sparing,
-so that the 16-question sequence feels like one continuous experience rather than a bureaucratic form.
+I want to answer both Kano questions for one feature at a time on a single screen, with a progress bar and tap-back navigation,
+so that the per-feature framing feels coherent (each screen is one feature, not one question torn from its pair) and the flow stays short.
 
 ## Acceptance Criteria
 
-1. **Given** a poll with N features (2N questions total), **when** the `/poll/:uuid/q/:index` route renders (with `:index` an integer from 0 to 2N-1), **then** exactly one `<KanoLikert>` is visible at a time showing either the functional (`:index % 2 === 0`) or dysfunctional (`:index % 2 === 1`) question for the feature at `features[Math.floor(index / 2)]` per FR21.
-2. A `v-progress-linear` bar at the top of the route renders true fraction — e.g., "Question 9 of 16" text above the bar and `:model-value="(index + 1) / (2 * N) * 100"` for the fill (FR23 + UX-spec §Flow Optimization Principle 7 honest-progress).
-3. **Tap/keyboard auto-advance** via KanoLikert's `@auto-advance` event routes to `/poll/:uuid/q/:index+1` using `router.push` — client-side routing, no full-page reload, no `window.location.href`.
-4. **Tap-back navigation**: browser Back button, Esc, or Backspace navigates to `/poll/:uuid/q/:index-1`; previously-selected answer remains selected (editable) per FR24 reversible-before-commit. At `:index=0`, Back navigates to `/poll/:uuid` (landing).
-5. **Halfway microcopy**: at the exact halfway point (`:index === N`, i.e., the first dysfunctional question for feature N), a one-line acknowledgement `copy('respondent.flow.halfway')` renders above the progress bar with `role="status"` (non-interrupting live region) and remains visible for exactly this one question, then disappears. `prefers-reduced-motion: reduce` skips any fade animation.
-6. **Answer draft** is held in a Pinia store `useResponseDraftStore` (NOT `sessionStorage`, NOT `localStorage`) with state `answers: Map<feature_key, { fq_answer: number | null, dq_answer: number | null }>`. Closing the tab silently discards the draft per FR25; there is no "resume where you left off" prompt in v1.
-7. `pollPublicStore` (Story 4.4) is the single source of truth for the poll + feature list — no duplicate fetching. If the user navigates directly to `/poll/:uuid/q/3` (e.g., browser refresh mid-flow), the Question route triggers `pollPublicStore.loadPoll(uuid)` if `fetchState !== 'loaded'` before rendering. During load, the component shows a `v-progress-circular` spinner, not blank. On 410/404/error, the component delegates to the existing `ExpiredPoll`/`PollNotFound`/`LandingError` views (reuse from Stories 3.8 / 4.4) — does not reinvent the error surfaces.
-8. **Index out-of-range guard**: if `:index >= 2 * N` or `:index < 0`, the route immediately redirects to `/poll/:uuid` (landing); if the draft already has every feature answered for both questions, the redirect target is `/poll/:uuid/submit-confirm` (Story 4.7 route — placeholder route exists from this story; Story 4.7 replaces the placeholder).
-9. **Mid-flow network failure on route transition** (e.g., the user hits refresh and `loadPoll` fails): the route renders an inline `v-alert` with `error` variant — "Something went wrong — please retry" (copy-deck) + Retry button; no data is lost (the draft in the Pinia store is preserved; only the poll metadata failed).
-10. **Feature description** (optional, per `PollPublic.features[].description`) renders below the question text in smaller body copy if present; absent description renders no element (not an empty div). Description is not part of the `<KanoLikert>` component — this story composes it above/below KanoLikert.
-11. A Vitest spec for `Question.vue` covers: rendering a specific `:index`, auto-advance → router.push, Back → previous index / landing at index 0, halfway microcopy at `index === N` only, error state, out-of-range redirect, and draft persistence across index changes (answer at index 2 remains when navigating to index 3 and back).
+1. **Given** a poll with N features, **when** the `/poll/:uuid/q/:index` route renders (with `:index` an integer from 0 to N-1), **then** ONE feature page renders the feature name + optional description + TWO `<KanoLikert>` components — `question="functional"` then `question="dysfunctional"` — both bound to the same feature at `features[index]` per FR21.
+2. A `v-progress-linear` bar at the top of the route renders true fraction — e.g., "Feature 5 of 8" text above the bar and `:model-value="(index + 1) / N * 100"` for the fill (FR23 + UX-spec §Flow Optimization Principle 7 honest-progress, applied at the per-feature granularity since each screen represents one tick of progress).
+3. **Auto-advance** fires only when BOTH Likert pickers on the page have a non-null draft entry. Each KanoLikert's `@auto-advance` event triggers a re-check; if either answer is still null the navigation is suppressed, letting the respondent finish answering in either order without a premature page jump. Once both are answered, `router.push` routes to `/poll/:uuid/q/:index+1` (client-side, no reload).
+4. **Tap-back navigation**: browser Back button, Esc, or Backspace navigates to `/poll/:uuid/q/:index-1`; both previously-selected answers remain selected (editable) per FR24 reversible-before-commit. At `:index=0`, Back navigates to `/poll/:uuid` (landing).
+5. **No halfway microcopy.** Under per-feature progression with fewer screens (N instead of 2N), mid-flow encouragement is dropped per user direction — the flow stays quiet by design. The `respondent.flow.halfway` copy key is removed.
+6. **Answer draft** is held in a Pinia store `useResponseDraftStore` (NOT `sessionStorage`, NOT `localStorage`) with state `answers: Record<feature_key, { fq_answer: number | null, dq_answer: number | null }>`. Closing the tab silently discards the draft per FR25; there is no "resume where you left off" prompt in v1.
+7. `pollPublicStore` (Story 4.4) is the single source of truth for the poll + feature list — no duplicate fetching. On hard refresh into a deep-link, the Question route triggers `pollPublicStore.loadPoll(uuid)` if `fetchState` is `idle`/`loading` before rendering. During load, the component shows a `v-progress-circular` spinner, not blank. On 410/404/error, the component delegates to `ExpiredPoll`/`PollNotFound`/`PollLoadError` (reuse from Stories 3.8 / 4.4).
+8. **Index out-of-range guard**: if `:index >= N` or `:index < 0`, the route immediately redirects to `/poll/:uuid` (landing); if the draft already has every feature answered for both questions, the redirect target is `/poll/:uuid/submit-confirm`.
+9. **Mid-flow network failure on route transition**: the route renders `PollLoadError` (reused) with a Retry button; no data is lost (the draft in the Pinia store is preserved; only the poll metadata failed).
+10. **Feature description** (optional, per `PollPublic.features[].description`) renders below the feature name in smaller body copy if present; absent description renders no element. The description sits ABOVE the two Likerts, not inside either of them.
+11. **Per-Likert error border under `?showError=1`** (Story 4.7 missing-answer guard): each KanoLikert renders its error variant only while its own draft entry is null. Answering one Likert clears its border while the other (still null) keeps its error border. The first selection drops the `?showError=1` sentinel from the URL via `router.replace`.
+12. A Vitest spec for `Question.vue` covers: per-feature dispatch, progress label denominating features, auto-advance fires only after both answered (in either order), last-feature auto-advance routes to submit-confirm, Esc/Backspace back-nav (index 0 → landing), out-of-range redirect (`index === N` and beyond), draft preservation across index changes, per-Likert showError null-detection, and first-selection `?showError=1` clearing.
 
 ## Tasks / Subtasks
 
@@ -146,12 +157,24 @@ so that the 16-question sequence feels like one continuous experience rather tha
   - [x] Switching `activePollId` via `initForPoll(newUuid, ...)` clears the prior draft
   - [x] `reset()` clears the Map and `activePollId`
 - [x] Playwright E2E (integration with Story 4.4's `landing.spec.ts` — or a new file `e2e/respondent/flow.spec.ts`)
-  - [x] Navigate to `/poll/<uuid>` → click Begin → asserts `/poll/<uuid>/q/0` rendered with the functional question for feature[0]
-  - [x] Press `3` → asserts URL `/q/1` with the dysfunctional question for feature[0]
-  - [x] Press `2` → asserts URL `/q/2` with the functional question for feature[1]
-  - [x] At `index=N` (halfway), asserts halfway microcopy visible
-  - [x] Press Esc → asserts URL went back one index
-  - [x] Refresh browser at `/q/3` → asserts poll reloads, answers persisted — **IMPORTANT**: this test SHOULD FAIL intentionally given the in-memory draft design. Instead, the test asserts that after refresh, the route renders at `/q/3` but all answers are back to null (draft was discarded on the hard refresh because Pinia state is purged). Document this as the FR25 silent-discard contract.
+  - [x] Navigate to `/poll/<uuid>` → click Begin → asserts `/poll/<uuid>/q/0` rendered with BOTH Likerts for feature[0]
+  - [x] Focus functional Likert + press `3` → asserts URL is still `/q/0` (single answer ≠ advance)
+  - [x] Focus dysfunctional Likert + press `3` → asserts URL is now `/q/1` (both answered → advance)
+  - [x] At `:index === N - 1`, both answered → asserts URL is `/submit-confirm`
+  - [x] Press Esc → asserts URL went back one feature index
+  - [x] Refresh browser mid-flow → poll reloads, draft is purged per FR25 (the test asserts this is the silent-discard contract)
+- [x] **Per-feature amendment (2026-05-22)**
+  - [x] Story file rewritten in place: ACs renumbered (1, 2, 3, 5, 10, 11), halfway removed; new AC #11 for per-Likert error sourcing.
+  - [x] `Question.vue` rewritten: index space is `0..N-1`; two `<KanoLikert>` instances per feature; auto-advance is gated by a draft-pair completeness check (`fq !== null && dq !== null`) so the respondent can answer in either order without a premature jump.
+  - [x] Feature name now renders as the screen `<h1>` above the description (a11y heading-level structure was previously implicit in KanoLikert's `<legend>`; the per-feature framing makes a real heading load-bearing).
+  - [x] `respondent.flow.progressLabel` rewording: "Question {current} of {total}" → "Feature {current} of {total}". Denominator becomes `featureCount`, not `2 * featureCount`. Copy-deck `docs/copy-deck.md` synced.
+  - [x] `respondent.flow.halfway` copy key deleted from `en.ts` and `docs/copy-deck.md`.
+  - [x] `SubmitConfirm.vue` (Story 4-7): `indexOf(featureKey, _question)` now returns `featureIndex` (the `* 2 + offset` per-question math is gone); `goBack()` uses `features.length - 1` instead of `features.length * 2 - 1`. The `question` parameter is preserved in the signature for `firstMissing()` API compatibility but no longer affects routing — Question.vue's per-Likert null-detection surfaces the correct error border.
+  - [x] `tests/unit/question-route.spec.ts` rewritten (per-feature dispatch; auto-advance gating; in-either-order coverage; per-Likert showError null-detection; out-of-range `index === N`).
+  - [x] `tests/unit/submit-confirm.spec.ts` indices updated to per-feature semantics (`index: 0` for fk-a-missing, `index: 1` for fk-b-missing, `index: 1` for Back from last feature when N=2).
+  - [x] `e2e/respondent/keyboard-a11y.spec.ts` evolved: full-flow loop is `3 features × focus(functional) + '3' + focus(dysfunctional) + '3'` (was `2N = 6 × '3'`). `measureAutoAdvance` pre-answers functional before timing the dysfunctional press → URL transition.
+  - [x] `e2e/respondent/a11y.spec.ts` — halfway test deleted; reduced-motion test rewritten as a "page mounts under reduced motion" smoke check.
+  - [x] `docs/a11y/respondent-checklist.md` per-screen checklists rewritten for per-feature progression (halfway screen section removed; mid-flow screen now lists both Likerts and the per-feature auto-advance gate).
 
 ## Dev Notes
 
@@ -299,7 +322,9 @@ claude-opus-4-7[1m]
 
 ### File List
 - `kano-frontend/src/pages/poll/Question.vue` (replaces Story 4-4's
-  placeholder wholesale)
+  placeholder wholesale; 2026-05-22: rewritten for per-feature
+  progression — two KanoLikerts per screen, draft-pair auto-advance
+  gate, feature name as `<h1>`, halfway block removed)
 - `kano-frontend/src/pages/poll/SubmitConfirm.vue` (new placeholder;
   Story 4-7 replaces)
 - `kano-frontend/src/stores/responseDraft.ts` (new)
@@ -307,11 +332,24 @@ claude-opus-4-7[1m]
   route)
 - `kano-frontend/src/copy/en.ts` (add `respondent.common.loading`,
   `respondent.flow.progressLabel`, `respondent.flow.progressBarAriaLabel`,
-  `respondent.flow.halfway`, `respondent.submitConfirm.placeholder`)
-- `kano-frontend/tests/unit/question-route.spec.ts` (new — 18 tests)
+  `respondent.flow.halfway`, `respondent.submitConfirm.placeholder`;
+  2026-05-22: `respondent.flow.halfway` removed,
+  `respondent.flow.progressLabel` reworded "Feature {current} of
+  {total}")
+- `kano-frontend/tests/unit/question-route.spec.ts` (new — 18 tests;
+  2026-05-22: rewritten ~25 cases for per-feature semantics)
 - `kano-frontend/tests/unit/response-draft-store.spec.ts` (new — 11
-  tests)
-- `docs/copy-deck.md` (Respondent flow chrome section updated)
+  tests; unchanged by amendment — store API is per-feature already)
+- `kano-frontend/tests/unit/submit-confirm.spec.ts` (2026-05-22:
+  feature-index assertions updated)
+- `kano-frontend/e2e/respondent/keyboard-a11y.spec.ts` (2026-05-22:
+  full-flow loop rewritten; measureAutoAdvance pre-answers functional)
+- `kano-frontend/e2e/respondent/a11y.spec.ts` (2026-05-22: halfway
+  test removed; reduced-motion test rewritten as a smoke check)
+- `docs/copy-deck.md` (Respondent flow chrome section updated;
+  2026-05-22: halfway row removed, progressLabel row reworded)
+- `docs/a11y/respondent-checklist.md` (2026-05-22: per-screen
+  checklists rewritten for per-feature progression)
 
 ### Change Log
 - 2026-05-21: One-question-per-screen flow ships. Question.vue with
@@ -319,3 +357,17 @@ claude-opus-4-7[1m]
   out-of-range guard; useResponseDraftStore lands the in-memory
   answer draft; submit-confirm placeholder route registered for
   Story 4-7.
+- 2026-05-22: **Per-feature progression amendment** — inverted the
+  flow from per-question (2N screens) to per-feature (N screens, both
+  Likerts per screen). Question.vue rewritten with two KanoLikert
+  instances + draft-pair completeness gate on auto-advance.
+  SubmitConfirm.vue's indexOf returns featureIndex; goBack uses N-1.
+  Progress copy reworded "Question/of" → "Feature/of"; halfway
+  microcopy + copy key removed. Per-Likert showError null-detection
+  added so `?showError=1` from Story 4-7's missing-answer guard
+  highlights only the unanswered Likert, not both. Unit specs
+  rewritten (Question.vue ~ 25 cases, SubmitConfirm indices
+  updated); e2e (keyboard + a11y) updated. Full vitest suite green
+  (221 tests); vue-tsc clean. Choices captured from user direction:
+  auto-advance when both answered, progress per-feature, halfway
+  removed.

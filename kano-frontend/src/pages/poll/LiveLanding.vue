@@ -7,6 +7,21 @@
       <p class="trust-line" data-testid="live-landing-trust-line">
         {{ copy('respondent.landing.trustLine') }}
       </p>
+      <section
+        class="methodology"
+        data-testid="live-landing-methodology"
+        :aria-label="copy('respondent.landing.methodology.intro')"
+      >
+        <p class="methodology-intro">{{ copy('respondent.landing.methodology.intro') }}</p>
+        <ul class="methodology-list">
+          <li data-testid="live-landing-methodology-functional">
+            {{ copy('respondent.landing.methodology.functional') }}
+          </li>
+          <li data-testid="live-landing-methodology-dysfunctional">
+            {{ copy('respondent.landing.methodology.dysfunctional') }}
+          </li>
+        </ul>
+      </section>
       <v-btn
         ref="beginBtn"
         size="large"
@@ -96,6 +111,34 @@ onMounted(async () => {
   color: var(--v-theme-on-surface, inherit);
   max-width: 32ch;
   margin: 0;
+}
+
+.methodology {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 32ch;
+  text-align: left;
+  color: var(--v-theme-on-surface, inherit);
+}
+
+.methodology-intro {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0;
+  font-weight: 500;
+}
+
+.methodology-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.methodology-list li + li {
+  margin-top: 4px;
 }
 
 .begin-cta {

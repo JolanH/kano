@@ -20,14 +20,14 @@ because the persona, devices, and assistive tech differ.
 | Platform | Browser | Screen reader | Notes |
 |---|---|---|---|
 | iOS (latest stable + one prior) | Safari | VoiceOver (built-in) | Settings → Accessibility → VoiceOver; triple-press Home/Side to toggle; one-finger swipe right/left to navigate; double-tap to activate; rotor (two-finger twist) → Form Controls / Headings |
-| Android (latest stable + one prior) | Chrome | TalkBack (built-in) | Settings → Accessibility → TalkBack; swipe right/left to navigate; double-tap to activate; swipe down-then-right for global menu; reading control swipe up/down for granularity |
+| Android (latest stable + one prior) | Chrome | TalkBack (built-in) | Settings → Accessibility → TalkBack. The gesture set changes between Android versions and between "default" vs "advanced" TalkBack profiles — defer to the official Google guide ([support.google.com TalkBack gestures](https://support.google.com/accessibility/android/answer/6151827)) rather than memorising shortcuts. At minimum: swipe right/left to traverse, double-tap to activate, two-finger swipe to scroll. |
 
 **Setup:**
 
 1. Bring the stack up via `docker compose up -d` (Story 1-9).
 2. From a desktop, seed a project with 8 features and create a poll
-   (PRD-realistic length — exercises the halfway microcopy at the
-   meaningful midpoint):
+   (PRD-realistic length — 8 feature screens to step through under
+   per-feature progression):
    ```bash
    # Replace UUIDs with real values from the API responses.
    curl -X POST http://localhost:5000/api/v1/projects/ \
@@ -87,39 +87,44 @@ once under VoiceOver/iOS, once under TalkBack/Android.
 | 2 | Body and Retry button announce in order |  |  | |
 | 3 | Activating Retry re-issues the GET and resolves to LiveLanding on success |  |  | Force a server 500 by stopping the backend container, then restarting |
 
-### Screen: `/poll/:uuid/q/:index` (Question.vue, mid-flow)
+### Screen: `/poll/:uuid/q/:index` (Question.vue, mid-flow — per-feature)
+
+Per-feature progression (Story 4-6 amendment 2026-05-22): each screen
+renders ONE feature with BOTH Likert pickers (functional + dysfunctional)
+visible at once. Auto-advance to the next feature fires only when both
+draft answers are non-null; halfway microcopy was removed.
 
 | # | Check | VO/iOS | TB/Android | Notes |
 |---|---|---|---|---|
-| 1 | Progress label announces ("Question N of 2N") |  |  | |
+| 1 | Progress label announces ("Feature N of M") |  |  | Denominator is feature count, not 2× |
 | 2 | Progress bar exposes aria-valuenow / valuemin / valuemax with current position |  |  | |
-| 3 | Feature description (when present) reads in line as a paragraph |  |  | |
-| 4 | KanoLikert legend announces the question text interpolated with the feature name |  |  | "How do you feel if Auto-save is available?" |
-| 5 | Each of 5 options announces with its plain-language label in order |  |  | |
-| 6 | Keyboard 1–5 selects the matching option |  |  | iOS Bluetooth keyboard or TalkBack Braille input |
-| 7 | After selection, auto-advance routes to next question (announcement varies by SR) |  |  | |
-| 8 | Esc / Backspace navigates back to previous index; previously-selected answer remains selected |  |  | Question.vue's onKeydown |
-| 9 | Tap target ≥ 44×44 on every option card |  |  | |
-| 10 | Currently focused option has a visible focus ring |  |  | Vuetify default; check both light and dark themes |
-
-### Screen: `/poll/:uuid/q/:index` (halfway, index === N)
-
-| # | Check | VO/iOS | TB/Android | Notes |
-|---|---|---|---|---|
-| 1 | Halfway microcopy ("Halfway there — this is genuinely helpful") announces once as a polite live region |  |  | role="status" → aria-live="polite" |
-| 2 | The announcement does NOT steal focus |  |  | Current question's option still has focus |
-| 3 | The microcopy disappears on the next route transition |  |  | v-if unmounts on index change |
-| 4 | Under reduced motion: no fade transition |  |  | @media (prefers-reduced-motion: reduce) override |
+| 3 | Feature name announces as the screen's `<h1>` |  |  | New per-feature heading |
+| 4 | Feature description (when present) reads in line as a paragraph |  |  | |
+| 5 | Functional KanoLikert legend announces "How do you feel if {feature} is available?" |  |  | |
+| 6 | Dysfunctional KanoLikert legend announces "How do you feel if {feature} is not available?" |  |  | |
+| 7 | Each of 5 options announces with its plain-language label in order, inside each Likert |  |  | |
+| 8 | Keyboard 1–5 selects the matching option in the currently focused Likert |  |  | KanoLikert's @keydown is scoped to the fieldset, so 1–5 routes to whichever one has focus |
+| 9 | Answering only one Likert does NOT advance the page; focus remains available to answer the other |  |  | Per-feature auto-advance gate |
+| 10 | After BOTH answers are set, auto-advance routes to next feature index (or `/submit-confirm` on the last one) |  |  | |
+| 11 | Esc / Backspace navigates back to previous feature index; both previously-selected answers remain selected |  |  | Question.vue's onKeydown |
+| 12 | Tap target ≥ 44×44 on every option card in both Likerts |  |  | |
+| 13 | Focused option has a visible focus ring in both Likerts |  |  | |
 
 ### Screen: `/poll/:uuid/q/:index?showError=1` (KanoLikert error variant)
 
+Under per-feature progression, `?showError=1` is a page-level sentinel;
+each KanoLikert renders its error variant only while its own draft entry
+is null. So the page may show one error border (one Likert answered),
+both borders (neither answered), or neither (both answered already).
+
 | # | Check | VO/iOS | TB/Android | Notes |
 |---|---|---|---|---|
-| 1 | Error message ("Please select an answer before continuing.") announces with role="alert" |  |  | |
+| 1 | Error message ("Please select an answer before continuing.") announces with role="alert" on each unanswered Likert |  |  | |
 | 2 | Focus stays on the radio group (does not jump to the error text) |  |  | |
 | 3 | aria-describedby on the fieldset links to the error message |  |  | KanoLikert.vue's labelId/errorId pattern |
-| 4 | First answer selection clears the error (visually and aria) |  |  | router.replace strips ?showError; KanoLikert's showError prop flips |
-| 5 | Red border + inline message resolved via Tixeo theme tokens (no hex literals) |  |  | |
+| 4 | Answering one Likert clears its border; the other (still unanswered) keeps its error border |  |  | Per-Likert null-detection in Question.vue |
+| 5 | First answer selection drops the `?showError=1` sentinel from the URL |  |  | router.replace strips ?showError on first onSelect |
+| 6 | Red border + inline message resolved via Tixeo theme tokens (no hex literals) |  |  | |
 
 ### Screen: `/poll/:uuid/submit-confirm` (SubmitConfirm.vue, happy path)
 

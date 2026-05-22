@@ -175,7 +175,10 @@ describe('SubmitConfirm — happy path', () => {
     })
   })
 
-  test('Back routes to the last question index', async () => {
+  test('Back routes to the last feature index', async () => {
+    // Per-feature progression (Story 4-6 amendment 2026-05-22): lastIndex
+    // is `features.length - 1`. For the 2-feature POLL fixture, that's
+    // index 1, not 3 (the old 2N-1 = 3 was per-question denominator).
     seedPoll()
     seedFullDraft()
     const wrapper = mount(SubmitConfirm, { global: { stubs: globalStubs } })
@@ -183,7 +186,7 @@ describe('SubmitConfirm — happy path', () => {
     await wrapper.find('[data-testid="submit-confirm-back"]').trigger('click')
     expect(pushMock).toHaveBeenCalledWith({
       name: 'poll-question',
-      params: { uuid: 'poll-uuid', index: 3 },
+      params: { uuid: 'poll-uuid', index: 1 },
     })
   })
 })
@@ -194,14 +197,16 @@ describe('SubmitConfirm — defensive completeness guard', () => {
     const draft = useResponseDraftStore()
     draft.initForPoll('poll-uuid', ['fk-a', 'fk-b'])
     draft.setAnswer('fk-a', 'functional', 3)
-    // fk-a dysfunctional is missing → routeIndex = 0 * 2 + 1 = 1
+    // Per-feature progression: fk-a is featureIndex 0, regardless of
+    // which question (functional/dysfunctional) is missing — Question.vue
+    // surfaces the correct per-Likert error border once it renders.
 
     mount(SubmitConfirm, { global: { stubs: globalStubs } })
     await flushPromises()
 
     expect(replaceMock).toHaveBeenCalledWith({
       name: 'poll-question',
-      params: { uuid: 'poll-uuid', index: 1 },
+      params: { uuid: 'poll-uuid', index: 0 },
       query: { showError: '1' },
     })
     expect(postMock).not.toHaveBeenCalled()
@@ -213,7 +218,7 @@ describe('SubmitConfirm — defensive completeness guard', () => {
     draft.initForPoll('poll-uuid', ['fk-a', 'fk-b'])
     draft.setAnswer('fk-a', 'functional', 3)
     draft.setAnswer('fk-a', 'dysfunctional', 5)
-    // fk-b entirely missing → routeIndex = 1 * 2 = 2
+    // fk-b entirely missing → featureIndex 1.
 
     const wrapper = mount(SubmitConfirm, { global: { stubs: globalStubs } })
     await flushPromises()
@@ -226,7 +231,7 @@ describe('SubmitConfirm — defensive completeness guard', () => {
     expect(postMock).not.toHaveBeenCalled()
     expect(replaceMock).toHaveBeenCalledWith({
       name: 'poll-question',
-      params: { uuid: 'poll-uuid', index: 2 },
+      params: { uuid: 'poll-uuid', index: 1 },
       query: { showError: '1' },
     })
   })
@@ -263,19 +268,25 @@ describe('SubmitConfirm — server error handling', () => {
 
     expect(replaceMock).toHaveBeenCalledWith({
       name: 'poll-question',
-      params: { uuid: 'poll-uuid', index: 2 },
+      params: { uuid: 'poll-uuid', index: 1 },
       query: { showError: '1' },
     })
   })
 
-  test('422 with only unexpected[] → routes to first unexpected feature', async () => {
+  test('422 with only unexpected[] (feature unknown to SPA) → draft reset + bounce to landing', async () => {
+    // By definition, `unexpected[]` carries feature_keys the server saw in
+    // the submission but doesn't know about — meaning they're NOT in the
+    // local PollPublic snapshot. Story 4.7 Dev Notes: treat this as
+    // snapshot drift, reset the draft, and route to the landing so the
+    // user re-initialises against the fresh poll state.
     seedPoll()
     seedFullDraft()
+    const stranger = 'fk-not-in-local-snapshot'
     postMock.mockRejectedValueOnce(
       new ValidationError(
         makeProblem(422, 'partial-submission', {
           missing: [],
-          unexpected: ['fk-a'],
+          unexpected: [stranger],
           duplicates: [],
         }),
         422,
@@ -289,10 +300,11 @@ describe('SubmitConfirm — server error handling', () => {
     await vi.advanceTimersByTimeAsync(800)
     await flushPromises()
 
+    const draft = useResponseDraftStore()
+    expect(draft.answers).toEqual({})
     expect(replaceMock).toHaveBeenCalledWith({
-      name: 'poll-question',
-      params: { uuid: 'poll-uuid', index: 0 },
-      query: { showError: '1' },
+      name: 'poll-landing',
+      params: { uuid: 'poll-uuid' },
     })
   })
 

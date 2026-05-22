@@ -154,16 +154,6 @@ test.describe('Respondent flow — axe-core + tap targets', () => {
     await tapTargetAudit(page)
   })
 
-  test('question at halfway index has axe-clean polite-live-region microcopy', async ({ page }) => {
-    await seedLivePoll(page)
-    // N = 3 → halfway is index 3.
-    await page.goto(`/poll/${LIVE_POLL_ID}/q/3`)
-    await expect(page.getByTestId('question-screen')).toBeVisible()
-    await expect(page.getByTestId('halfway-microcopy')).toBeVisible()
-    await axeClean(page)
-    await tapTargetAudit(page)
-  })
-
   test('question with ?showError=1 renders the error variant axe-clean', async ({ page }) => {
     await seedLivePoll(page)
     await page.goto(`/poll/${LIVE_POLL_ID}/q/0?showError=1`)
@@ -196,17 +186,17 @@ test.describe('Respondent flow — axe-core + tap targets', () => {
 test.describe('Respondent flow — reduced-motion contract', () => {
   test.use({ ...devices['iPhone SE'], reducedMotion: 'reduce' })
 
-  test('question route renders without animation transitions', async ({ page }) => {
+  test('question route renders under reduced-motion (per-feature progression)', async ({ page }) => {
+    // Per-feature progression (Story 4-6 amendment 2026-05-22) removed
+    // the halfway microcopy entirely. KanoLikert's auto-advance timer
+    // contract is the surviving reduced-motion-sensitive behavior; it's
+    // covered end-to-end by `keyboard-a11y.spec.ts → measureAutoAdvance`.
+    // Here we just sanity-check that the route mounts under reduced
+    // motion without throwing.
     await seedLivePoll(page)
     await page.goto(`/poll/${LIVE_POLL_ID}/q/0`)
     await expect(page.getByTestId('question-screen')).toBeVisible()
-
-    // Halfway microcopy's CSS transition collapses to `none` under the
-    // `@media (prefers-reduced-motion: reduce)` block in Question.vue.
-    await page.goto(`/poll/${LIVE_POLL_ID}/q/3`)
-    const transition = await page
-      .getByTestId('halfway-microcopy')
-      .evaluate((el) => getComputedStyle(el).transitionDuration)
-    expect(transition).toBe('0s')
+    await expect(page.getByTestId('kano-likert-functional')).toBeVisible()
+    await expect(page.getByTestId('kano-likert-dysfunctional')).toBeVisible()
   })
 })

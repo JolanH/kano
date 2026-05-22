@@ -21,6 +21,7 @@
         <v-btn
           variant="text"
           data-testid="submit-confirm-back"
+          :disabled="submitting"
           :text="copy('respondent.submitConfirm.backCta')"
           @click="goBack"
         />
@@ -129,14 +130,20 @@ function buildBody(poll: PollPublic): { answers: SubmissionAnswer[] } {
   return { answers }
 }
 
-function indexOf(featureKey: string, question: LikertQuestion): number | null {
+function indexOf(featureKey: string, _question: LikertQuestion): number | null {
+  // Per-feature progression: each route screen shows BOTH Likerts for
+  // one feature, so the missing-answer redirect targets the feature
+  // index directly. The `question` parameter is preserved for API
+  // compatibility with `firstMissing()`'s return shape, but no longer
+  // affects the route index — Question.vue's per-Likert null-detection
+  // surfaces the correct error border once the page renders.
   const poll = pollStore.poll
   if (!poll) return null
   const featureIndex = poll.features.findIndex(
     (f) => f.feature_key === featureKey,
   )
   if (featureIndex < 0) return null
-  return featureIndex * 2 + (question === 'functional' ? 0 : 1)
+  return featureIndex
 }
 
 function redirectToFirstMissingFromDraft(): void {
@@ -193,8 +200,7 @@ function redirectFromServerProblem(
 function handleSubmitError(err: unknown): void {
   if (err instanceof KanoApiError) {
     if (err.status === 410) {
-      pollStore.fetchState = 'expired'
-      pollStore.error = err
+      pollStore.markExpired(err)
       draftStore.reset()
       router.replace({ name: 'poll-landing', params: { uuid: uuidParam() } })
       return
@@ -248,7 +254,7 @@ function goBack(): void {
     router.push({ name: 'poll-landing', params: { uuid: uuidParam() } })
     return
   }
-  const lastIndex = poll.features.length * 2 - 1
+  const lastIndex = poll.features.length - 1
   router.push({
     name: 'poll-question',
     params: { uuid: uuidParam(), index: lastIndex },

@@ -230,6 +230,15 @@ export const en = {
   // em-dash in "2–3" is U+2013. Three beats: brand anchor, honest time
   // cost, value exchange.
   'respondent.landing.trustLine': 'Tixeo · 2–3 minutes · shapes our roadmap',
+  // Methodology explainer — sets respondent expectations for the Kano
+  // functional/dysfunctional pair before they hit the first question. The
+  // two bullet lines mirror the wording of `respondent.likert.question.*`
+  // (Story 4-5) so the landing primes the exact question shape Marcus
+  // will see.
+  'respondent.landing.methodology.intro':
+    "For each feature, you'll answer two quick questions:",
+  'respondent.landing.methodology.functional': "How you'd feel if it's available",
+  'respondent.landing.methodology.dysfunctional': "How you'd feel if it's not",
   'respondent.landing.beginCta': 'Begin',
   'respondent.landing.beginAriaLabel': 'Begin the poll',
   'respondent.expired.contactCta': 'Get in touch with our product team',
@@ -246,13 +255,13 @@ export const en = {
   // placeholder.
   'respondent.question.placeholder': 'The first question will appear here shortly.',
 
-  // Question route chrome (Story 4-6).
+  // Question route chrome (Story 4-6 — per-feature progression amendment
+  // 2026-05-22: each route screen shows ONE feature with both Likerts;
+  // progress label denominates features, not questions, and the halfway
+  // microcopy was dropped per user direction).
   'respondent.common.loading': 'Loading…',
-  // Honest-progress label per UX-spec §Flow Optimization Principle 7.
-  'respondent.flow.progressLabel': 'Question {current} of {total}',
+  'respondent.flow.progressLabel': 'Feature {current} of {total}',
   'respondent.flow.progressBarAriaLabel': 'Poll progress',
-  // Em-dash U+2014 is intentional (epics line 1151).
-  'respondent.flow.halfway': 'Halfway there — this is genuinely helpful',
 
   // SubmitConfirm + Thanks (Story 4-7). The placeholder key from Story
   // 4-6 is preserved for any leftover reference.

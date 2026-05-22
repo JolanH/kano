@@ -27,6 +27,7 @@ from kano.exceptions import (
     EntityNotFound,
     PartialSubmission,
     PollExpired,
+    SubmissionFailed,
 )
 from kano.schemas.submission import AnswerIn, PollSubmission
 from kano.services.kano_matrix import Category, compute_category
@@ -382,6 +383,45 @@ class TestRecordFullSubmissionRejectsClosedOrMissing:
         with app_with_migrated_db.app_context(), pytest.raises(EntityNotFound):
             record_full_submission(uuid4(), body)
 
+        assert _row_counts(db_engine) == (0, 0)
+
+
+class TestRecordFullSubmissionWrapsDbFailures:
+    def test_db_error_rolls_back_and_raises_submission_failed(
+        self,
+        app_with_migrated_db: Flask,
+        db_engine: Engine,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # Force the second `session.add(Response(...))` to raise so the
+        # transactional try/except converts the failure into the typed
+        # SubmissionFailed envelope. Zero rows must remain.
+        project_id = _seed_project(db_engine)
+        _, key = _seed_feature(db_engine, project_id=project_id, name="Solo")
+        poll_id = _seed_poll(db_engine, project_id=project_id)
+
+        body = PollSubmission(
+            answers=[AnswerIn(feature_key=key, fq_answer=3, dq_answer=5)]
+        )
+
+        with app_with_migrated_db.app_context():
+            original_add = kano_db.session.add
+            calls = {"n": 0}
+
+            def boom_on_second(instance: object) -> None:
+                calls["n"] += 1
+                if calls["n"] >= 2:
+                    raise RuntimeError("simulated DB driver failure")
+                original_add(instance)
+
+            monkeypatch.setattr(kano_db.session, "add", boom_on_second)
+
+            with pytest.raises(SubmissionFailed) as exc_info:
+                record_full_submission(poll_id, body)
+
+        assert exc_info.value.poll_id == poll_id
+        assert isinstance(exc_info.value.cause, RuntimeError)
+        assert "simulated DB driver failure" in str(exc_info.value.cause)
         assert _row_counts(db_engine) == (0, 0)
 
 

@@ -235,6 +235,7 @@ class TestSubmitPollRejectsBadShape:
         r = client_migrated.post(f"/api/v1/polls/{poll_id}/submit", json=body)
 
         assert r.status_code == 422
+        assert r.mimetype == "application/problem+json"
         payload = _problem(r.data)
         assert payload["type"].endswith("/partial-submission")
         assert payload["status"] == 422
@@ -299,6 +300,7 @@ class TestSubmitPollRejectsBadShape:
         }
         r = client_migrated.post(f"/api/v1/polls/{poll_id}/submit", json=body)
         assert r.status_code == 400
+        assert r.mimetype == "application/problem+json"
         payload = _problem(r.data)
         assert payload["type"].endswith("/validation-error")
         assert _row_counts(db_engine) == (0, 0)
@@ -341,6 +343,7 @@ class TestSubmitPollRejectsExpiredOrMissing:
         r = client_migrated.post(f"/api/v1/polls/{poll_id}/submit", json=body)
 
         assert r.status_code == 410
+        assert r.mimetype == "application/problem+json"
         payload = _problem(r.data)
         assert payload["type"].endswith("/poll-expired")
         assert _row_counts(db_engine) == (0, 0)
@@ -356,9 +359,49 @@ class TestSubmitPollRejectsExpiredOrMissing:
         r = client_migrated.post(f"/api/v1/polls/{uuid4()}/submit", json=body)
 
         assert r.status_code == 404
+        assert r.mimetype == "application/problem+json"
         payload = _problem(r.data)
         assert payload["type"].endswith("/entity-not-found")
         assert _row_counts(db_engine) == (0, 0)
+
+
+class TestSubmitPollWrapsServerFailures:
+    def test_db_error_returns_500_problem_details(
+        self,
+        client_migrated: FlaskClient,
+        db_engine: Engine,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # Forces the service's catch-all to raise SubmissionFailed, which
+        # the registered handler converts to a 500 Problem Details envelope
+        # with the `submission-failed` type. The underlying cause string
+        # MUST NOT leak to the wire per Story 4.3 NFR8 logging discipline.
+        from kano.db import db as kano_db
+
+        project_id = _seed_project(db_engine)
+        key = _seed_feature(db_engine, project_id=project_id, name="A")
+        poll_id = _seed_poll(db_engine, project_id=project_id)
+
+        original_flush = kano_db.session.flush
+
+        def boom(*args: object, **kwargs: object) -> None:
+            raise RuntimeError("internal-driver-detail-do-not-leak")
+
+        monkeypatch.setattr(kano_db.session, "flush", boom)
+
+        body = {"answers": [{"feature_key": str(key), "fq_answer": 3, "dq_answer": 5}]}
+        r = client_migrated.post(f"/api/v1/polls/{poll_id}/submit", json=body)
+
+        assert r.status_code == 500
+        assert r.mimetype == "application/problem+json"
+        payload = _problem(r.data)
+        assert payload["type"].endswith("/submission-failed")
+        assert payload["status"] == 500
+        # Generic detail; underlying cause string must NOT appear.
+        assert "internal-driver-detail-do-not-leak" not in str(payload)
+        assert _row_counts(db_engine) == (0, 0)
+
+        monkeypatch.setattr(kano_db.session, "flush", original_flush)
 
 
 class TestSubmitPollPublicSurfaceContract:

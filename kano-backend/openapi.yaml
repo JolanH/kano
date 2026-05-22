@@ -394,13 +394,16 @@ paths:
             Submission does not match the poll's feature set. Payload
             extends `ProblemDetails` with `poll_id`, `missing`, `unexpected`,
             and `duplicates` arrays so the SPA can route the user back to
-            the offending question(s).
+            the offending question(s). All four extension fields are
+            **always present** (empty arrays when no entries) so the
+            client can read them unconditionally.
           content:
             application/problem+json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ProblemDetails'
                   - type: object
+                    required: [poll_id, missing, unexpected, duplicates]
                     properties:
                       poll_id:
                         type: string

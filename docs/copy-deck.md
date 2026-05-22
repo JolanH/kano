@@ -104,9 +104,8 @@ Dev Notes locks the conversational register from epics line 1126.
 | `respondent.cta.submit` | Submit | Final-submission CTA (Story 4-7) |
 | `respondent.error.generic` | We couldn't save your response. Please try again. | Submission failure (Story 4-3 error path) |
 | `respondent.common.loading` | Loading… | Generic spinner aria-label across respondent screens |
-| `respondent.flow.progressLabel` | Question {current} of {total} | Honest-progress label per UX-spec §Flow Optimization Principle 7 |
+| `respondent.flow.progressLabel` | Feature {current} of {total} | Honest-progress label — per-feature denominator (Story 4-6 per-feature amendment 2026-05-22) |
 | `respondent.flow.progressBarAriaLabel` | Poll progress | `v-progress-linear` aria-label on the Question route |
-| `respondent.flow.halfway` | Halfway there — this is genuinely helpful | One-shot acknowledgement at `index === N` (em-dash U+2014) |
 | `respondent.submitConfirm.placeholder` | Almost done — Story 4-7 will land the submit confirmation here. | Story 4-7 replaces this placeholder |
 
 ## Dev-only theme audit page (Story 1.8)
@@ -272,6 +271,9 @@ Story 3-8's `LivePollStub.vue` was deleted in Story 4-4 and replaced by `LiveLan
 | `respondent.landing.loading` | Loading… | `v-progress-circular` `aria-label` |
 | `respondent.landing.brand` | Tixeo | LiveLanding brand-mark text |
 | `respondent.landing.trustLine` | Tixeo · 2–3 minutes · shapes our roadmap | LiveLanding single trust line (middle-dot U+00B7 separators, en-dash U+2013) |
+| `respondent.landing.methodology.intro` | For each feature, you'll answer two quick questions: | LiveLanding methodology explainer intro (above the two-question bullets) |
+| `respondent.landing.methodology.functional` | How you'd feel if it's available | LiveLanding methodology bullet 1 — mirrors `respondent.likert.question.functional` wording |
+| `respondent.landing.methodology.dysfunctional` | How you'd feel if it's not | LiveLanding methodology bullet 2 — mirrors `respondent.likert.question.dysfunctional` wording |
 | `respondent.landing.beginCta` | Begin | LiveLanding primary CTA text |
 | `respondent.landing.beginAriaLabel` | Begin the poll | LiveLanding Begin button aria-label |
 | `respondent.expired.contactCta` | Get in touch with our product team | Mailto button label on expired + not-found |

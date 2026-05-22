@@ -41,7 +41,7 @@ async function seedPoll(page: Page) {
 test.use({ ...devices['iPhone SE'] })
 
 test.describe('Respondent flow — keyboard-only', () => {
-  test('full flow (landing → 6 questions → submit-confirm → thanks) with zero mouse events', async ({
+  test('full flow (landing → 3 features × 2 Likerts → submit-confirm → thanks) with zero mouse events', async ({
     page,
   }) => {
     await seedPoll(page)
@@ -59,13 +59,29 @@ test.describe('Respondent flow — keyboard-only', () => {
     await page.keyboard.press('Enter')
     await page.waitForURL(new RegExp(`/poll/${POLL_ID}/q/0$`))
 
-    // 2N = 6 questions; press '3' on each. The KanoLikert auto-advance
-    // routes us to the next index after the 150 ms confirmation.
-    for (let i = 0; i < 6; i++) {
+    // Per-feature progression: 3 features, each with both Likerts on
+    // one screen. For each feature: Tab to the functional Likert and
+    // press `3`, then Tab to the dysfunctional Likert and press `3`.
+    // Auto-advance fires only after BOTH answers are set; last feature
+    // routes to /submit-confirm.
+    for (let i = 0; i < 3; i++) {
       await expect(page.getByTestId('question-screen')).toBeVisible()
+      // Move focus into the functional Likert's first radio.
+      await page
+        .getByTestId('kano-likert-functional')
+        .locator('input[type="radio"]')
+        .first()
+        .focus()
+      await page.keyboard.press('3')
+      // Move focus into the dysfunctional Likert's first radio.
+      await page
+        .getByTestId('kano-likert-dysfunctional')
+        .locator('input[type="radio"]')
+        .first()
+        .focus()
       await page.keyboard.press('3')
       const nextUrl =
-        i === 5
+        i === 2
           ? new RegExp(`/poll/${POLL_ID}/submit-confirm$`)
           : new RegExp(`/poll/${POLL_ID}/q/${i + 1}$`)
       await page.waitForURL(nextUrl)
@@ -102,18 +118,61 @@ test.describe('Respondent flow — keyboard-only', () => {
 })
 
 test.describe('Respondent flow — reduced-motion + keyboard', () => {
-  test.use({ ...devices['iPhone SE'], reducedMotion: 'reduce' })
+  // Absolute-timing assertions ("auto-advance < 50 ms") are flaky in CI
+  // — router transitions plus reactivity ticks can blow past any tight
+  // budget regardless of the 150 ms `setTimeout` being skipped. Instead
+  // we measure BOTH a default-motion and a reduced-motion run and assert
+  // the *delta* exceeds roughly the confirmationMs delay (150 ms minus
+  // a noise floor). That's what Story 4.5's contract actually claims.
 
-  test('auto-advance is effectively instant (< 50 ms) under reduced motion', async ({ page }) => {
+  async function measureAutoAdvance(page: Page): Promise<number> {
+    // Per-feature progression: auto-advance fires only when BOTH Likerts
+    // are answered. We pre-set the functional answer via focus + press,
+    // then time the dysfunctional press → URL transition. Reduced motion
+    // skips KanoLikert's 150 ms confirmation timer; the delta between
+    // default and reduced runs should clear ≥ 100 ms.
     await seedPoll(page)
     await page.goto(`/poll/${POLL_ID}/q/0`)
     await expect(page.getByTestId('question-screen')).toBeVisible()
+    await page
+      .getByTestId('kano-likert-functional')
+      .locator('input[type="radio"]')
+      .first()
+      .focus()
+    await page.keyboard.press('3')
+    await page
+      .getByTestId('kano-likert-dysfunctional')
+      .locator('input[type="radio"]')
+      .first()
+      .focus()
     const start = Date.now()
     await page.keyboard.press('3')
     await page.waitForURL(new RegExp(`/poll/${POLL_ID}/q/1$`))
-    const elapsed = Date.now() - start
-    // Story 4.5: reduced-motion collapses the 150 ms confirmation to
-    // 0 ms. Generous 50 ms window absorbs router transition cost in CI.
-    expect(elapsed).toBeLessThan(150)
+    return Date.now() - start
+  }
+
+  test('reduced motion is meaningfully faster than default motion', async ({
+    browser,
+  }) => {
+    const defaultContext = await browser.newContext({
+      ...devices['iPhone SE'],
+    })
+    const reducedContext = await browser.newContext({
+      ...devices['iPhone SE'],
+      reducedMotion: 'reduce',
+    })
+    try {
+      const defaultMs = await measureAutoAdvance(await defaultContext.newPage())
+      const reducedMs = await measureAutoAdvance(await reducedContext.newPage())
+      // The 150 ms confirmation is the only deterministic source of
+      // additional latency between the two runs; assert the delta clears
+      // at least 100 ms (leaves 50 ms headroom for noise). If reduced
+      // ever becomes SLOWER than default, that's a regression worth
+      // failing on.
+      expect(defaultMs - reducedMs).toBeGreaterThanOrEqual(100)
+    } finally {
+      await defaultContext.close()
+      await reducedContext.close()
+    }
   })
 })

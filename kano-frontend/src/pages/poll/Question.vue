@@ -20,20 +20,11 @@
       data-testid="question-screen"
       @keydown="onKeydown"
     >
-      <p
-        v-if="isHalfway"
-        role="status"
-        aria-atomic="true"
-        class="halfway"
-        data-testid="halfway-microcopy"
-      >
-        {{ copy('respondent.flow.halfway') }}
-      </p>
       <p class="progress-label" data-testid="progress-label">
         {{
           copy('respondent.flow.progressLabel', {
             current: indexNum + 1,
-            total: totalQuestions,
+            total: featureCount,
           })
         }}
       </p>
@@ -41,11 +32,14 @@
         :model-value="progressFraction * 100"
         :aria-valuenow="indexNum + 1"
         :aria-valuemin="1"
-        :aria-valuemax="totalQuestions"
+        :aria-valuemax="featureCount"
         :aria-label="copy('respondent.flow.progressBarAriaLabel')"
         color="primary"
         height="6"
       />
+      <h1 class="feature-name" data-testid="feature-name">
+        {{ currentFeature.name }}
+      </h1>
       <p
         v-if="currentFeature.description"
         class="feature-description"
@@ -54,11 +48,21 @@
         {{ currentFeature.description }}
       </p>
       <KanoLikert
-        :question="question"
+        question="functional"
         :feature="currentFeature"
-        :model-value="currentAnswer"
-        :show-error="showError"
-        @update:model-value="onSelect"
+        :model-value="functionalAnswer"
+        :show-error="showFunctionalError"
+        data-testid="kano-likert-functional"
+        @update:model-value="onSelect('functional', $event)"
+        @auto-advance="onAutoAdvance"
+      />
+      <KanoLikert
+        question="dysfunctional"
+        :feature="currentFeature"
+        :model-value="dysfunctionalAnswer"
+        :show-error="showDysfunctionalError"
+        data-testid="kano-likert-dysfunctional"
+        @update:model-value="onSelect('dysfunctional', $event)"
         @auto-advance="onAutoAdvance"
       />
     </section>
@@ -67,25 +71,23 @@
 
 <script lang="ts" setup>
 /**
- * One-question-per-screen respondent flow with honest progress.
+ * Per-feature respondent flow.
  *
- * Reads route params `:uuid` and `:index` (digit-restricted by the
- * router regex). `index` is 0-based across `2 * N` questions; even
- * indices are functional, odd are dysfunctional, and the feature at
- * each pair is `features[floor(index / 2)]`.
+ * `/poll/:uuid/q/:index` is a feature-index from `0..N-1`. Each screen
+ * renders the feature's two Likert pickers — functional + dysfunctional
+ * — side-by-side; auto-advance to the next feature fires only when
+ * BOTH answers are set in the draft. Last feature's auto-advance routes
+ * to `poll-submit-confirm`.
  *
  * State sources:
- * - `pollPublicStore` (Story 4.4) — the poll snapshot itself. Loaded
- *   once on first mount; subsequent navigations are no-ops.
+ * - `pollPublicStore` (Story 4.4) — the poll snapshot.
  * - `useResponseDraftStore` (this story) — in-memory answer draft.
- *   Survives back-nav within the same poll; purged on tab close per
- *   FR25.
  *
  * Error surfaces (`ExpiredPoll`, `PollNotFound`, `PollLoadError`) are
- * reused verbatim from Stories 3.8 / 4.4 — do NOT re-author here.
+ * reused verbatim from Stories 3.8 / 4.4.
  */
 import { computed, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, type LocationQuery } from 'vue-router'
 
 import KanoLikert from '@/components/KanoLikert.vue'
 import { useCopy } from '@/composables/useCopy'
@@ -113,38 +115,50 @@ const uuid = computed(() => resolvedParam('uuid'))
 const indexNum = computed(() => Number(resolvedParam('index')))
 
 const features = computed(() => store.poll?.features ?? [])
-const totalQuestions = computed(() => features.value.length * 2)
+const featureCount = computed(() => features.value.length)
 const currentFeature = computed(() => {
   if (!store.isLoaded) return null
-  const pos = Math.floor(indexNum.value / 2)
-  return features.value[pos] ?? null
+  return features.value[indexNum.value] ?? null
 })
-const question = computed<LikertQuestion>(() =>
-  indexNum.value % 2 === 0 ? 'functional' : 'dysfunctional',
-)
-const isHalfway = computed(() => indexNum.value === features.value.length)
 const progressFraction = computed(() => {
-  if (totalQuestions.value === 0) return 0
-  return (indexNum.value + 1) / totalQuestions.value
+  if (featureCount.value === 0) return 0
+  return (indexNum.value + 1) / featureCount.value
 })
 
-const currentAnswer = computed(() => {
+const functionalAnswer = computed(() => {
   if (!currentFeature.value) return null
-  return draft.getAnswer(currentFeature.value.feature_key, question.value)
+  return draft.getAnswer(currentFeature.value.feature_key, 'functional')
+})
+const dysfunctionalAnswer = computed(() => {
+  if (!currentFeature.value) return null
+  return draft.getAnswer(currentFeature.value.feature_key, 'dysfunctional')
 })
 
-// Story 4.7's submit guard routes back here with `?showError=1` when a
-// missing answer is detected (client- or server-side). KanoLikert
-// renders its error variant; the first selection clears the query.
-const showError = computed(() => route.query.showError === '1')
+// Per-Likert error display: the `?showError=1` sentinel (set by
+// SubmitConfirm's missing-answer guard) flags the page; each Likert
+// renders its error variant only while its own draft entry is null.
+// So once the user answers one of the two, that Likert's border clears
+// while the other (still null) keeps its error border — no manual query
+// clearing needed.
+const showErrorFlag = computed(() => route.query.showError === '1')
+const showFunctionalError = computed(
+  () => showErrorFlag.value && functionalAnswer.value === null,
+)
+const showDysfunctionalError = computed(
+  () => showErrorFlag.value && dysfunctionalAnswer.value === null,
+)
 
 function clearShowErrorQuery(): void {
   if (route.query.showError === undefined) return
-  const { showError: _drop, ...rest } = route.query
+  const next: LocationQuery = {}
+  for (const [key, value] of Object.entries(route.query)) {
+    if (key === 'showError') continue
+    next[key] = value
+  }
   void router.replace({
     name: route.name as string,
     params: route.params,
-    query: rest,
+    query: next,
   })
 }
 
@@ -160,7 +174,7 @@ async function reload(): Promise<void> {
 
 function redirectIfOutOfRange(): boolean {
   if (!store.isLoaded) return false
-  const total = totalQuestions.value
+  const total = featureCount.value
   if (
     !Number.isFinite(indexNum.value) ||
     indexNum.value < 0 ||
@@ -173,17 +187,28 @@ function redirectIfOutOfRange(): boolean {
   return false
 }
 
-function onSelect(value: number): void {
+function onSelect(question: LikertQuestion, value: number): void {
   if (!currentFeature.value) return
-  draft.setAnswer(currentFeature.value.feature_key, question.value, value)
-  // Drop the ?showError=1 sentinel on first selection — KanoLikert
-  // visibly clears as the reactive prop flips.
+  draft.setAnswer(currentFeature.value.feature_key, question, value)
+  // Once the user has touched a Likert, the legacy ?showError=1 query
+  // is stale: per-Likert null-detection now drives the visible error
+  // border, and leaving the sentinel in the URL would re-trigger on a
+  // subsequent back-nav. Drop it the first chance we get.
   clearShowErrorQuery()
 }
 
 function onAutoAdvance(_value: number): void {
+  if (!currentFeature.value) return
+  // Per-feature progression: advance only when both Likerts have draft
+  // entries. The other Likert may not have fired its auto-advance yet,
+  // so this guard is what makes "answer in either order" feel natural.
+  const fk = currentFeature.value.feature_key
+  const fq = draft.getAnswer(fk, 'functional')
+  const dq = draft.getAnswer(fk, 'dysfunctional')
+  if (fq === null || dq === null) return
+
   const nextIndex = indexNum.value + 1
-  if (nextIndex >= totalQuestions.value) {
+  if (nextIndex >= featureCount.value) {
     router.push({ name: 'poll-submit-confirm', params: { uuid: uuid.value } })
     return
   }
@@ -204,20 +229,38 @@ function goBack(): void {
   })
 }
 
+const EDITABLE_INPUT_TYPES = new Set([
+  'text',
+  'email',
+  'number',
+  'password',
+  'search',
+  'tel',
+  'url',
+  'date',
+  'time',
+  'datetime-local',
+  'month',
+  'week',
+])
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (target instanceof HTMLTextAreaElement) return true
+  if (target instanceof HTMLElement && target.isContentEditable) return true
+  if (target instanceof HTMLInputElement) {
+    return EDITABLE_INPUT_TYPES.has(target.type)
+  }
+  return false
+}
+
 function onKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape' && event.key !== 'Backspace') return
-  // Don't hijack Backspace if the user is editing a text field somewhere.
-  const target = event.target as HTMLElement | null
-  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
+  if (isEditableTarget(event.target)) return
   event.preventDefault()
   goBack()
 }
 
 onMounted(async () => {
-  // On a hard refresh, Pinia state is purged → fetchState='idle' → we
-  // refetch. Terminal states ('expired' / 'not-found' / 'error') are
-  // sticky and reach this route only via in-app deep-link; don't
-  // re-blow-the-state by re-firing the request.
   if (store.fetchState === 'idle' || store.fetchState === 'loading') {
     await reload()
   } else if (store.isLoaded && store.poll) {
@@ -239,8 +282,7 @@ defineExpose({
   reload,
   goBack,
   onAutoAdvance,
-  isHalfway,
-  totalQuestions,
+  featureCount,
 })
 </script>
 
@@ -256,29 +298,23 @@ defineExpose({
   outline: none;
 }
 
-.halfway {
-  font-size: 1rem;
-  font-weight: 500;
-  color: rgb(var(--v-theme-primary, 25 118 210));
-  margin: 0;
-  transition: opacity 300ms ease;
-}
-
 .progress-label {
   font-size: 0.875rem;
   color: rgba(var(--v-theme-on-surface, 33 33 33), 0.7);
   margin: 0;
 }
 
+.feature-name {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 8px 0 0 0;
+  color: rgb(var(--v-theme-on-surface, 33 33 33));
+}
+
 .feature-description {
   font-size: 0.875rem;
   color: rgba(var(--v-theme-on-surface, 33 33 33), 0.7);
   margin: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .halfway {
-    transition: none;
-  }
 }
 </style>

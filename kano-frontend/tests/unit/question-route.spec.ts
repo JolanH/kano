@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 /**
- * Question.vue (Story 4-6) — index → (feature, question) routing,
- * auto-advance, back-nav, halfway acknowledgement, out-of-range
- * redirect, and draft preservation across index transitions.
+ * Question.vue (Story 4-6 per-feature amendment 2026-05-22) — index is
+ * a feature-index from `0..N-1`; each screen renders BOTH Likerts for
+ * one feature; auto-advance fires only when both draft entries are
+ * non-null. Halfway microcopy has been removed.
  *
  * Mounts the real component with Pinia + mocked router + stubbed
  * Vuetify primitives. Pre-seeds the `pollPublicStore` so the component
@@ -22,9 +23,6 @@ import { useResponseDraftStore } from '@/stores/responseDraft'
 const pushMock = vi.fn()
 const replaceMock = vi.fn()
 
-// `route.params` and `route.query` are reactive in production; refs let
-// the component's computed properties update when we change `index` or
-// `showError`.
 const routeParams = ref<{ uuid: string; index: string }>({
   uuid: 'poll-uuid',
   index: '0',
@@ -44,11 +42,6 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ push: pushMock, replace: replaceMock }),
 }))
 
-// onMounted in Question.vue calls pollPublicStore.loadPoll() when the
-// fetchState isn't 'loaded'. The tests pre-seed the store with the state
-// they care about; mock useApi so the reload call doesn't actually try
-// to hit the network (which would flip 'expired' → 'error' before the
-// assertion runs).
 const getMock = vi.fn().mockResolvedValue({
   data: {
     id: 'poll-uuid',
@@ -103,12 +96,13 @@ const KanoLikertStub = defineComponent({
     confirmationMs: { type: Number, default: 150 },
   },
   emits: ['update:modelValue', 'auto-advance'],
-  setup(props, { emit }) {
+  setup(props, { emit, attrs }) {
+    const pickValue = 3
     return () =>
       h(
         'div',
         {
-          'data-testid': 'kano-likert',
+          'data-testid': attrs['data-testid'] ?? 'kano-likert',
           'data-question': props.question,
           'data-feature-key':
             (props.feature as { feature_key?: string } | null)?.feature_key ??
@@ -122,10 +116,10 @@ const KanoLikertStub = defineComponent({
             'button',
             {
               type: 'button',
-              'data-testid': 'simulate-select',
+              'data-testid': `simulate-select-${props.question}`,
               onClick: () => {
-                emit('update:modelValue', 3)
-                emit('auto-advance', 3)
+                emit('update:modelValue', pickValue)
+                emit('auto-advance', pickValue)
               },
             },
             'pick 3',
@@ -209,92 +203,135 @@ beforeEach(() => {
   routeQuery.value = {}
 })
 
-describe('Question route — index dispatch', () => {
-  test('index=0 → functional question for feature[0]', async () => {
+describe('Question route — per-feature dispatch', () => {
+  test('index=0 → both Likerts render for feature[0]', async () => {
     seedLoadedPoll()
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
-    const likert = wrapper.find('[data-testid="kano-likert"]')
-    expect(likert.attributes('data-question')).toBe('functional')
-    expect(likert.attributes('data-feature-key')).toBe('fk-a')
+    const fn = wrapper.find('[data-testid="kano-likert-functional"]')
+    const dq = wrapper.find('[data-testid="kano-likert-dysfunctional"]')
+    expect(fn.exists()).toBe(true)
+    expect(dq.exists()).toBe(true)
+    expect(fn.attributes('data-feature-key')).toBe('fk-a')
+    expect(dq.attributes('data-feature-key')).toBe('fk-a')
+    expect(fn.attributes('data-question')).toBe('functional')
+    expect(dq.attributes('data-question')).toBe('dysfunctional')
+    expect(wrapper.find('[data-testid="feature-name"]').text()).toBe('Feature A')
   })
 
-  test('index=1 → dysfunctional question for feature[0]', async () => {
+  test('index=1 → both Likerts render for feature[1]', async () => {
     seedLoadedPoll()
     setIndex(1)
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
-    const likert = wrapper.find('[data-testid="kano-likert"]')
-    expect(likert.attributes('data-question')).toBe('dysfunctional')
-    expect(likert.attributes('data-feature-key')).toBe('fk-a')
-  })
-
-  test('index=2 → functional question for feature[1]', async () => {
-    seedLoadedPoll()
-    setIndex(2)
-    const wrapper = mount(Question, { global: { stubs: globalStubs } })
-    await flushPromises()
-    const likert = wrapper.find('[data-testid="kano-likert"]')
-    expect(likert.attributes('data-question')).toBe('functional')
-    expect(likert.attributes('data-feature-key')).toBe('fk-b')
+    expect(
+      wrapper.find('[data-testid="kano-likert-functional"]').attributes('data-feature-key'),
+    ).toBe('fk-b')
+    expect(wrapper.find('[data-testid="feature-name"]').text()).toBe('Feature B')
   })
 })
 
-describe('Question route — progress + halfway', () => {
-  test('progress label is honest "Question N of 2N"', async () => {
+describe('Question route — progress', () => {
+  test('progress label denominates features, not questions', async () => {
     seedLoadedPoll()
-    setIndex(2)
+    setIndex(1)
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
     expect(wrapper.find('[data-testid="progress-label"]').text()).toBe(
-      'Question 3 of 6',
+      'Feature 2 of 3',
     )
   })
 
-  test('halfway acknowledgement appears at index === N only', async () => {
+  test('halfway microcopy is gone (removed in per-feature amendment)', async () => {
     seedLoadedPoll()
-    setIndex(3) // N = 3, so halfway is index 3
-    const wrapper = mount(Question, { global: { stubs: globalStubs } })
-    await flushPromises()
-    const halfway = wrapper.find('[data-testid="halfway-microcopy"]')
-    expect(halfway.exists()).toBe(true)
-    expect(halfway.attributes('role')).toBe('status')
-    expect(halfway.text()).toContain('Halfway there')
-  })
-
-  test('halfway is absent at other indices', async () => {
-    seedLoadedPoll()
-    setIndex(2)
+    setIndex(1)
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
     expect(wrapper.find('[data-testid="halfway-microcopy"]').exists()).toBe(false)
   })
 })
 
-describe('Question route — navigation', () => {
-  test('auto-advance routes to the next index', async () => {
+describe('Question route — auto-advance fires only when BOTH answered', () => {
+  test('answering functional alone does NOT navigate', async () => {
     seedLoadedPoll()
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
-    await wrapper.find('[data-testid="simulate-select"]').trigger('click')
+    await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
+    await flushPromises()
+    expect(pushMock).not.toHaveBeenCalled()
+  })
+
+  test('answering dysfunctional alone does NOT navigate', async () => {
+    seedLoadedPoll()
+    const wrapper = mount(Question, { global: { stubs: globalStubs } })
+    await flushPromises()
+    await wrapper.find('[data-testid="simulate-select-dysfunctional"]').trigger('click')
+    await flushPromises()
+    expect(pushMock).not.toHaveBeenCalled()
+  })
+
+  test('answering both → advances to next feature index', async () => {
+    seedLoadedPoll()
+    const wrapper = mount(Question, { global: { stubs: globalStubs } })
+    await flushPromises()
+    await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
+    await wrapper.find('[data-testid="simulate-select-dysfunctional"]').trigger('click')
+    await flushPromises()
     expect(pushMock).toHaveBeenCalledWith({
       name: 'poll-question',
       params: { uuid: 'poll-uuid', index: 1 },
     })
   })
 
-  test('auto-advance from the LAST question routes to submit-confirm', async () => {
+  test('answering both on LAST feature → routes to submit-confirm', async () => {
     seedLoadedPoll()
-    setIndex(5) // last index for N=3 (2N - 1)
+    setIndex(2) // last feature index for N=3
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
-    await wrapper.find('[data-testid="simulate-select"]').trigger('click')
+    await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
+    await wrapper.find('[data-testid="simulate-select-dysfunctional"]').trigger('click')
+    await flushPromises()
     expect(pushMock).toHaveBeenCalledWith({
       name: 'poll-submit-confirm',
       params: { uuid: 'poll-uuid' },
     })
   })
 
+  test('answering dysfunctional first, then functional → still advances', async () => {
+    seedLoadedPoll()
+    const wrapper = mount(Question, { global: { stubs: globalStubs } })
+    await flushPromises()
+    await wrapper.find('[data-testid="simulate-select-dysfunctional"]').trigger('click')
+    await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
+    await flushPromises()
+    expect(pushMock).toHaveBeenCalledWith({
+      name: 'poll-question',
+      params: { uuid: 'poll-uuid', index: 1 },
+    })
+  })
+
+  test('back-nav + change a single answer of already-complete pair → re-advances', async () => {
+    // User returns to a feature where both answers were already set (e.g.,
+    // from feature 2 back to feature 0), changes the functional answer →
+    // both are still non-null, so the page auto-advances forward again.
+    // This mirrors the per-question flow's "revisit re-advance" behavior.
+    seedLoadedPoll()
+    const draft = useResponseDraftStore()
+    draft.initForPoll('poll-uuid', ['fk-a', 'fk-b', 'fk-c'])
+    draft.setAnswer('fk-a', 'functional', 1)
+    draft.setAnswer('fk-a', 'dysfunctional', 5)
+    const wrapper = mount(Question, { global: { stubs: globalStubs } })
+    await flushPromises()
+    await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
+    await flushPromises()
+    expect(pushMock).toHaveBeenCalledWith({
+      name: 'poll-question',
+      params: { uuid: 'poll-uuid', index: 1 },
+    })
+  })
+})
+
+describe('Question route — back-nav', () => {
   test('Esc at index=0 routes to landing', async () => {
     seedLoadedPoll()
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
@@ -308,9 +345,9 @@ describe('Question route — navigation', () => {
     })
   })
 
-  test('Esc at index=3 routes to index=2', async () => {
+  test('Esc at index=2 routes to index=1', async () => {
     seedLoadedPoll()
-    setIndex(3)
+    setIndex(2)
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
     await wrapper.find('[data-testid="question-screen"]').trigger('keydown', {
@@ -318,13 +355,13 @@ describe('Question route — navigation', () => {
     })
     expect(pushMock).toHaveBeenCalledWith({
       name: 'poll-question',
-      params: { uuid: 'poll-uuid', index: 2 },
+      params: { uuid: 'poll-uuid', index: 1 },
     })
   })
 
   test('Backspace also navigates back', async () => {
     seedLoadedPoll()
-    setIndex(3)
+    setIndex(2)
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
     await wrapper.find('[data-testid="question-screen"]').trigger('keydown', {
@@ -332,7 +369,7 @@ describe('Question route — navigation', () => {
     })
     expect(pushMock).toHaveBeenCalledWith({
       name: 'poll-question',
-      params: { uuid: 'poll-uuid', index: 2 },
+      params: { uuid: 'poll-uuid', index: 1 },
     })
   })
 })
@@ -365,49 +402,102 @@ describe('Question route — out-of-range', () => {
       params: { uuid: 'poll-uuid' },
     })
   })
+
+  test('index=3 (== N) is out of range under per-feature progression', async () => {
+    seedLoadedPoll()
+    setIndex(3)
+    mount(Question, { global: { stubs: globalStubs } })
+    await flushPromises()
+    expect(replaceMock).toHaveBeenCalledWith({
+      name: 'poll-landing',
+      params: { uuid: 'poll-uuid' },
+    })
+  })
 })
 
 describe('Question route — draft state', () => {
-  test('previously selected answer is passed to KanoLikert on revisit', async () => {
+  test('previously selected answers are passed to both Likerts on revisit', async () => {
     seedLoadedPoll()
     const draft = useResponseDraftStore()
     draft.initForPoll('poll-uuid', ['fk-a', 'fk-b', 'fk-c'])
     draft.setAnswer('fk-a', 'functional', 4)
+    draft.setAnswer('fk-a', 'dysfunctional', 2)
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
     expect(
-      wrapper.find('[data-testid="kano-likert"]').attributes('data-model-value'),
+      wrapper
+        .find('[data-testid="kano-likert-functional"]')
+        .attributes('data-model-value'),
     ).toBe('4')
+    expect(
+      wrapper
+        .find('[data-testid="kano-likert-dysfunctional"]')
+        .attributes('data-model-value'),
+    ).toBe('2')
   })
 
   test('selecting an answer updates the draft store', async () => {
     seedLoadedPoll()
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
-    await wrapper.find('[data-testid="simulate-select"]').trigger('click')
+    await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
     const draft = useResponseDraftStore()
     expect(draft.getAnswer('fk-a', 'functional')).toBe(3)
   })
 })
 
-describe('Question route — showError query handling (Story 4-7)', () => {
-  test('?showError=1 → KanoLikert receives show-error prop', async () => {
+describe('Question route — per-Likert showError sourcing (Story 4-7)', () => {
+  test('?showError=1 + both answers null → both Likerts render error', async () => {
     seedLoadedPoll()
     routeQuery.value = { showError: '1' }
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
-    // The stub doesn't render the show-error attribute by default; assert
-    // via the underlying KanoLikert vnode's props.
-    const likert = wrapper.findComponent({ name: 'KanoLikert' })
-    expect(likert.props('showError')).toBe(true)
+    expect(
+      wrapper
+        .find('[data-testid="kano-likert-functional"]')
+        .attributes('data-show-error'),
+    ).toBe('true')
+    expect(
+      wrapper
+        .find('[data-testid="kano-likert-dysfunctional"]')
+        .attributes('data-show-error'),
+    ).toBe('true')
   })
 
-  test('absence of showError → KanoLikert receives show-error=false', async () => {
+  test('?showError=1 + only dysfunctional missing → only dysfunctional Likert renders error', async () => {
+    seedLoadedPoll()
+    const draft = useResponseDraftStore()
+    draft.initForPoll('poll-uuid', ['fk-a', 'fk-b', 'fk-c'])
+    draft.setAnswer('fk-a', 'functional', 4)
+    routeQuery.value = { showError: '1' }
+    const wrapper = mount(Question, { global: { stubs: globalStubs } })
+    await flushPromises()
+    expect(
+      wrapper
+        .find('[data-testid="kano-likert-functional"]')
+        .attributes('data-show-error'),
+    ).toBe('false')
+    expect(
+      wrapper
+        .find('[data-testid="kano-likert-dysfunctional"]')
+        .attributes('data-show-error'),
+    ).toBe('true')
+  })
+
+  test('absence of showError → neither Likert renders error', async () => {
     seedLoadedPoll()
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
-    const likert = wrapper.findComponent({ name: 'KanoLikert' })
-    expect(likert.props('showError')).toBe(false)
+    expect(
+      wrapper
+        .find('[data-testid="kano-likert-functional"]')
+        .attributes('data-show-error'),
+    ).toBe('false')
+    expect(
+      wrapper
+        .find('[data-testid="kano-likert-dysfunctional"]')
+        .attributes('data-show-error'),
+    ).toBe('false')
   })
 
   test('first selection clears the showError query', async () => {
@@ -415,9 +505,7 @@ describe('Question route — showError query handling (Story 4-7)', () => {
     routeQuery.value = { showError: '1' }
     const wrapper = mount(Question, { global: { stubs: globalStubs } })
     await flushPromises()
-    await wrapper.find('[data-testid="simulate-select"]').trigger('click')
-
-    // First replace strips ?showError; subsequent push handles auto-advance.
+    await wrapper.find('[data-testid="simulate-select-functional"]').trigger('click')
     const replaceCalls = replaceMock.mock.calls
     expect(replaceCalls.length).toBeGreaterThanOrEqual(1)
     const lastReplace = replaceCalls[replaceCalls.length - 1][0]

@@ -93,6 +93,16 @@ test.describe('Story 4-4 — Respondent landing', () => {
     await expect(trust).toContainText('Tixeo')
     await expect(trust).toContainText('shapes our roadmap')
 
+    const methodology = page.getByTestId('live-landing-methodology')
+    await expect(methodology).toBeVisible()
+    await expect(methodology).toContainText('two quick questions')
+    await expect(page.getByTestId('live-landing-methodology-functional')).toContainText(
+      "How you'd feel if it's available",
+    )
+    await expect(page.getByTestId('live-landing-methodology-dysfunctional')).toContainText(
+      "How you'd feel if it's not",
+    )
+
     const begin = page.getByTestId('live-landing-begin')
     await expect(begin).toBeVisible()
     const box = await begin.boundingBox()

@@ -296,13 +296,21 @@ claude-opus-4-7[1m]
   equivalent to KanoLikert's reactive prop clearing.
 - The Thanks page does no fetching and does not depend on
   `pollPublicStore.poll`. Renders unconditionally per AC #9.
-- Playwright keyboard-only golden-path E2E (AC #12) NOT authored in
-  this story: the existing CI matrix expects Playwright but the
-  current env can't run it via the bmad-dev flow (no DB seeding
-  helper, no Playwright browser binaries in this context). The
-  Vitest specs cover the contract end-to-end at the SPA layer; the
-  E2E gate is deferred to Story 4.8's manual a11y gate or a follow-up
-  CI commit.
+- **Playwright keyboard-only golden-path E2E (AC #12) IS NOT IN THIS
+  STORY.** The PRD's MVP Readiness Gates name this E2E explicitly as
+  a ship-blocker, so its absence is a real outstanding gap — not a
+  deferred polish item. Story 4.8 subsequently authored
+  `e2e/respondent/keyboard-a11y.spec.ts` which covers the same
+  end-to-end flow keyboard-only (landing → 6 questions → submit-
+  confirm → thanks) plus reduced-motion and focus assertions, so the
+  golden-path coverage exists — but it lives under the Story 4.8 file
+  name, NOT under Story 4.7 as the original AC #12 specified. Vitest
+  specs in this story cover the SPA-layer contract end-to-end; the
+  in-CI Playwright run (Vite dev server + axe-core) lives in 4.8's
+  spec.
+  - If the audit trail wants Story 4.7's AC #12 satisfied verbatim,
+    rename or alias the Story 4.8 keyboard-only test into a Story 4.7
+    bucket; the test file itself does the right work.
 - Legacy `respondent.thankYou.title` / `.body` keys are preserved in
   the copy deck table as "legacy/superseded" rows so the copy-deck
   sync test stays green without churning the keys themselves.

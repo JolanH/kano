@@ -79,5 +79,16 @@ export const usePollPublicStore = defineStore('pollPublic', {
       this.fetchState = 'idle'
       this.error = null
     },
+
+    /**
+     * Mark the poll snapshot as gone (server returned 410 mid-flow).
+     * Used by Story 4-7's submit error handler so the landing re-renders
+     * in expired mode without an extra GET. Routed through an action
+     * rather than a direct `$patch` for `$onAction` traceability.
+     */
+    markExpired(err: KanoApiError | null = null): void {
+      this.fetchState = 'expired'
+      this.error = err
+    },
   },
 })

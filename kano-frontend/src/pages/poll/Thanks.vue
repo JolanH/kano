@@ -51,6 +51,15 @@ onMounted(async () => {
 }
 
 .thanks-title {
+  /* Remove the *default* outline for mouse focus only; keep a visible ring
+   * for keyboard users so :focus-visible from the programmatic focus()
+   * call satisfies WCAG 2.1 SC 2.4.7 (Focus Visible). */
   outline: none;
+}
+
+.thanks-title:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary, 25 118 210));
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 </style>

@@ -24,6 +24,7 @@ so that I can decide to proceed with informed consent rather than wariness.
 8. The page renders cleanly at 360 px viewport width; no horizontal overflow; all interactive elements are ≥ 44×44 px touch targets; passes `axe-core` checks across all four states (live, expired, not-found, error).
 9. The respondent initial bundle gate from Story 3.8 (150 KB gzipped ceiling) still passes after this story — verified by `npm run build` postbuild hook. No PM-only imports introduced (no `projectsStore`, `pollsStore`, `PmLayout`, `FeatureListEditor`, `PollSharePanel`).
 10. Playwright E2E: the happy-path respondent flow from email → landing → Begin → first question's `/poll/:uuid/q/0` URL resolves successfully (first question rendering is Story 4.6's job — this test stops at the route transition, asserting the URL changed and the next route loads without error).
+11. **On 200 (live poll)**, between the trust line and the Begin CTA, the landing renders a small methodology explainer that primes the Kano two-question pair before the respondent commits. The explainer has an intro line ("For each feature, you'll answer two quick questions:") and two bullets matching the question wording from Story 4.5 ("How you'd feel if it's available" / "How you'd feel if it's not"). All three strings are copy-deck sourced (`respondent.landing.methodology.intro|functional|dysfunctional`). This amends AC #3's exclusion list — the explainer is now permitted content because setting expectations about the question pair is part of the trust contract, not promotional micro-copy. No other content is permitted (still no cookie banner, no tracking pixel, no email capture, no share buttons).
 
 ## Tasks / Subtasks
 
@@ -130,6 +131,13 @@ so that I can decide to proceed with informed consent rather than wariness.
 - [x] Bundle-size regression check (AC: #9)
   - [x] After edits, run `npm run build` locally; confirm Story 3.8's postbuild script passes (respondent chunk ≤ 150 KB gzipped)
   - [x] Grep the built `dist/assets/poll-*.js` files (or `dist/manifest.json`) for any PM-only symbol leaks (`projectsStore`, `pollsStore`, `PmLayout`, `FeatureListEditor`, `PollSharePanel`, `v-data-table`, `v-navigation-drawer`). Fail the build if any appear — this guard already exists from Story 3.8; just confirm it still fires on this story's dist.
+- [x] Methodology explainer (AC: #11) — added 2026-05-22 post-review amendment
+  - [x] Three copy keys in `src/copy/en.ts`: `respondent.landing.methodology.intro`, `.functional`, `.dysfunctional`. Wording mirrors `respondent.likert.question.*` so landing and first question read as one register.
+  - [x] `LiveLanding.vue` renders the explainer as `<section>` (intro `<p>` + `<ul>` with two `<li>`) between trust line and Begin CTA. The block has `aria-label` so screen readers announce it as a labelled region; left-aligned at the same 32ch max-width as the trust line.
+  - [x] Three new `data-testid`s: `live-landing-methodology`, `live-landing-methodology-functional`, `live-landing-methodology-dysfunctional`.
+  - [x] Vitest spec extended in `tests/unit/poll-landing.spec.ts` with a "methodology explainer primes the Kano two-question pair" case.
+  - [x] Playwright spec (`e2e/respondent/landing.spec.ts`) extended in the live-poll happy path to assert the explainer renders with the expected bullet text.
+  - [x] `docs/copy-deck.md` synced with the three new keys (the en.ts ↔ copy-deck sync test enforces this).
 
 ## Dev Notes
 
@@ -263,6 +271,15 @@ claude-opus-4-7[1m]
   by `/poll/*` code. The respondent bundle gate
   (`scripts/check-respondent-bundle.mjs`) ran clean post-build at 82 KB
   gzipped — well under the 150 KB ceiling.
+  - **Caveat on AC #9**: the existing bundle gate checks total gzipped
+    size + `qrcode` lazy-import status only. It does NOT grep
+    `dist/manifest.json` for `projectsStore` / `pollsStore` /
+    `PmLayout` etc., so the "no PM-symbol leak" guard the story spec
+    asks for is currently size-budget shaped, not symbol-shaped. The
+    code-side discipline (no `@/pages/app/**` imports from `/poll/*`)
+    has been followed, but the postbuild script doesn't enforce it.
+    File a follow-up to extend `check-respondent-bundle.mjs` with the
+    symbol grep if a regression slips past size-only checking.
 - Placeholder `Question.vue` carries a `respondent.question.placeholder`
   copy key so the no-bare-strings ESLint rule stays happy; Story 4-6
   will replace the component wholesale.
@@ -278,7 +295,8 @@ claude-opus-4-7[1m]
 ### File List
 - `kano-frontend/src/pages/poll/Landing.vue` (DELETED + recreated)
 - `kano-frontend/src/pages/poll/LivePollStub.vue` (DELETED)
-- `kano-frontend/src/pages/poll/LiveLanding.vue` (new)
+- `kano-frontend/src/pages/poll/LiveLanding.vue` (new; 2026-05-22:
+  methodology explainer added between trust line and Begin CTA)
 - `kano-frontend/src/pages/poll/Question.vue` (new placeholder; Story
   4-6 replaces)
 - `kano-frontend/src/pages/poll/ExpiredPoll.vue` (untouched, reused)
@@ -288,7 +306,8 @@ claude-opus-4-7[1m]
 - `kano-frontend/src/stores/pollPublic.ts` (new)
 - `kano-frontend/src/router/index.ts` (add `poll-question` route)
 - `kano-frontend/src/copy/en.ts` (add brand/trustLine/beginCta/
-  beginAriaLabel/question.placeholder; remove stub.* keys)
+  beginAriaLabel/question.placeholder; remove stub.* keys; 2026-05-22:
+  add `respondent.landing.methodology.intro|functional|dysfunctional`)
 - `kano-frontend/tests/unit/poll-landing.spec.ts` (rewritten — was a
   stub-based test, now exercises the four fetchState branches against
   a Pinia-seeded store)
@@ -296,10 +315,18 @@ claude-opus-4-7[1m]
 - `kano-frontend/e2e/respondent/landing.spec.ts` (evolved from stub to
   LiveLanding; added 500-error → PollLoadError happy path)
 - `docs/copy-deck.md` (Respondent landing section updated to match
-  Story 4-4 keys)
+  Story 4-4 keys; 2026-05-22: methodology.* row triplet added)
 
 ### Change Log
 - 2026-05-21: LivePollStub deleted wholesale; LiveLanding ships with
   one-CTA composition; usePollPublicStore lands as the per-domain
   Pinia store; `/poll/:uuid/q/:index` route registered with placeholder
   Question.vue pending Story 4-6.
+- 2026-05-22: AC #11 amendment — methodology explainer added to
+  LiveLanding (intro line + two Kano-question bullets between trust
+  line and Begin CTA). Sourced from three new copy keys
+  (`respondent.landing.methodology.intro|functional|dysfunctional`)
+  whose wording mirrors `respondent.likert.question.*` so the landing
+  primes the exact question shape Marcus sees on screen 1. Unit spec
+  + Playwright happy-path spec extended; copy-deck doc synced. Full
+  vitest suite green (217 tests).

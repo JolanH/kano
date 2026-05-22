@@ -59,6 +59,24 @@ const API_PREFIX = '/api/v1'
 const CSRF_TOKEN_PATH = `${API_PREFIX}/csrf-token`
 const CSRF_PROBLEM_TYPE_SUFFIX = PROBLEM_TYPE.CSRF_VALIDATION_FAILED
 
+// Paths that intentionally accept un-authenticated requests with neither
+// CSRF token nor session cookie (the "public respondent surface" — Story
+// 3.4's GET and Story 4.3's POST). For these we skip the CSRF bootstrap
+// entirely AND send `credentials: 'omit'` so Flask never issues a session
+// cookie to anonymous respondents. Keeping the list narrow (regex-matched,
+// not prefix-matched) is load-bearing for the architecture's
+// "minimal-disclosure on the public surface" contract — adding a new
+// public endpoint requires an entry here AND a corresponding
+// `@public_endpoint` on the Flask side.
+const PUBLIC_RESPONDENT_PATTERNS: readonly RegExp[] = [
+  /^\/api\/v1\/polls\/[^/]+$/,
+  /^\/api\/v1\/polls\/[^/]+\/submit$/,
+]
+
+function isPublicRespondentPath(url: string): boolean {
+  return PUBLIC_RESPONDENT_PATTERNS.some((pattern) => pattern.test(url))
+}
+
 let cachedCsrfToken: string | null = null
 let csrfFetchPromise: Promise<string> | null = null
 // Incremented every time the cache is invalidated. The retry path uses the
@@ -199,7 +217,8 @@ async function dispatchOnce<T>(
 
   const isMutation = method !== 'GET' && method !== 'HEAD'
   const isBootstrap = url === CSRF_TOKEN_PATH
-  if (isMutation && !isBootstrap) {
+  const isPublic = isPublicRespondentPath(url)
+  if (isMutation && !isBootstrap && !isPublic) {
     const token = await fetchCsrfToken(requestId, options.signal)
     headers['X-CSRF-Token'] = token
   }
@@ -217,7 +236,10 @@ async function dispatchOnce<T>(
 
   const response = await fetch(url, {
     method,
-    credentials: 'include',
+    // Public respondent paths get `credentials: 'omit'` so Flask doesn't
+    // attach (or set) a session cookie on the anonymous surface. Everything
+    // else stays on `include` for the PM session.
+    credentials: isPublic ? 'omit' : 'include',
     signal: options.signal,
     headers,
     body: serializedBody,

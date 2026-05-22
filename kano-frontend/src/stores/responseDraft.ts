@@ -103,8 +103,16 @@ export const useResponseDraftStore = defineStore('responseDraft', {
 
     /**
      * Story 4.7's submit guard uses this to scroll the respondent
-     * back to the first un-answered question. Walks the feature list
-     * in the caller-supplied order (matches `PollPublic.features`).
+     * back to the first un-answered question.
+     *
+     * **Caller invariant**: `featureKeys` MUST be the active poll's
+     * features in the same order as `PollPublic.features`. The store
+     * deliberately doesn't own the canonical order so it stays a thin
+     * pure-state slice; passing a reordered or filtered list will
+     * return a wrong answer (e.g. `[fk-b, fk-a]` could route the user
+     * back to `fk-b` even though `fk-a` is also missing and rendered
+     * first). The only correct caller pattern is
+     * `pollPublicStore.poll.features.map(f => f.feature_key)`.
      */
     firstMissing(featureKeys: string[]): FirstMissing | null {
       for (const key of featureKeys) {

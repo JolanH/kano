@@ -17,25 +17,25 @@ the poll should ask 2 questions for each feature of the project :
 The responses to the poll should be stored by the application for each poll response
 
 Based on the poll's answers, we will categorize each feature according to responses to A and B
-
+O
 the categories are : Mandatory (M); Linear (L); Exciter (E); Indifferent (I); Contradictory (C); Doubtful (D);
 
 > if response to A = 1 and B = 1 		-> D;
-> 
+>
 > if response to A = 1 and B = 2,3,4 	-> E;
-> 
+>
 > if response to A = 1 and B = 5 		-> L;
-> 
+>
 > if response to A = 2,3,4 and B = 1	-> C;
-> 
+>
 > if response to A = 5 and B = 2,3,4	-> C;
-> 
+>
 > if response to A = 2,3,4 and B = 2,3,4	-> I;
-> 
+>
 > if response to A = 2,3,4 and B = 5 	-> M;
-> 
+>
 > if response to A = 5 and B = 1		-> D;
-> 
+>
 > if response to A = 5 and B = 5		-> D;
 
 

@@ -118,6 +118,20 @@ describe('Respondent Landing (Story 4-4)', () => {
     expect(begin.attributes('aria-label')).toBe('Begin the poll')
   })
 
+  test('loaded → methodology explainer primes the Kano two-question pair', async () => {
+    seedStore({ fetchState: 'loaded', poll: samplePollPublic })
+    const wrapper = mountLanding()
+    const methodology = wrapper.find('[data-testid="live-landing-methodology"]')
+    expect(methodology.exists()).toBe(true)
+    expect(methodology.text()).toContain('two quick questions')
+    const functional = wrapper.find('[data-testid="live-landing-methodology-functional"]')
+    const dysfunctional = wrapper.find(
+      '[data-testid="live-landing-methodology-dysfunctional"]',
+    )
+    expect(functional.text()).toBe("How you'd feel if it's available")
+    expect(dysfunctional.text()).toBe("How you'd feel if it's not")
+  })
+
   test('Begin click routes to /poll/:uuid/q/0', async () => {
     seedStore({ fetchState: 'loaded', poll: samplePollPublic })
     const wrapper = mountLanding()
