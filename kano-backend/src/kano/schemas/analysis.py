@@ -45,11 +45,16 @@ class FeatureAnalysis(BaseModel):
 class PollAnalysis(BaseModel):
     """Top-level analysis envelope for one poll.
 
-    Genuinely immutable: ``frozen=True`` blocks attribute re-assignment,
-    and ``features`` is a ``tuple`` (not ``list``) so the container itself
-    cannot be mutated either. JSON serialization treats both identically,
-    so Story 5.2's ``model_dump(mode="json")`` wrapper sees the expected
-    array shape on the wire.
+    Top-level surface treated as immutable: ``frozen=True`` blocks
+    attribute re-assignment on the envelope itself, and ``features`` is a
+    ``tuple`` (not ``list``) so the container cannot be appended or
+    re-ordered. Individual ``FeatureAnalysis`` members and their
+    ``distribution`` dicts are NOT frozen — a caller can still mutate
+    ``analysis.features[0].distribution['M'] = 999`` if it wants to. The
+    contract here is "the wire shape doesn't change under my feet", not
+    "every nested object is sealed". JSON serialization treats tuple and
+    list identically, so Story 5.2's ``model_dump(mode="json")`` wrapper
+    sees the expected array shape on the wire.
     """
 
     model_config = ConfigDict(frozen=True)

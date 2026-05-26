@@ -17,7 +17,7 @@
 import { computed, watchEffect } from 'vue'
 
 import type { Category } from '@/api/types'
-import { COPY_KEY, SWATCH_CLASS } from '@/components/cat-badge.constants'
+import { COPY_KEY, SWATCH_CLASS } from '@/components/kano-categories'
 import { useCopy } from '@/composables/useCopy'
 
 interface Props {
@@ -31,14 +31,17 @@ const isValid = computed(() => props.category in COPY_KEY)
 const label = computed(() => copy(COPY_KEY[props.category]))
 
 // Belt-and-braces against runtime drift (API JSON casts, `as any` casts at
-// call sites, hot-reload bleed). Silent in prod via `import.meta.env.DEV`.
-// `watchEffect` rather than a setup-time `if` so subsequent reactive prop
-// changes to an invalid value still warn.
-watchEffect(() => {
-  if (!isValid.value && import.meta.env.DEV) {
-    console.warn(`[CatBadge] invalid category prop: ${String(props.category)}`)
-  }
-})
+// call sites, hot-reload bleed). The DEV guard wraps the `watchEffect` call
+// itself so production builds tree-shake the reactive subscription entirely —
+// CatBadge is instantiated 6+ times per analysis-page row and any per-instance
+// allocation matters at scale.
+if (import.meta.env.DEV) {
+  watchEffect(() => {
+    if (!isValid.value) {
+      console.warn(`[CatBadge] invalid category prop: ${String(props.category)}`)
+    }
+  })
+}
 </script>
 
 <template>

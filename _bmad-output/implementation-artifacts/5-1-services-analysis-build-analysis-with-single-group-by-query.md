@@ -1,6 +1,6 @@
 # Story 5.1: services/analysis.build_analysis with single GROUP BY query
 
-Status: review
+Status: done
 
 ## Story
 
@@ -337,3 +337,17 @@ claude-opus-4-7 (1M context)
 ### Change Log
 
 - 2026-05-22: Initial implementation of `services.analysis.build_analysis` with single-GROUP-BY query, six-key distribution padding, sorted-tie dominant computation, max-per-feature `total_submissions`, and the three accompanying test modules. 100% coverage on both new src modules; 247/247 suite green.
+
+### Review Findings
+
+Adversarial 3-layer review on 2026-05-26 (Blind Hunter / Edge Case Hunter / Acceptance Auditor). Pre-approved deviations (spec-text divergences already logged in Completion Notes) are not relisted.
+
+- [x] [Review][Decision→Patch] `dominant_categories` now sorted in canonical Kano scan order (M → L → E → I → C → D) via `_CANONICAL_ORDER.index`. Wire output for a 2-way M/L tie is `["M", "L"]` everywhere on the page (was `["L", "M"]` alphabetic). `test_analysis_dominant.py`, `test_analysis_service.py`, `test_analysis_api.py` updated; OpenAPI `FeatureAnalysis.dominant_categories` description amended.
+- [x] [Review][Decision→Defer] `features[]` order kept as `ORDER BY Feature.id` (random UUIDv4). Documented as implementation-defined in the OpenAPI `PollAnalysis.description`; consumers that need a specific scan order re-sort client-side.
+- [x] [Review][Decision→Patch] `Category(category)` coercion wrapped in try/except: unknown DB values emit a `analysis_unknown_category` WARNING and the row is skipped. Page still renders for surviving categories rather than 500-ing the whole analysis [services/analysis.py::_shape_rows].
+- [x] [Review][Patch] `_dominant` returns `([], 0.0)` defensively when `total > 0` but `max(distribution.values()) == 0`. New test `test_max_zero_with_nonzero_total_returns_empty` pins the contract.
+- [x] [Review][Patch] `PollAnalysis` docstring softened — explicitly notes that `FeatureAnalysis` members and `distribution` dicts are NOT frozen; the immutability contract is "wire shape doesn't change", not "every nested object is sealed".
+- [x] [Review][Patch] New `tests/unit/test_analysis_shape_rows.py` (4 tests) pins the row-ordering invariant — including a deliberate interleaved-rows case that demonstrates the algorithm splits a single feature into multiple `FeatureAnalysis` records if the SQL `ORDER BY` ever drops.
+- [x] [Review][Patch] `_shape_rows` now logs `analysis_feature_total_divergence` WARNING when non-zero per-feature totals diverge (signals FR24/FR25 invariant violation). `poll_id` now threaded through as a keyword argument for the warning context.
+- [x] [Review][Defer] Read-committed split between `session.get(Poll)` and the GROUP BY execute — two round-trips, default PostgreSQL isolation. Practically harmless because `poll.epoch` is frozen at creation; the docstring's "snapshot" framing is stronger than the actual guarantee. Architectural / pre-existing pattern across services; tracked in `deferred-work.md`.
+- [x] [Review][Defer] `assert` statements as type narrowing in `_flush()` are stripped under `python -O` — current locals are always set together so the asserts are tautological; the `-O` exposure is hypothetical. Defensive replacement (explicit `RuntimeError`) noisy for negligible upside. Tracked in `deferred-work.md`.

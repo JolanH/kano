@@ -96,6 +96,12 @@ export const en = {
   'dev.themeAudit.progress': 'Progress, skeleton, alerts',
   'dev.themeAudit.listsAndTabs': 'Lists & tabs',
   'dev.themeAudit.overrides': 'Override evidence',
+  // Story 5-4 added the Analysis primitives section (KanoStackedBar +
+  // KanoStackedBarTable). Lives at the section heading only — the demo
+  // bar/table content is wired from internal demo state, not the copy
+  // deck (the per-segment tooltip + table column labels are reused from
+  // `analysis.stackedBar*` keys further down).
+  'dev.themeAudit.analysisPrimitives': 'Analysis primitives',
 
   // Story 1.6 / 1.8 scaffold placeholders. Removed when the real pages land
   // (Epic 2-9, Epic 3-7, Epic 3-8 / 4-4 respectively).
@@ -279,6 +285,17 @@ export const en = {
   // Thanks page (Story 4-7). Exact title per epics line 1177. No CTAs.
   'respondent.thanks.title': 'Thanks — your input is on the record',
   'respondent.thanks.body': 'Your product manager will see this on a short horizon.',
+
+  // KanoStackedBar + KanoStackedBarTable (Story 5-4). The tooltip template
+  // is consumed by every per-segment v-tooltip on the bar (sighted hover +
+  // keyboard focus); the column-header keys label the accessible-fallback
+  // table that mirrors the bar for screen readers. `{pct}` is rendered as
+  // a 1-decimal string by the component (e.g. "33.3") to match the backend
+  // dominant_percentage rounding from Story 5-1.
+  'analysis.stackedBar.tooltip': '{name}: {count} responses ({pct}%)',
+  'analysis.stackedBarTable.col.category': 'Category',
+  'analysis.stackedBarTable.col.count': 'Count',
+  'analysis.stackedBarTable.col.percentage': 'Percentage',
 } as const
 
 export type CopyKey = keyof typeof en

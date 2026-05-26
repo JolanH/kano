@@ -55,18 +55,23 @@ def public_endpoint(view: F) -> F:
 # Kept as a tuple at module scope so tests can introspect the contract
 # directly. Extended by Story 4-3 (submit) and Story 5-2 (analysis).
 #
-# Anchored with ``$`` so each pattern matches exactly one route — Flask-CORS
-# uses ``re.match`` (not ``re.fullmatch``) under the hood, and without ``$``
-# the bare ``/api/v1/polls/[^/]+`` would also match ``/submit`` and
-# ``/analysis`` (the trailing segment falls outside the regex but the prefix
-# match still succeeds). Flask-CORS happens to sort patterns by specificity
-# today, so the deployed behavior is correct either way; anchoring removes
-# the latent shadowing trap and lets a fourth public path be appended
-# without worrying about declaration / sort order.
+# Anchored with ``/?$`` so each pattern matches exactly one route plus its
+# trailing-slash variant — Flask-CORS uses ``re.match`` (not ``re.fullmatch``)
+# under the hood, and without anchoring the bare ``/api/v1/polls/[^/]+``
+# would also match ``/submit`` and ``/analysis`` (the trailing segment falls
+# outside the regex but the prefix match still succeeds). Flask-CORS happens
+# to sort patterns by specificity today, so the deployed behavior is correct
+# either way; anchoring removes the latent shadowing trap and lets a fourth
+# public path be appended without worrying about declaration / sort order.
+#
+# The ``/?`` tolerates a trailing slash so a browser-normalized or
+# proxy-rewritten ``/api/v1/polls/<uuid>/analysis/`` still resolves to the
+# public-resource CORS regime rather than falling through to the PM-only
+# catch-all allowlist below.
 PUBLIC_RESPONDENT_PATHS: tuple[str, ...] = (
-    r"/api/v1/polls/[^/]+$",
-    r"/api/v1/polls/[^/]+/submit$",
-    r"/api/v1/polls/[^/]+/analysis$",
+    r"/api/v1/polls/[^/]+/?$",
+    r"/api/v1/polls/[^/]+/submit/?$",
+    r"/api/v1/polls/[^/]+/analysis/?$",
 )
 
 

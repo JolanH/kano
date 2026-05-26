@@ -34,6 +34,20 @@ from kano.services.kano_matrix import Category
 
 logger = structlog.get_logger(__name__)
 
+# Canonical Kano scan order (M → L → E → I → C → D) — pinned in UX spec line
+# 1277 and used by every Epic 5 surface (frontend CATEGORY_CODES, stacked-bar
+# segments, table rows). The wire shape's `dominant_categories` list sorts
+# against this order so a 2-way M/L tie always reads "M, L" everywhere on
+# the analysis page, not "L, M" in the JSON and "M, L" on the chips.
+_CANONICAL_ORDER: tuple[Category, ...] = (
+    Category.MANDATORY,
+    Category.LINEAR,
+    Category.EXCITER,
+    Category.INDIFFERENT,
+    Category.CONTRADICTORY,
+    Category.DOUBTFUL,
+)
+
 
 def _build_analysis_stmt(poll: Poll) -> Select[Any]:
     """Build the single GROUP BY statement for one poll's analysis.
@@ -98,7 +112,7 @@ def build_analysis(poll_id: UUID) -> PollAnalysis:
         raise EntityNotFound(f"Poll {poll_id} not found")
 
     rows = db.session.execute(_build_analysis_stmt(poll)).all()
-    features, total = _shape_rows(rows)
+    features, total = _shape_rows(rows, poll_id=poll.id)
 
     logger.info(
         "build_analysis",
@@ -115,13 +129,20 @@ def build_analysis(poll_id: UUID) -> PollAnalysis:
     )
 
 
-def _shape_rows(rows: Sequence[Row[Any]]) -> tuple[list[FeatureAnalysis], int]:
+def _shape_rows(
+    rows: Sequence[Row[Any]],
+    *,
+    poll_id: UUID | None = None,
+) -> tuple[list[FeatureAnalysis], int]:
     """Fold grouped rows into ``FeatureAnalysis`` objects + the max per-feature total.
 
     The second tuple element is ``total_submissions`` — the max of per-feature
     response totals, computed in the same single pass over the rows so we
     don't iterate the assembled features twice (see Dev Notes on the
-    max-per-feature strategy).
+    max-per-feature strategy). When per-feature totals diverge (an FR24/FR25
+    invariant violation — every submission should produce one response per
+    active feature), a WARNING is logged and the max still wins to keep the
+    page rendering.
 
     Input rows are ordered by ``Feature.id`` then ``Response.category`` (see
     the ``order_by`` in :func:`_build_analysis_stmt`), so this walks the
@@ -134,9 +155,15 @@ def _shape_rows(rows: Sequence[Row[Any]]) -> tuple[list[FeatureAnalysis], int]:
     response data for this poll. They contribute nothing to the
     distribution; the all-zeros distribution is then filled in by the
     six-key pad below.
+
+    Rows whose ``category`` is an unknown string (the DB-side CHECK
+    constraint dropped, an in-flight migration, manual SQL) emit a WARNING
+    and are skipped — the page still renders for the surviving categories
+    rather than 500-ing the whole analysis.
     """
 
     features: list[FeatureAnalysis] = []
+    nonzero_totals: list[int] = []
     max_total = 0
     current_id: UUID | None = None
     current_feature_key: UUID | None = None
@@ -150,6 +177,8 @@ def _shape_rows(rows: Sequence[Row[Any]]) -> tuple[list[FeatureAnalysis], int]:
             return
         distribution = {cat: current_counts.get(cat, 0) for cat in Category}
         total = sum(distribution.values())
+        if total > 0:
+            nonzero_totals.append(total)
         if total > max_total:
             max_total = total
         dominant, pct = _dominant(distribution, total)
@@ -179,9 +208,33 @@ def _shape_rows(rows: Sequence[Row[Any]]) -> tuple[list[FeatureAnalysis], int]:
             current_description = description
             current_counts = {}
         if category is not None:
-            current_counts[Category(category)] = count
+            try:
+                cat_enum = Category(category)
+            except ValueError:
+                logger.warning(
+                    "analysis_unknown_category",
+                    poll_id=str(poll_id) if poll_id is not None else None,
+                    feature_id=str(feature_id),
+                    raw_category=category,
+                )
+                continue
+            current_counts[cat_enum] = count
 
     _flush()
+
+    # FR24/FR25 contract: every submission produces exactly one response per
+    # active feature, so every responded-feature total should equal the poll's
+    # submission count. Divergence among non-zero totals signals partial data
+    # (DB corruption, manual SQL, a future bug); surface it without failing.
+    if len(set(nonzero_totals)) > 1:
+        logger.warning(
+            "analysis_feature_total_divergence",
+            poll_id=str(poll_id) if poll_id is not None else None,
+            min_total=min(nonzero_totals),
+            max_total=max(nonzero_totals),
+            distinct_totals=sorted(set(nonzero_totals)),
+        )
+
     return features, max_total
 
 
@@ -192,12 +245,18 @@ def _dominant(
     """Pick the dominant category (or all tied winners) and the shared percentage.
 
     Tie handling (FR35): when 2+ categories share the max count, **all**
-    are returned. The list is sorted by the enum's value (CHAR-1 code) so
-    the wire output is deterministic across runs — `[L, M]`, not the random
-    order Python dicts return on iteration.
+    are returned. The list is sorted against ``_CANONICAL_ORDER``
+    (M → L → E → I → C → D) so the wire output matches the scan order
+    every other Epic 5 surface uses — a 2-way M/L tie reads "M, L" in the
+    JSON and "M, L" on the chips, not "L, M" in the JSON and "M, L" on the
+    chips.
 
     Zero-response features (``total == 0``) return ``([], 0.0)`` — the
-    frontend's FR37 empty state pulls from this signal.
+    frontend's FR37 empty state pulls from this signal. Defensive: if
+    ``total > 0`` somehow pairs with ``max_count == 0`` (logically
+    impossible under the FR24 invariant but reachable via partial seeding
+    or a future refactor), also return the empty signal rather than
+    claiming a 6-way tie at 0%.
 
     Percentage rounding: 1 decimal place via plain ``round()``. The story's
     Dev Notes pin the edge cases — 33.3333… → 33.3, 66.6666… → 66.7.
@@ -206,9 +265,11 @@ def _dominant(
     if total == 0:
         return [], 0.0
     max_count = max(distribution.values())
+    if max_count == 0:
+        return [], 0.0
     winners = sorted(
         (cat for cat, count in distribution.items() if count == max_count),
-        key=lambda c: c.value,
+        key=_CANONICAL_ORDER.index,
     )
     pct = round(max_count / total * 100, 1)
     return winners, pct

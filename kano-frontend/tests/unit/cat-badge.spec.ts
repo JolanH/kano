@@ -12,7 +12,7 @@ import { describe, expect, test, vi } from 'vitest'
 
 import type { Category } from '@/api/types'
 import CatBadge from '@/components/CatBadge.vue'
-import { COPY_KEY } from '@/components/cat-badge.constants'
+import { COPY_KEY } from '@/components/kano-categories'
 import en from '@/copy/en'
 
 const VARIANTS = [

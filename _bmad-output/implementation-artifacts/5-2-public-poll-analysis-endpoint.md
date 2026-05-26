@@ -1,6 +1,6 @@
 # Story 5.2: Public poll analysis endpoint
 
-Status: review
+Status: done
 
 ## Story
 
@@ -259,3 +259,11 @@ claude-opus-4-7[1m]
 ## Change Log
 
 - 2026-05-22 — Implemented the public `GET /api/v1/polls/:uuid/analysis` endpoint as a thin wrapper over Story 5.1's `build_analysis` service. Added 11 integration tests + 1 perf smoke covering the full AC matrix (happy path / zero submissions / FR35 tie / 404 / FR32 expired-200 / CSRF-exempt / CORS-open / preflight / frozen-snapshot / structlog-with-no-PII). Extended OpenAPI with the path and the `PollAnalysis` / `FeatureAnalysis` schemas. Registered a `slow` pytest marker so the perf smoke is opt-out for local fast-feedback runs while CI runs the full suite. Status → review.
+
+### Review Findings
+
+Adversarial 3-layer review on 2026-05-26 (Blind Hunter / Edge Case Hunter / Acceptance Auditor).
+
+- [x] [Review][Patch] `PUBLIC_RESPONDENT_PATHS` regexes now end with `/?$` so a trailing-slash variant (`/api/v1/polls/<uuid>/analysis/`) resolves to the public-resource CORS regime instead of falling through to the PM-only allowlist. Comment expanded in `middleware/security.py:54-66` explaining the anchoring rationale.
+- [x] [Review][Patch] CORS credential assertion tightened — `Access-Control-Allow-Credentials` must be `None` or `"false"` (was `!= "true"`, which also passed for stray values like `"True"` / `"1"`).
+- [x] [Review][Defer] Malformed UUID path (e.g. `/api/v1/polls/not-a-uuid/analysis`) returns generic 404 — indistinguishable from a real `EntityNotFound` on a well-formed UUID. The Werkzeug `<uuid:>` converter rejects the path before the view runs; mapping it to a typed 400 Problem-Details is broader error-handler work, not story-specific. Tracked in `deferred-work.md`.

@@ -793,9 +793,11 @@ components:
         Story 5.4 stacked-bar component can always address six segments
         by key. `dominant_categories` is a list to honor FR35 tie-handling:
         a single winner is a 1-element list; a 2-way tie is a 2-element
-        list (sorted by category code); a feature with zero responses is
-        the empty list paired with `dominant_percentage: 0.0` (FR37
-        empty state).
+        list (sorted in canonical Kano scan order
+        M → L → E → I → C → D so it matches the bar / table / chip
+        rendering elsewhere on the analysis page); a feature with zero
+        responses is the empty list paired with `dominant_percentage: 0.0`
+        (FR37 empty state).
       required:
         - feature_key
         - name
@@ -850,6 +852,11 @@ components:
         Top-level analysis envelope returned by
         `GET /api/v1/polls/{poll_id}/analysis`. Mirrors the Pydantic
         `PollAnalysis.model_dump(mode="json")` output from Story 5.1.
+
+        `features[]` order is implementation-defined (currently
+        `ORDER BY feature.id`, which is a UUIDv4 — effectively random
+        per fixture). Consumers that need a specific scan order must
+        re-sort client-side (e.g. by `feature_key` or `name`).
       required: [poll_id, epoch, total_submissions, features]
       properties:
         poll_id:

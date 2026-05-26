@@ -288,3 +288,20 @@ Story 3-8's `LivePollStub.vue` was deleted in Story 4-4 and replaced by `LiveLan
 | `pm.polls.empty.hasProjectsBody` | Open a project to add features and generate a poll URL when you’re ready. | PM polls empty state — projects exist, no polls |
 | `pm.polls.empty.hasProjectsCta` | Open your projects | PM polls empty state CTA — projects exist, no polls |
 | `pm.polls.projectMissing` | (project pending) | PM polls row fallback while project name is being reconciled (replaces raw UUID) |
+
+## Analysis — KanoStackedBar + KanoStackedBarTable (Story 5-4)
+
+`{name}` resolves to a category label (`pm.category.*`); `{count}` is the
+per-segment response count; `{pct}` is the count/total percentage rounded
+to 1 decimal place (matches `dominant_percentage` from Story 5-1's
+`build_analysis` service). The table column headers are the accessible
+fallback's `<thead>` row, mirrored to screen readers regardless of the
+sighted-user `visible` toggle.
+
+| Key | English | Context |
+|---|---|---|
+| `analysis.stackedBar.tooltip` | {name}: {count} responses ({pct}%) | KanoStackedBar per-segment tooltip (hover + keyboard focus) |
+| `analysis.stackedBarTable.col.category` | Category | KanoStackedBarTable `<thead>` column 1 |
+| `analysis.stackedBarTable.col.count` | Count | KanoStackedBarTable `<thead>` column 2 |
+| `analysis.stackedBarTable.col.percentage` | Percentage | KanoStackedBarTable `<thead>` column 3 |
+| `dev.themeAudit.analysisPrimitives` | Analysis primitives | ThemeAudit section heading (dev-only) covering the Story 5-4 stacked bar + table |

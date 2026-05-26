@@ -247,6 +247,44 @@
       </v-list>
     </section>
 
+    <!-- ========================= Analysis primitives ========================= -->
+    <!--
+      Story 5-4 regression anchor — visual-regression catches both the
+      stacked-bar palette + segment proportions AND the accessible
+      fallback table (rendered with `visible=true` here so the audit
+      page actually shows the table; the production usage on the
+      analysis page keeps it `sr-only`).
+
+      Each bar pairs with its OWN companion table id — Story 5.5's
+      consumer pattern is one bar + one table per feature row, so the
+      regression artifact mirrors that 1:1 pairing rather than three
+      bars sharing one table.
+    -->
+    <section class="mb-10">
+      <h2 class="text-h3 mb-4">{{ copy('dev.themeAudit.analysisPrimitives') }}</h2>
+      <div class="analysis-primitives-grid" data-testid="theme-audit-analysis-primitives">
+        <div
+          v-for="demo in analysisPrimitiveDemos"
+          :key="demo.tableId"
+          class="mb-4"
+        >
+          <div class="text-caption text-on-surface-variant mb-1">{{ demo.heading }}</div>
+          <KanoStackedBar
+            :distribution="analysisDemoDistribution"
+            :total="analysisDemoTotal"
+            :ariaLabelledBy="demo.tableId"
+            :variant="demo.variant"
+          />
+          <KanoStackedBarTable
+            :id="demo.tableId"
+            :distribution="analysisDemoDistribution"
+            :total="analysisDemoTotal"
+            :visible="demo.tableVisible"
+          />
+        </div>
+      </div>
+    </section>
+
     <!-- =============== Chips + grid layout (Story 2-9 primitives) =============== -->
     <section class="mb-10">
       <h2 class="text-h3 mb-4">Chips &amp; grid</h2>
@@ -280,8 +318,11 @@
 <script lang="ts" setup>
 import { reactive, ref } from 'vue'
 
+import type { Category } from '@/api/types'
 import CatBadge from '@/components/CatBadge.vue'
-import { CATEGORY_CODES } from '@/components/cat-badge.constants'
+import KanoStackedBar from '@/components/KanoStackedBar.vue'
+import KanoStackedBarTable from '@/components/KanoStackedBarTable.vue'
+import { CATEGORY_CODES } from '@/components/kano-categories'
 import { useCopy } from '@/composables/useCopy'
 import { tixeoColors, type TixeoColorToken } from '@/theme/tixeo'
 import { tixeoOverrides } from '@/theme/overrides-evidence'
@@ -358,6 +399,47 @@ const tableItems: FeatureRow[] = [
 
 const dialog = ref(false)
 const snackbar = reactive({ show: false, color: 'success', text: '' })
+
+// Analysis-primitives demo distribution — proportions tuned so all 6
+// segments are visible at the 12 px default variant. Pinned here so the
+// Playwright visual-regression baseline diffs against a known shape.
+const analysisDemoDistribution: Record<Category, number> = {
+  M: 7, L: 4, E: 3, I: 2, C: 1, D: 1,
+}
+const analysisDemoTotal = 18
+
+interface AnalysisPrimitiveDemo {
+  tableId: string
+  heading: string
+  variant: 'default' | 'large' | 'mini'
+  tableVisible: boolean
+}
+
+// Each row pairs ONE bar with ONE companion table — the same 1:1 pattern
+// Story 5.5 uses per feature row. The last pair sets `tableVisible=true`
+// so the audit page actually displays the accessible-fallback table for
+// visual-regression coverage; the other two keep it `sr-only` to match
+// production behavior on the analysis page.
+const analysisPrimitiveDemos: AnalysisPrimitiveDemo[] = [
+  {
+    tableId: 'theme-audit-stb-default',
+    heading: 'default (12 px) + sr-only table',
+    variant: 'default',
+    tableVisible: false,
+  },
+  {
+    tableId: 'theme-audit-stb-large',
+    heading: 'large (16 px) + sr-only table',
+    variant: 'large',
+    tableVisible: false,
+  },
+  {
+    tableId: 'theme-audit-stb-mini',
+    heading: 'mini (4 px) + visible companion table',
+    variant: 'mini',
+    tableVisible: true,
+  },
+]
 </script>
 
 <style scoped>

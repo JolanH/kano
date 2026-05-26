@@ -82,27 +82,37 @@ class TestTies:
         # 2 M, 2 L, 1 E → tie between M and L at 40%
         dist = _dist(M=2, L=2, E=1)
         winners, pct = _dominant(dist, total=5)
-        # Sorted by enum value (CHAR-1 code): "L" < "M"
-        assert winners == [_L, _M]
+        # Sorted in canonical Kano scan order (M → L → E → I → C → D):
+        # M precedes L, so the M-L tie reads "M, L" everywhere on the page.
+        assert winners == [_M, _L]
         assert pct == 40.0
 
     def test_three_way_tie_returns_all_three_sorted(self) -> None:
         # 1 M, 1 L, 1 E → tie at 33.3%
         dist = _dist(M=1, L=1, E=1)
         winners, pct = _dominant(dist, total=3)
-        # Sorted by value: "E" < "L" < "M"
-        assert winners == [_E, _L, _M]
+        # Canonical Kano scan order: M → L → E.
+        assert winners == [_M, _L, _E]
         assert pct == 33.3
 
     def test_six_way_tie_returns_all_six_sorted(self) -> None:
         # Degenerate but possible: 6 submissions, one each in every category.
         dist = _dist(M=1, L=1, E=1, I=1, C=1, D=1)
         winners, pct = _dominant(dist, total=6)
-        # All 6 categories returned in sorted order by CHAR-1 value:
-        # "C" < "D" < "E" < "I" < "L" < "M"
-        assert winners == [_C, _D, _E, _I, _L, _M]
+        # All 6 categories in canonical Kano scan order:
+        # M → L → E → I → C → D.
+        assert winners == [_M, _L, _E, _I, _C, _D]
         # 1/6 = 16.6666… → 16.7
         assert pct == 16.7
+
+    def test_max_zero_with_nonzero_total_returns_empty(self) -> None:
+        # Defensive guard: logically impossible under the FR24 invariant but
+        # reachable via partial seeding or a future refactor that decouples
+        # `total` from `sum(distribution.values())`. Should NOT return a
+        # 6-way tie at 0% — return the same empty signal as `total == 0`.
+        winners, pct = _dominant(_zero_dist(), total=5)
+        assert winners == []
+        assert pct == 0.0
 
 
 class TestRounding:
@@ -110,7 +120,8 @@ class TestRounding:
         # 33.3333… → 33.3
         winners, pct = _dominant(_dist(M=1, L=1, E=1), total=3)
         assert pct == 33.3
-        assert winners == [_E, _L, _M]
+        # Canonical Kano scan order: M → L → E.
+        assert winners == [_M, _L, _E]
 
     def test_two_thirds_rounds_up(self) -> None:
         # 66.6666… → 66.7
@@ -122,7 +133,8 @@ class TestRounding:
         # 50.0 stays 50.0 (2:2 tie)
         winners, pct = _dominant(_dist(M=2, L=2), total=4)
         assert pct == 50.0
-        assert winners == [_L, _M]
+        # Canonical Kano scan order: M precedes L.
+        assert winners == [_M, _L]
 
     def test_majority_4_of_7_rounds_down(self) -> None:
         # 4/7 = 57.142857… → 57.1

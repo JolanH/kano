@@ -1,6 +1,6 @@
 # Story 5.3: CatBadge component for Kano category rendering
 
-Status: review
+Status: done
 
 ## Story
 
@@ -304,3 +304,9 @@ Modified files:
 |------------|--------|----------------------------------------------------------------------------------------------|
 | 2026-05-22 | Kanaud | Story 5-3 implementation — `<CatBadge>` component, `Category` wire type, theme-audit regression row, 8-test Vitest spec. Token suffix vocabulary (`cont`/`doub` over `rev`/`que`) tracks the backend `Category` enum per the Story 1-5 (5,1)→D reconciliation; deviation logged in Dev Agent Record. Status → review. |
 | 2026-05-22 | Kanaud | Post-review cleanup — extracted `COPY_KEY` / `SWATCH_CLASS` / `CATEGORY_CODES` to `cat-badge.constants.ts` (module-scope allocation, reused by ThemeAudit), typed `COPY_KEY` against `CopyKey` so typos fail at compile time, switched the dev warn from setup-time `if` to `watchEffect` (catches reactive prop changes), dropped a phantom `eslint-disable no-console` and tautological spec assertions. Three-agent code review (reuse / quality / efficiency, high effort) — 232/232 frontend unit tests still green. |
+
+### Review Findings
+
+Adversarial 3-layer review on 2026-05-26 (Blind Hunter / Edge Case Hunter / Acceptance Auditor).
+
+- [x] [Review][Patch] `watchEffect` now wrapped in `if (import.meta.env.DEV) { ... }` so production builds tree-shake the entire reactive subscription, not just the warn body. Same patch applied to `<KanoStackedBar>` and `<KanoStackedBarTable>` in Story 5-4.

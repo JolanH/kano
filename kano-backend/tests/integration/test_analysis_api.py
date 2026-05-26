@@ -290,7 +290,8 @@ class TestGetAnalysisTieHandling:
 
         assert body["total_submissions"] == 4
         feature = body["features"][0]
-        assert feature["dominant_categories"] == ["L", "M"]
+        # Canonical Kano scan order (M → L → E → I → C → D): M precedes L.
+        assert feature["dominant_categories"] == ["M", "L"]
         assert feature["dominant_percentage"] == 50.0
 
 
@@ -411,8 +412,13 @@ class TestGetAnalysisCorsOpen:
         )
         # The PM allowlist requires credentials; the public surface must NOT —
         # supports_credentials=True is incompatible with `*` and would leak the
-        # PM session cookie cross-origin.
-        assert response.headers.get("Access-Control-Allow-Credentials") != "true"
+        # PM session cookie cross-origin. Tight check: header must be absent
+        # entirely OR explicitly "false"; any other value (including a stray
+        # "True" / "1" from misconfiguration) is a leak.
+        assert response.headers.get("Access-Control-Allow-Credentials") in (
+            None,
+            "false",
+        ), response.headers.get("Access-Control-Allow-Credentials")
 
     def test_preflight_options_succeeds(
         self,

@@ -336,8 +336,9 @@ class TestShapeMatrix:
 
         assert result.total_submissions == 5
         feature = result.features[0]
-        # Sorted by CHAR-1 value: "L" < "M"
-        assert feature.dominant_categories == [Category.LINEAR, Category.MANDATORY]
+        # Sorted in canonical Kano scan order (M → L → E → I → C → D):
+        # the M-L tie reads "M, L" everywhere on the analysis page.
+        assert feature.dominant_categories == [Category.MANDATORY, Category.LINEAR]
         assert feature.dominant_percentage == 40.0
 
     def test_three_way_tie(
@@ -363,11 +364,11 @@ class TestShapeMatrix:
 
         assert result.total_submissions == 3
         feature = result.features[0]
-        # Sorted by value: "E" < "L" < "M"
+        # Sorted in canonical Kano scan order: M → L → E.
         assert feature.dominant_categories == [
-            Category.EXCITER,
-            Category.LINEAR,
             Category.MANDATORY,
+            Category.LINEAR,
+            Category.EXCITER,
         ]
         assert feature.dominant_percentage == 33.3
 
