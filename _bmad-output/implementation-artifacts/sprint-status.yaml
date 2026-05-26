@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-22
-last_updated: 2026-05-26  # 5-1, 5-2, 5-3, 5-4 review → done after combined 3-layer adversarial code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor). 18 patches batch-applied across the bundle (6 in 5-1 incl. canonical-Kano-order sort for dominant_categories + FR24 divergence warn + unknown-category skip-and-warn + ordering-invariant unit test; 2 in 5-2 incl. trailing-slash CORS regex + tighter ACAC assertion; 1 in 5-3 + 1 in 5-4 wrap watchEffect in DEV gate; remaining 5-4 patches: NaN/negative + sum-vs-total + empty ariaLabelledBy dev-warns, JSDoc fix, Python-rounding cross-check fixture, ThemeAudit 3-pair refactor). 4 defers logged in deferred-work.md (read-committed split, assert-under-O, malformed-UUID 404, rect aria-label tabindex). 261 backend tests pass (1 pre-existing app-factory flake deselected), 275 frontend tests pass (+13 Python-rounding fixture), ruff + mypy --strict clean.
+last_updated: 2026-05-26  # 5-5 → done after adversarial code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor). 4 decisions resolved (AC #12 amended to v1 project-detail-bounce behavior with cross-poll-by-epoch deferred post-MVP; FR24 invariant documented over the empty `dominant_categories` shape; wrap accepted as overflow policy; confidence-beat hidden when empty). 9 patches applied: native fetch failures route to retryable alert (widened `loadError`/`AnalysisErrorSurface` from `KanoApiError` to `Error`); landmark `aria-label` now `analysis.page.aria` ("Analysis") not "Version"; `dominantPercent` `Number.isFinite` guard renders em-dash on NaN/Infinity; `loadAnalysis` in-flight guard prevents retry double-fire; E2E spec expanded 3→5 features with all-same 4-way tie + per-row CatBadge count assertions; EOF newlines added; confidence-beat hidden when `isEmpty`; FR24 invariant comment; AC #12 rewritten. 3 new deferrals logged in deferred-work.md (projects-store sync null behavior, 4× `max-width: 1440px` duplication mirroring Story 3.7, VAlert unit-stub layout divergence). 300/300 frontend tests pass; vue-tsc clean.
 project: kano
 project_key: NOKEY
 tracking_system: file-system
@@ -116,7 +116,7 @@ development_status:
   5-2-public-poll-analysis-endpoint: done
   5-3-catbadge-component-for-kano-category-rendering: done
   5-4-kanostackedbar-svg-with-kanostackedbartable-accessible-fallback: done
-  5-5-analysis-page-table-composition-with-dominant-tie-empty-state-confidence-beat: ready-for-dev
+  5-5-analysis-page-table-composition-with-dominant-tie-empty-state-confidence-beat: done
   5-6-percategorypanels-secondary-cross-index: ready-for-dev
   5-7-category-help-tooltips-on-first-use: ready-for-dev
   5-8-analysis-performance-test-and-accessibility-close-out: ready-for-dev

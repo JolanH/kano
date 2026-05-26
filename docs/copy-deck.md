@@ -305,3 +305,28 @@ sighted-user `visible` toggle.
 | `analysis.stackedBarTable.col.count` | Count | KanoStackedBarTable `<thead>` column 2 |
 | `analysis.stackedBarTable.col.percentage` | Percentage | KanoStackedBarTable `<thead>` column 3 |
 | `dev.themeAudit.analysisPrimitives` | Analysis primitives | ThemeAudit section heading (dev-only) covering the Story 5-4 stacked bar + table |
+
+## Analysis page composition — table / header / empty / error (Story 5-5)
+
+The Story 5-5 page-level composition over the Epic 5 primitives. The
+confidence-beat copy intentionally drops the "of N" denominator (Story
+Recommendation A — no `expected_respondents` field exists on the data
+model); the empty-state copy is unparameterized for the same reason.
+
+| Key | English | Context |
+|---|---|---|
+| `analysis.page.aria` | Analysis | `aria-label` on the analysis page `<section>` landmark — describes the *role* of the region, not the version of any artifact |
+| `analysis.table.col.feature` | Feature | AnalysisTable `<thead>` — feature name + description column |
+| `analysis.table.col.dominant` | Dominant | AnalysisTable `<thead>` — dominant category + percentage column |
+| `analysis.table.col.distribution` | Distribution | AnalysisTable `<thead>` — KanoStackedBar + companion table column |
+| `analysis.table.col.n` | n | AnalysisTable `<thead>` — per-row response count column |
+| `analysis.dominant.tiedPercent` | {pct} each | Dominant cell — interpolated suffix on tied-category rows (e.g. "50% each") |
+| `analysis.emptyState` | No responses yet — analysis will populate as responses arrive. | FR37 full-table replacement when `total_submissions === 0` |
+| `analysis.confidenceBeat.singular` | {total} response | Header confidence beat — exactly 1 response |
+| `analysis.confidenceBeat.plural` | {total} responses | Header confidence beat — 0 or 2+ responses |
+| `analysis.error.notFound.title` | Poll not found | AnalysisErrorSurface 404 card title |
+| `analysis.error.notFound.body` | The poll URL is invalid or was removed. | AnalysisErrorSurface 404 card body |
+| `analysis.error.notFound.cta` | Back to projects | AnalysisErrorSurface 404 back-link |
+| `analysis.error.load.title` | Couldn't load analysis | AnalysisErrorSurface 5xx/network alert title |
+| `analysis.error.load.body` | Please check your connection and try again. | AnalysisErrorSurface 5xx/network alert body |
+| `analysis.error.load.retry` | Retry | AnalysisErrorSurface 5xx/network alert retry button |

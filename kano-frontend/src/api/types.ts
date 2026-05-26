@@ -203,3 +203,27 @@ export interface PollPublic {
   expires_at: string
   features: PollPublicFeature[]
 }
+
+/**
+ * Wire shapes for the analysis aggregate (Epic 5 — Stories 5-1+). Mirror of
+ * `kano.schemas.analysis`. `distribution` always carries all six Category
+ * keys (M / L / E / I / C / D); zero-response categories surface as `0`.
+ * `dominant_categories` is a list to honor the FR35 tie contract — a single
+ * winner is a 1-element list, a tie a 2+ element list, an empty-response
+ * feature an empty list paired with `dominant_percentage === 0`.
+ */
+export interface FeatureAnalysis {
+  feature_key: string
+  name: string
+  description: string | null
+  distribution: Record<Category, number>
+  dominant_categories: Category[]
+  dominant_percentage: number
+}
+
+export interface PollAnalysis {
+  poll_id: string
+  epoch: number
+  total_submissions: number
+  features: FeatureAnalysis[]
+}

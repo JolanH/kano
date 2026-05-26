@@ -296,6 +296,35 @@ export const en = {
   'analysis.stackedBarTable.col.category': 'Category',
   'analysis.stackedBarTable.col.count': 'Count',
   'analysis.stackedBarTable.col.percentage': 'Percentage',
+
+  // Story 5-5 — analysis page composition (table, header, empty/error
+  // surfaces). Per the story's Dev Notes the "of N expected" denominator
+  // doesn't exist in the data model (no expected_respondents column on
+  // polls), so Recommendation (A) wins: `analysis.confidenceBeat` drops the
+  // "of N" and renders the response volume alone; `analysis.emptyState`
+  // drops the count entirely. If a future story adds the field, swap the
+  // parameterized variants in.
+  // `analysis.page.aria` is the assistive-tech landmark label for the
+  // `<section>` that wraps the whole page — describes the *role* of the
+  // region, not the version of any artifact (the version chip carries its
+  // own visible text).
+  'analysis.page.aria': 'Analysis',
+  'analysis.table.col.feature': 'Feature',
+  'analysis.table.col.dominant': 'Dominant',
+  'analysis.table.col.distribution': 'Distribution',
+  'analysis.table.col.n': 'n',
+  'analysis.dominant.tiedPercent': '{pct} each',
+  'analysis.emptyState':
+    'No responses yet — analysis will populate as responses arrive.',
+  'analysis.confidenceBeat.singular': '{total} response',
+  'analysis.confidenceBeat.plural': '{total} responses',
+  'analysis.error.notFound.title': 'Poll not found',
+  'analysis.error.notFound.body':
+    'The poll URL is invalid or was removed.',
+  'analysis.error.notFound.cta': 'Back to projects',
+  'analysis.error.load.title': "Couldn't load analysis",
+  'analysis.error.load.body': 'Please check your connection and try again.',
+  'analysis.error.load.retry': 'Retry',
 } as const
 
 export type CopyKey = keyof typeof en

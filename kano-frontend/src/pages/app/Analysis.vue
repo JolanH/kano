@@ -1,0 +1,245 @@
+<script setup lang="ts">
+/**
+ * Analysis page (`/app/projects/:id/polls/:pollId/analysis`) — Story 5.5.
+ *
+ * This page is a composition over Epic 5's earlier primitives:
+ * - Analysis payload : Stories 5.1 / 5.2 (`/api/v1/polls/:id/analysis`).
+ * - <CatBadge>       : Story 5.3.
+ * - <KanoStackedBar> + <KanoStackedBarTable> : Story 5.4.
+ * - <EpochSelector>  : Story 2.12.
+ *
+ * The page owns the orchestration (fetch + branching), the header, and
+ * routing into the empty / error / table sub-surfaces — not the rendering
+ * of any single primitive. See `AnalysisTable.vue` Dev Notes for the per-
+ * row layout decisions.
+ *
+ * Project name resolution follows the Dev-Notes (b) path: read
+ * `projectsStore.current` if it matches our `projectId`; otherwise fire a
+ * parallel `loadProject` so direct URL entries still get a name in the
+ * header. Failures on the project fetch fall back silently — the header
+ * just renders without the name; the analysis itself is the load-bearing
+ * surface.
+ *
+ * The <EpochSelector> mounted in the top-bar reuses Story 2.12's component
+ * verbatim. Per its built-in behavior it pushes to `/app/projects/:id`
+ * with `?epoch=N` — i.e. selecting a past epoch routes the user back to
+ * project-detail at that version, where they can drill into the version's
+ * polls. The AC #12 cross-poll navigation pattern is post-MVP; the
+ * current behavior is the safe v1 path noted in the story's open question.
+ */
+
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+
+import AnalysisEmptyState from '@/components/AnalysisEmptyState.vue'
+import AnalysisErrorSurface from '@/components/AnalysisErrorSurface.vue'
+import AnalysisTable from '@/components/AnalysisTable.vue'
+import EpochSelector from '@/components/EpochSelector.vue'
+import { type PollAnalysis } from '@/api/types'
+import { useApi } from '@/composables/useApi'
+import { useCopy } from '@/composables/useCopy'
+import { useProjectsStore } from '@/stores/projects'
+
+const route = useRoute()
+const copy = useCopy()
+const api = useApi()
+const projectsStore = useProjectsStore()
+
+const projectId = computed(() => String(route.params.id ?? ''))
+const pollId = computed(() => String(route.params.pollId ?? ''))
+
+const analysis = ref<PollAnalysis | null>(null)
+const loading = ref(true)
+// `loadError` is widened from `KanoApiError | null` to `Error | null` so
+// native `fetch` throws (offline / DNS / CORS) — which `useApi` does not
+// wrap into a `KanoApiError` — surface the retryable error alert instead
+// of leaving the page in a blank state. `AnalysisErrorSurface` branches on
+// `instanceof NotFoundError` and falls through everything else to the
+// retry alert, so widening here is sufficient.
+const loadError = ref<Error | null>(null)
+
+const isEmpty = computed(
+  () => analysis.value !== null && analysis.value.total_submissions === 0,
+)
+
+const projectName = computed(() => {
+  // Prefer the in-memory store (populated when the user navigated here
+  // from PM home / project-detail). Fall back to whatever loadProject
+  // resolved; if neither is available render the header without a name
+  // rather than spinning forever.
+  const cur = projectsStore.current
+  if (cur && cur.id === projectId.value) return cur.name
+  return ''
+})
+
+const totalLabel = computed(() => {
+  if (!analysis.value) return ''
+  const n = analysis.value.total_submissions
+  const key = n === 1 ? 'analysis.confidenceBeat.singular' : 'analysis.confidenceBeat.plural'
+  return copy(key, { total: n })
+})
+
+const projectCurrentEpoch = computed(() => {
+  const cur = projectsStore.current
+  if (cur && cur.id === projectId.value) return cur.current_epoch
+  // Fall back to the analysis's epoch — guarantees the selector mounts
+  // with a defensible value even when projectsStore is empty.
+  return analysis.value?.epoch ?? 1
+})
+
+// In-flight guard, lifted out of the loading ref so a double-click on Retry
+// (or a re-mount that fires onMounted while the initial load is still
+// pending) doesn't race two parallel fetches into the same refs. Not
+// reactive — only the function uses it.
+let inFlight = false
+
+async function loadAnalysis(): Promise<void> {
+  if (inFlight) return
+  inFlight = true
+  loading.value = true
+  loadError.value = null
+  analysis.value = null
+  try {
+    const { data } = await api.get<PollAnalysis>(`/polls/${pollId.value}/analysis`)
+    analysis.value = data
+  } catch (err) {
+    // Catch every throw — typed `KanoApiError`s AND native `fetch`
+    // failures (offline / DNS / CORS land here as `TypeError`). The error
+    // surface branches on `instanceof NotFoundError` and renders the
+    // retryable alert for everything else, so an `Error` parent type is
+    // sufficient.
+    loadError.value = err instanceof Error ? err : new Error(String(err))
+  } finally {
+    loading.value = false
+    inFlight = false
+  }
+}
+
+function refreshProjectIfMissing(): void {
+  // Direct-URL-entry path: the user landed on /analysis from a bookmark
+  // or share link, so `projectsStore.current` is null. Fire a parallel
+  // fetch (no `await`) so the project header populates while the
+  // analysis payload is still in flight. A failure here is non-fatal —
+  // the header just drops the name.
+  const cur = projectsStore.current
+  if (cur && cur.id === projectId.value) return
+  void projectsStore.loadProject(projectId.value).catch(() => {})
+}
+
+onMounted(() => {
+  refreshProjectIfMissing()
+  void loadAnalysis()
+})
+</script>
+
+<template>
+  <section
+    class="analysis-page"
+    :aria-label="copy('analysis.page.aria')"
+    data-testid="analysis-page"
+  >
+    <header class="analysis-header">
+      <div class="analysis-header__primary">
+        <h1
+          v-if="projectName"
+          class="text-h2 analysis-title"
+          data-testid="analysis-project-name"
+        >
+          {{ projectName }}
+        </h1>
+        <v-chip
+          v-if="analysis"
+          color="secondary"
+          size="small"
+          data-testid="analysis-version-chip"
+        >
+          {{ copy('common.version') }} {{ analysis.epoch }}
+        </v-chip>
+      </div>
+      <div class="analysis-header__meta">
+        <span
+          v-if="analysis && !isEmpty"
+          class="confidence-beat"
+          data-testid="analysis-confidence-beat"
+        >
+          {{ totalLabel }}
+        </span>
+        <EpochSelector
+          v-if="projectId"
+          :current-epoch="projectCurrentEpoch"
+          :selected-epoch="analysis?.epoch ?? projectCurrentEpoch"
+          :project-id="projectId"
+        />
+      </div>
+    </header>
+
+    <v-skeleton-loader
+      v-if="loading"
+      type="table"
+      class="analysis-skeleton"
+      data-testid="analysis-skeleton"
+    />
+    <AnalysisErrorSurface
+      v-else-if="loadError"
+      :error="loadError"
+      :project-id="projectId || null"
+      @retry="loadAnalysis"
+    />
+    <AnalysisEmptyState v-else-if="isEmpty" />
+    <AnalysisTable v-else-if="analysis" :analysis="analysis" />
+  </section>
+</template>
+
+<style scoped>
+.analysis-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.analysis-header {
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.analysis-header__primary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.analysis-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.analysis-title {
+  margin: 0;
+}
+
+.confidence-beat {
+  /*
+   * Secondary-text weight per UX-DR21 — the confidence beat communicates
+   * response volume without competing with the project title. NOT a
+   * banner, never a `<v-alert>`.
+   */
+  font-size: 16px;
+  font-weight: 400;
+  color: rgb(var(--v-theme-on-surface-variant));
+}
+
+.analysis-skeleton {
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+}
+</style>

@@ -50,7 +50,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/app/projects/:id/polls/:pollId/analysis',
     name: 'poll-analysis',
-    component: () => import('@/pages/app/AnalysisPlaceholder.vue'),
+    component: () => import('@/pages/app/Analysis.vue'),
     meta: { layout: 'pm' },
   },
   {
