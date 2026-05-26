@@ -61,6 +61,22 @@
       <template #item.created_at="{ value }">
         {{ formatDate(value as string) }}
       </template>
+      <template #item.actions="{ item }">
+        <div
+          v-if="item.response_count >= 1"
+          data-no-row-click
+          class="d-flex justify-end"
+        >
+          <v-btn
+            variant="text"
+            size="small"
+            prepend-icon="mdi-chart-box-outline"
+            data-testid="polls-row-view-analysis"
+            :text="copy('pm.polls.viewAnalysis.button')"
+            @click.stop="onViewAnalysis(item)"
+          />
+        </div>
+      </template>
     </v-data-table>
   </section>
 </template>
@@ -90,6 +106,12 @@ const headers = computed(() => [
   },
   { title: copy('pm.polls.columns.expiresIn'), key: 'expires_in', sortable: false },
   { title: copy('pm.polls.columns.created'), key: 'created_at', sortable: true },
+  {
+    title: copy('pm.polls.columns.actions'),
+    key: 'actions',
+    sortable: false,
+    align: 'end' as const,
+  },
 ])
 
 const rows = computed(() => pollsStore.items)
@@ -143,7 +165,7 @@ function onRowClick(
   // landed inside an interactive descendant so the link's own navigation
   // wins, no double-fire.
   const target = (event?.target as HTMLElement | null) ?? null
-  if (target?.closest('a, button')) return
+  if (target?.closest('a, button, [data-no-row-click]')) return
 
   const item = payload.item
   if (item.is_expired) {
@@ -158,6 +180,13 @@ function onRowClick(
   pollsStore.selectPollById(item.id)
   void router.push({
     name: 'poll-share',
+    params: { id: item.project_id, pollId: item.id },
+  })
+}
+
+function onViewAnalysis(item: PollSummaryWithProject) {
+  void router.push({
+    name: 'poll-analysis',
     params: { id: item.project_id, pollId: item.id },
   })
 }

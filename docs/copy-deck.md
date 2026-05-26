@@ -168,6 +168,8 @@ These keys are deleted as part of the PRs that ship those real pages.
 | `pm.projectDetail.features.title` | Features | Detail page features panel heading |
 | `pm.projectDetail.features.empty` | No features yet — Story 2-10 ships the inline editor. | Placeholder body when feature list is empty |
 | `pm.projectDetail.loading` | Loading project… | Detail page loading state |
+| `pm.projectDetail.viewAnalysis.button` | View analysis | Detail page button that opens the latest poll's analysis |
+| `pm.projectDetail.viewAnalysis.disabledTooltip` | No polls yet — generate one to see analysis. | Tooltip shown when the View analysis button is disabled |
 
 ## FeatureListEditor (Story 2-10)
 
@@ -250,6 +252,8 @@ Card surface where the PM copies the poll URL and previews the QR code.
 | `pm.polls.columns.responses` | Responses | Table column header |
 | `pm.polls.columns.expiresIn` | Expires in | Table column header |
 | `pm.polls.columns.created` | Created | Table column header |
+| `pm.polls.columns.actions` | Actions | Table column header for per-row action buttons |
+| `pm.polls.viewAnalysis.button` | View analysis | Row button that opens the poll's analysis page (only when response_count ≥ 1) |
 | `pm.polls.expired` | Expired | Token shown in the Expires-in column for closed polls |
 | `pm.polls.countdown.expiringNow` | expiring now | Countdown cell text when remaining < 1 minute |
 | `pm.polls.countdown.minutes` | {n} min | Countdown when remaining < 1 hour |

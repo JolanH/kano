@@ -134,23 +134,42 @@
       {{ copy('pm.projects.detail.generatePoll.error') }}
     </v-alert>
 
-    <div v-if="!isViewingPast" class="d-flex align-center mb-4">
-      <v-btn
-        color="primary"
-        size="large"
-        prepend-icon="mdi-link-plus"
-        :disabled="activeFeatureCount === 0 || generating"
-        :loading="generating"
-        :aria-label="copy('pm.projects.detail.generatePoll.button')"
-        data-testid="generate-poll-button"
-        :text="copy('pm.projects.detail.generatePoll.button')"
-        @click="onGenerate"
-      />
-      <v-tooltip
-        v-if="activeFeatureCount === 0"
-        activator="parent"
-        :text="copy('pm.projects.detail.generatePoll.disabledTooltip')"
-      />
+    <div v-if="!isViewingPast" class="d-flex align-center ga-3 mb-4">
+      <div>
+        <v-btn
+          color="primary"
+          size="large"
+          prepend-icon="mdi-link-plus"
+          :disabled="activeFeatureCount === 0 || generating"
+          :loading="generating"
+          :aria-label="copy('pm.projects.detail.generatePoll.button')"
+          data-testid="generate-poll-button"
+          :text="copy('pm.projects.detail.generatePoll.button')"
+          @click="onGenerate"
+        />
+        <v-tooltip
+          v-if="activeFeatureCount === 0"
+          activator="parent"
+          :text="copy('pm.projects.detail.generatePoll.disabledTooltip')"
+        />
+      </div>
+      <div>
+        <v-btn
+          variant="outlined"
+          size="large"
+          prepend-icon="mdi-chart-box-outline"
+          :disabled="!latestPollId"
+          :aria-label="copy('pm.projectDetail.viewAnalysis.button')"
+          data-testid="view-analysis-button"
+          :text="copy('pm.projectDetail.viewAnalysis.button')"
+          @click="onViewAnalysis"
+        />
+        <v-tooltip
+          v-if="!latestPollId"
+          activator="parent"
+          :text="copy('pm.projectDetail.viewAnalysis.disabledTooltip')"
+        />
+      </div>
     </div>
 
     <v-card class="pa-4" data-testid="project-features-panel">
@@ -242,6 +261,25 @@ const activeFeatureCount = computed(() => store.current?.active_features?.length
 const generating = ref(false)
 const noFeaturesAlert = ref(false)
 const generateError = ref(false)
+const latestPollId = ref<string | null>(null)
+
+async function loadLatestPollId(id: string) {
+  try {
+    const polls = await pollsStore.loadPollsForProject(id)
+    // Backend orders newest-first (poll_service.list_polls_for_project).
+    latestPollId.value = polls[0]?.id ?? null
+  } catch {
+    latestPollId.value = null
+  }
+}
+
+function onViewAnalysis() {
+  if (!store.current || !latestPollId.value) return
+  void router.push({
+    name: 'poll-analysis',
+    params: { id: store.current.id, pollId: latestPollId.value },
+  })
+}
 
 async function onGenerate() {
   if (!store.current) return
@@ -298,8 +336,10 @@ const isViewingPast = computed(
 )
 
 onMounted(async () => {
-  await store.loadProject(projectId())
+  const id = projectId()
+  await store.loadProject(id)
   await maybeLoadPastEpoch()
+  void loadLatestPollId(id)
   // Move keyboard focus to the page heading so SR users land somewhere
   // meaningful after the route transition from `/app/projects`. Without
   // this, focus stays on the (now-unmounted) table row and falls to body.
@@ -311,8 +351,10 @@ onMounted(async () => {
 
 watch(() => route.params.id, async (id) => {
   if (!id) return
-  await store.loadProject(typeof id === 'string' ? id : id[0])
+  const resolved = typeof id === 'string' ? id : id[0]
+  await store.loadProject(resolved)
   await maybeLoadPastEpoch()
+  void loadLatestPollId(resolved)
 })
 
 watch(() => route.query.epoch, async () => {

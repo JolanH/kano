@@ -75,7 +75,7 @@ const VBtnStub = defineComponent({
         {
           'data-testid': attrs['data-testid'] ?? undefined,
           'data-to': props.to ? JSON.stringify(props.to) : undefined,
-          onClick: () => emit('click'),
+          onClick: (e: MouseEvent) => emit('click', e),
         },
         props.text,
       )
@@ -85,13 +85,14 @@ const VBtnStub = defineComponent({
 const VDataTableStub = defineComponent({
   props: ['items', 'headers', 'rowProps', 'sortBy', 'loading'],
   emits: ['click:row'],
-  setup(props, { emit, attrs }) {
+  setup(props, { emit, attrs, slots }) {
     return () =>
       h(
         'table',
         { 'data-testid': attrs['data-testid'] ?? undefined },
         (props.items as PollSummaryWithProject[]).map((item) => {
           const rowProps = typeof props.rowProps === 'function' ? props.rowProps({ item }) : {}
+          const actionsSlot = slots['item.actions']
           return h(
             'tr',
             {
@@ -110,6 +111,7 @@ const VDataTableStub = defineComponent({
                   : 'in 7 days',
               ),
               h('td', item.created_at),
+              h('td', actionsSlot ? actionsSlot({ item }) : null),
             ],
           )
         }),
@@ -200,6 +202,41 @@ describe('Polls page', () => {
     expect(pushMock).toHaveBeenCalledWith({
       name: 'poll-analysis',
       params: { id: 'proj-y', pollId: 'dead-1' },
+    })
+  })
+
+  test('view-analysis button renders only when response_count >= 1', async () => {
+    apiSeed.value = [
+      basePoll({ id: 'p-empty', response_count: 0 }),
+      basePoll({ id: 'p-one', response_count: 1 }),
+      basePoll({ id: 'p-many', response_count: 42 }),
+    ]
+    const wrapper = mountPolls()
+    await flushPromises()
+    expect(
+      wrapper.find('[data-testid="polls-row-p-empty"] [data-testid="polls-row-view-analysis"]').exists(),
+    ).toBe(false)
+    expect(
+      wrapper.find('[data-testid="polls-row-p-one"] [data-testid="polls-row-view-analysis"]').exists(),
+    ).toBe(true)
+    expect(
+      wrapper.find('[data-testid="polls-row-p-many"] [data-testid="polls-row-view-analysis"]').exists(),
+    ).toBe(true)
+  })
+
+  test('view-analysis button routes to poll-analysis without firing row click', async () => {
+    apiSeed.value = [
+      basePoll({ id: 'live-resp', project_id: 'proj-z', is_expired: false, response_count: 3 }),
+    ]
+    const wrapper = mountPolls()
+    await flushPromises()
+    await wrapper
+      .find('[data-testid="polls-row-live-resp"] [data-testid="polls-row-view-analysis"]')
+      .trigger('click')
+    expect(pushMock).toHaveBeenCalledTimes(1)
+    expect(pushMock).toHaveBeenCalledWith({
+      name: 'poll-analysis',
+      params: { id: 'proj-z', pollId: 'live-resp' },
     })
   })
 })

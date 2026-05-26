@@ -137,6 +137,9 @@ export const en = {
   'pm.projectDetail.features.empty':
     'No features yet — Story 2-10 ships the inline editor.',
   'pm.projectDetail.loading': 'Loading project…',
+  'pm.projectDetail.viewAnalysis.button': 'View analysis',
+  'pm.projectDetail.viewAnalysis.disabledTooltip':
+    'No polls yet — generate one to see analysis.',
 
   // FeatureListEditor (Story 2-10).
   'pm.features.editor.grid.aria': 'Feature list editor',
@@ -206,6 +209,8 @@ export const en = {
   'pm.polls.columns.responses': 'Responses',
   'pm.polls.columns.expiresIn': 'Expires in',
   'pm.polls.columns.created': 'Created',
+  'pm.polls.columns.actions': 'Actions',
+  'pm.polls.viewAnalysis.button': 'View analysis',
   'pm.polls.expired': 'Expired',
   'pm.polls.countdown.expiringNow': 'expiring now',
   'pm.polls.countdown.minutes': '{n} min',
