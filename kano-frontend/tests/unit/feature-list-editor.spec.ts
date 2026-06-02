@@ -211,4 +211,93 @@ describe('FeatureListEditor — ARIA grid + inline authoring', () => {
     expect(postMock.mock.calls[1][0]).toBe('/projects/p-1/features')
     expect(postMock.mock.calls[1][1]).toMatchObject({ acknowledged: true })
   })
+
+  test('description cell is a resizable textarea capped at 2048 chars', () => {
+    const wrapper = mount(FeatureListEditor, {
+      props: { features: [feature({ description: 'some text' })], projectId: 'p-1' },
+      global: { stubs: globalStubs },
+    })
+
+    const desc = wrapper.find('.pm-feature-cell--description textarea')
+    expect(desc.exists()).toBe(true)
+    expect(desc.attributes('maxlength')).toBe('2048')
+    // New-row description is a textarea too.
+    expect(
+      (wrapper.find('[data-testid="feature-new-description"]').element as HTMLElement).tagName,
+    ).toBe('TEXTAREA')
+  })
+
+  test('Enter inside a description textarea does not commit (it inserts a newline)', async () => {
+    const wrapper = mount(FeatureListEditor, {
+      props: {
+        features: [feature({ feature_key: 'k1', name: 'N', description: 'D' })],
+        projectId: 'p-1',
+      },
+      global: { stubs: globalStubs },
+    })
+
+    const desc = wrapper.find('.pm-feature-cell--description textarea')
+    await desc.setValue('D\nmore')
+    await desc.trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+
+    // Plain Enter must not PATCH — commit happens on blur instead.
+    expect(patchMock).not.toHaveBeenCalled()
+  })
+
+  test('blur on the new-row description commits a create with the typed description', async () => {
+    postMock.mockResolvedValue({
+      data: feature({ feature_key: 'feat-new', name: 'Added', description: 'A multi-line\ndesc' }),
+      requestId: 'r',
+      status: 201,
+    })
+    const wrapper = mount(FeatureListEditor, {
+      props: { features: [], projectId: 'p-1' },
+      global: { stubs: globalStubs },
+    })
+
+    await wrapper.find('[data-testid="feature-new-name"]').setValue('Added')
+    const descInput = wrapper.find('[data-testid="feature-new-description"]')
+    await descInput.setValue('A multi-line\ndesc')
+    await descInput.trigger('blur')
+    await flushPromises()
+
+    expect(postMock).toHaveBeenCalledWith('/projects/p-1/features', {
+      name: 'Added',
+      description: 'A multi-line\ndesc',
+    })
+    expect(wrapper.emitted('feature-created')?.[0]?.[0]).toMatchObject({ name: 'Added' })
+  })
+
+  test('does not double-create when a second commit fires while the first is in flight', async () => {
+    // Hold the POST pending so a second trigger lands mid-flight.
+    let resolvePost: (value: unknown) => void = () => {}
+    postMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePost = resolve
+      }),
+    )
+    const wrapper = mount(FeatureListEditor, {
+      props: { features: [], projectId: 'p-1' },
+      global: { stubs: globalStubs },
+    })
+
+    await wrapper.find('[data-testid="feature-new-name"]').setValue('Added')
+    const descInput = wrapper.find('[data-testid="feature-new-description"]')
+    await descInput.setValue('desc')
+
+    // Two commits back-to-back (blur + a stray re-trigger) before the POST resolves.
+    await descInput.trigger('blur')
+    await descInput.trigger('blur')
+
+    // The in-flight guard must collapse these into a single create.
+    expect(postMock).toHaveBeenCalledTimes(1)
+
+    resolvePost({
+      data: feature({ feature_key: 'fk', name: 'Added' }),
+      requestId: 'r',
+      status: 201,
+    })
+    await flushPromises()
+  })
 })

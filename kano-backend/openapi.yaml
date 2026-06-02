@@ -619,7 +619,7 @@ components:
           maxLength: 200
         description:
           type: string
-          maxLength: 2000
+          maxLength: 2048
           nullable: true
         acknowledged:
           type: boolean
@@ -639,7 +639,7 @@ components:
           maxLength: 200
         description:
           type: string
-          maxLength: 2000
+          maxLength: 2048
           nullable: true
         acknowledged:
           type: boolean

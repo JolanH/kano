@@ -19,14 +19,14 @@ class FeatureCreate(BaseModel):
     """Inbound payload for ``POST /api/v1/projects/:id/features``."""
 
     name: str = Field(..., max_length=200)
-    description: str | None = Field(None, max_length=2000)
+    description: str | None = Field(None, max_length=2048)
 
 
 class FeatureUpdate(BaseModel):
     """Inbound payload for ``PATCH /api/v1/features/:id``."""
 
     name: str | None = Field(None, max_length=200)
-    description: str | None = Field(None, max_length=2000)
+    description: str | None = Field(None, max_length=2048)
 
     @model_validator(mode="after")
     def _reject_empty_body(self) -> FeatureUpdate:

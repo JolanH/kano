@@ -28,15 +28,15 @@
         />
       </div>
       <div role="gridcell" class="pm-feature-cell pm-feature-cell--description">
-        <input
+        <textarea
           :ref="(el) => bindDescInput(rowIndex, el)"
           :value="rowDraft(feature.feature_key).description"
-          type="text"
-          class="pm-cell-input"
+          rows="1"
+          maxlength="2048"
+          class="pm-cell-input pm-cell-textarea"
           :aria-label="copy('pm.features.editor.col.description')"
           :placeholder="copy('pm.features.editor.col.description')"
           @input="onCellInput($event, feature.feature_key, 'description')"
-          @keydown.enter.prevent="commitRow(feature)"
           @keydown.esc.prevent="cancelRow(feature.feature_key)"
           @blur="commitRow(feature)"
         />
@@ -70,16 +70,17 @@
         />
       </div>
       <div role="gridcell" class="pm-feature-cell pm-feature-cell--description">
-        <input
+        <textarea
           ref="newDescInput"
           v-model="draftNew.description"
-          type="text"
-          class="pm-cell-input"
+          rows="1"
+          maxlength="2048"
+          class="pm-cell-input pm-cell-textarea"
           :aria-label="copy('pm.features.editor.newRow.placeholder.description')"
           :placeholder="copy('pm.features.editor.newRow.placeholder.description')"
           data-testid="feature-new-description"
-          @keydown.enter.prevent="commitNew"
           @keydown.esc.prevent="cancelNew"
+          @blur="commitNew"
         />
       </div>
       <div role="gridcell" class="pm-feature-cell pm-feature-cell--actions" />
@@ -136,9 +137,9 @@ const drafts = reactive<Record<string, RowDraft>>({})
 const draftNew = reactive<{ name: string; description: string }>({ name: '', description: '' })
 const errorMessage = ref<string | null>(null)
 const nameInputRefs = ref<Array<HTMLInputElement | null>>([])
-const descInputRefs = ref<Array<HTMLInputElement | null>>([])
+const descInputRefs = ref<Array<HTMLTextAreaElement | null>>([])
 const newNameInput = ref<HTMLInputElement | null>(null)
-const newDescInput = ref<HTMLInputElement | null>(null)
+const newDescInput = ref<HTMLTextAreaElement | null>(null)
 const inFlight = new Set<string>()
 // Feature keys that have an outstanding epoch-bump dialog. Blur/Enter
 // commits are no-ops while a key is in this set so a focus-steal from the
@@ -148,6 +149,12 @@ const awaitingBump = reactive(new Set<string>())
 // Enter triggers the dialog, additional blurs must not re-create features
 // while the user is in the dialog.
 const newRowAwaitingBump = ref(false)
+// In-flight lock for the new-row create. Mirrors `inFlight` for existing
+// rows: the new-row description now commits on blur AND the name commits on
+// Enter, so two triggers can fire before the first POST resolves (draftNew
+// is only cleared after the await). Without this guard that races into a
+// duplicate feature.
+const newRowInFlight = ref(false)
 
 const featureKeys = computed(() => props.features.map((f) => f.feature_key))
 
@@ -178,7 +185,7 @@ function bindNameInput(index: number, el: unknown) {
 }
 
 function bindDescInput(index: number, el: unknown) {
-  descInputRefs.value[index] = (el as HTMLInputElement | null) ?? null
+  descInputRefs.value[index] = (el as HTMLTextAreaElement | null) ?? null
 }
 
 function rowDraft(featureKey: string): RowDraft {
@@ -314,8 +321,9 @@ function focusPreviousRow(currentIndex: number) {
 async function commitNew(): Promise<void> {
   const name = draftNew.name.trim()
   if (!name) return
-  if (newRowAwaitingBump.value) return
+  if (newRowAwaitingBump.value || newRowInFlight.value) return
   const description = draftNew.description.trim() || null
+  newRowInFlight.value = true
   try {
     const created = await store.createFeature(props.projectId, { name, description })
     emit('feature-created', created)
@@ -332,6 +340,8 @@ async function commitNew(): Promise<void> {
       'create',
       null,
     )
+  } finally {
+    newRowInFlight.value = false
   }
 }
 
@@ -456,7 +466,7 @@ function handleMutationError(
 .pm-feature-row {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
-  align-items: center;
+  align-items: start;
   gap: 8px;
   padding: 2px 4px;
   border-radius: 4px;
@@ -487,6 +497,13 @@ function handleMutationError(
 .pm-cell-input:focus-visible {
   outline: 2px solid rgb(var(--v-theme-primary));
   outline-offset: -2px;
+}
+
+.pm-cell-textarea {
+  resize: vertical;
+  min-height: 36px;
+  line-height: 1.4;
+  overflow-y: auto;
 }
 
 .pm-row-delete {

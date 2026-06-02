@@ -223,6 +223,32 @@ class TestCreateFeature:
         body = json.loads(response.data)
         assert body["type"] == "https://kano.example.com/problems/validation-error"
 
+    def test_post_description_at_2048_chars_201(self, client_migrated: FlaskClient) -> None:
+        token = _csrf(client_migrated)
+        project_id = _create_project(client_migrated)
+
+        description = "x" * 2048
+        response = client_migrated.post(
+            f"/api/v1/projects/{project_id}/features",
+            json={"name": "long", "description": description},
+            headers={"X-CSRF-Token": token},
+        )
+        assert response.status_code == 201, response.data
+        assert json.loads(response.data)["description"] == description
+
+    def test_post_description_over_2048_chars_400(self, client_migrated: FlaskClient) -> None:
+        token = _csrf(client_migrated)
+        project_id = _create_project(client_migrated)
+
+        response = client_migrated.post(
+            f"/api/v1/projects/{project_id}/features",
+            json={"name": "long", "description": "x" * 2049},
+            headers={"X-CSRF-Token": token},
+        )
+        assert response.status_code == 400
+        body = json.loads(response.data)
+        assert body["type"] == "https://kano.example.com/problems/validation-error"
+
     def test_post_missing_csrf_returns_problem_details(
         self,
         client_migrated: FlaskClient,
@@ -263,6 +289,29 @@ class TestUpdateFeature:
         body = json.loads(response.data)
         assert body["name"] == "after"
         assert body["epoch"] == 1
+
+    def test_patch_description_at_2048_chars_200(
+        self,
+        client_migrated: FlaskClient,
+    ) -> None:
+        token = _csrf(client_migrated)
+        project_id = _create_project(client_migrated)
+
+        created = client_migrated.post(
+            f"/api/v1/projects/{project_id}/features",
+            json={"name": "before"},
+            headers={"X-CSRF-Token": token},
+        )
+        feature_key = json.loads(created.data)["feature_key"]
+
+        description = "y" * 2048
+        response = client_migrated.patch(
+            f"/api/v1/projects/{project_id}/features/{feature_key}",
+            json={"description": description},
+            headers={"X-CSRF-Token": token},
+        )
+        assert response.status_code == 200, response.data
+        assert json.loads(response.data)["description"] == description
 
     def test_patch_with_polls_no_ack_returns_409(
         self,

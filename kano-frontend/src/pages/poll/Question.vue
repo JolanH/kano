@@ -334,6 +334,8 @@ defineExpose({
   font-size: 0.875rem;
   color: rgba(var(--v-theme-on-surface, 33 33 33), 0.7);
   margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .likert-pair {
