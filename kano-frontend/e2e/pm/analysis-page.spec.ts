@@ -19,6 +19,13 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from 'playwright/test'
 
+import {
+  buildAnalysisFixture,
+  buildEmptyAnalysisFixture,
+  gotoAnalysisAndWait,
+  seedAnalysisFixture,
+} from './_seed-helpers'
+
 const PROJECT_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const POLL_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 const EMPTY_POLL_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
@@ -243,5 +250,235 @@ test.describe('Story 5-5 — analysis page (404)', () => {
     await page.goto(`/app/projects/${PROJECT_ID}/polls/${UNKNOWN_POLL_ID}/analysis`)
     await expect(page.getByTestId('analysis-error-not-found')).toBeVisible()
     await expect(page.getByTestId('analysis-error-back-link')).toBeVisible()
+  })
+})
+
+test.describe('Story 5-6 — PerCategoryPanels secondary cross-index', () => {
+  test('renders one panel per dominant category in fixed M→L→E→I→C→D order', async ({
+    page,
+  }) => {
+    await mockCsrf(page)
+    await seedProject(page)
+    await seedAnalysis(page, POLL_ID, populatedAnalysis)
+    await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
+
+    await expect(page.getByTestId('per-category-panels')).toBeVisible()
+
+    // populatedAnalysis dominants: feat-a (M), feat-tie (M,L),
+    // feat-three (L,E), feat-allsame (M,L,E,I), feat-modest (M).
+    // Expected panels: M, L, E, I — in that order. No C / D panels.
+    const sections = page.locator('section.category-panel')
+    await expect(sections).toHaveCount(4)
+    await expect(sections.nth(0)).toHaveClass(/panel-m/)
+    await expect(sections.nth(1)).toHaveClass(/panel-l/)
+    await expect(sections.nth(2)).toHaveClass(/panel-e/)
+    await expect(sections.nth(3)).toHaveClass(/panel-i/)
+    await expect(page.locator('.panel-c')).toHaveCount(0)
+    await expect(page.locator('.panel-d')).toHaveCount(0)
+  })
+
+  test('tied feature appears in EACH of its dominant panels (FR35)', async ({
+    page,
+  }) => {
+    await mockCsrf(page)
+    await seedProject(page)
+    await seedAnalysis(page, POLL_ID, populatedAnalysis)
+    await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
+
+    // feat-tie is dominant in M and L — must show up in both panels.
+    await expect(
+      page.getByTestId('per-category-entry-M-feat-tie'),
+    ).toBeVisible()
+    await expect(
+      page.getByTestId('per-category-entry-L-feat-tie'),
+    ).toBeVisible()
+
+    // feat-allsame is tied across M+L+E+I — exactly one entry per panel.
+    for (const cat of ['M', 'L', 'E', 'I'] as const) {
+      await expect(
+        page.getByTestId(`per-category-entry-${cat}-feat-allsame`),
+      ).toBeVisible()
+    }
+  })
+
+  test('panel anchor click jumps to the table row + focuses it + pulses', async ({
+    page,
+  }) => {
+    await mockCsrf(page)
+    await seedProject(page)
+    await seedAnalysis(page, POLL_ID, populatedAnalysis)
+    await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
+
+    const firstMustEntry = page.locator('.panel-m a').first()
+    const href = await firstMustEntry.getAttribute('href')
+    expect(href).toMatch(/^#feature-/)
+    const featureKey = href!.replace('#feature-', '')
+
+    await firstMustEntry.click()
+
+    const targetRow = page.locator(`tr#feature-${featureKey}`)
+    await expect(targetRow).toBeInViewport()
+    await expect(targetRow).toBeFocused()
+    // The transient `.row-pulse` class is the visual landing-spot signal —
+    // it's added synchronously on click and removed after ~1000 ms (or
+    // immediately under reduced-motion). Assert it's present soon after the
+    // click; without this the production handler could stop pulsing
+    // entirely and the test would still pass.
+    await expect(targetRow).toHaveClass(/row-pulse/)
+  })
+
+  test('empty-state branch suppresses panels entirely', async ({ page }) => {
+    await mockCsrf(page)
+    await seedProject(page)
+    await seedAnalysis(page, EMPTY_POLL_ID, emptyAnalysis)
+    await page.goto(`/app/projects/${PROJECT_ID}/polls/${EMPTY_POLL_ID}/analysis`)
+
+    await expect(page.getByTestId('analysis-empty-state')).toBeVisible()
+    await expect(page.getByTestId('per-category-panels')).toHaveCount(0)
+  })
+
+  test('axe-core: zero violations with panels rendered', async ({ page }) => {
+    await mockCsrf(page)
+    await seedProject(page)
+    await seedAnalysis(page, POLL_ID, populatedAnalysis)
+    await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
+    await expect(page.getByTestId('per-category-panels')).toBeVisible()
+    expect(await axeRun(page)).toEqual([])
+  })
+})
+
+test.describe('Story 5-7 — category help tooltips on first use', () => {
+  test('hovering a CatBadge surfaces the per-category help tooltip', async ({
+    page,
+  }) => {
+    await mockCsrf(page)
+    await seedProject(page)
+    await seedAnalysis(page, POLL_ID, populatedAnalysis)
+    await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
+    await expect(page.getByTestId('analysis-table')).toBeVisible()
+
+    // Hover the first Must-have badge in the Dominant column.
+    const mustBadge = page.locator('.cat-badge-help').filter({ hasText: 'Must-have' }).first()
+    await mustBadge.hover()
+    await expect(page.getByRole('tooltip')).toContainText(/Users expect this feature/i)
+  })
+
+  test('keyboard focus reveals the tooltip and Escape dismisses it', async ({
+    page,
+  }) => {
+    await mockCsrf(page)
+    await seedProject(page)
+    await seedAnalysis(page, POLL_ID, populatedAnalysis)
+    await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
+    await expect(page.getByTestId('analysis-table')).toBeVisible()
+
+    const firstBadge = page.locator('.cat-badge-help').first()
+    await firstBadge.focus()
+    await expect(page.getByRole('tooltip')).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('tooltip')).toBeHidden()
+  })
+
+  test('panel-header CatBadges also carry the help affordance', async ({
+    page,
+  }) => {
+    await mockCsrf(page)
+    await seedProject(page)
+    await seedAnalysis(page, POLL_ID, populatedAnalysis)
+    await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
+
+    const panelHeaderBadge = page
+      .locator('.panel-m .panel-header .cat-badge-help')
+      .first()
+    await expect(panelHeaderBadge).toBeVisible()
+    await panelHeaderBadge.hover()
+    await expect(page.getByRole('tooltip')).toContainText(/Users expect this feature/i)
+  })
+
+  test('tie-meaning help icon opens an explainer tooltip on hover', async ({
+    page,
+  }) => {
+    await mockCsrf(page)
+    await seedProject(page)
+    await seedAnalysis(page, POLL_ID, populatedAnalysis)
+    await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
+    await expect(page.getByTestId('analysis-tie-help-icon')).toBeVisible()
+
+    await page.getByTestId('analysis-tie-help-icon').hover()
+    await expect(page.getByRole('tooltip')).toContainText(
+      /customer opinion is genuinely split/i,
+    )
+  })
+
+  test('tie-meaning help icon is keyboard-focusable; Escape dismisses', async ({
+    page,
+  }) => {
+    await mockCsrf(page)
+    await seedProject(page)
+    await seedAnalysis(page, POLL_ID, populatedAnalysis)
+    await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
+    const icon = page.getByTestId('analysis-tie-help-icon')
+    await expect(icon).toBeVisible()
+
+    await icon.focus()
+    await expect(page.getByRole('tooltip')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('tooltip')).toBeHidden()
+  })
+
+  test('axe-core: zero violations with a category tooltip open', async ({
+    page,
+  }) => {
+    await mockCsrf(page)
+    await seedProject(page)
+    await seedAnalysis(page, POLL_ID, populatedAnalysis)
+    await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
+    await page.locator('.cat-badge-help').first().hover()
+    await expect(page.getByRole('tooltip')).toBeVisible()
+    expect(await axeRun(page)).toEqual([])
+  })
+})
+
+test.describe('Story 5-8 — axe-core at scale (20 features × 500 submissions)', () => {
+  // The Story 5-5 / 5-6 / 5-7 axe runs use a 5-feature fixture so the
+  // component-level a11y patterns are verified cheaply. This block scales
+  // to the NFR1 dataset shape (20 features = 20× `<KanoStackedBar>` SVG +
+  // 20× `<KanoStackedBarTable>` companion + tied-row CatBadge clusters).
+  // Patterns that work at 5 rows and break at 20 (duplicate ids, off-screen
+  // focus management at long scroll, panel cardinality issues) surface
+  // only at this scale.
+  test('populated 20×500 fixture: zero axe violations', async ({ page }) => {
+    const seed = await seedAnalysisFixture(page)
+    await gotoAnalysisAndWait(page, seed)
+    expect(await axeRun(page)).toEqual([])
+  })
+
+  test('empty-state surface at 20×500 seed (zero submissions): zero axe violations', async ({
+    page,
+  }) => {
+    const seed = await seedAnalysisFixture(page, { empty: true })
+    await page.goto(`/app/projects/${seed.projectId}/polls/${seed.pollId}/analysis`)
+    await expect(page.getByTestId('analysis-empty-state')).toBeVisible()
+    expect(await axeRun(page)).toEqual([])
+  })
+
+  test('fixture shape sanity: 20 rows, feat-02 is tied M+L (FR35 reference row)', async ({
+    page,
+  }) => {
+    // Pin the fixture shape one last time at the spec layer so the perf /
+    // keyboard / axe specs all agree on which row is "the tie row" for
+    // the manual VoiceOver sweep.
+    const fixture = buildAnalysisFixture()
+    expect(fixture.features).toHaveLength(20)
+    expect(fixture.total_submissions).toBe(500)
+    expect(fixture.features[1].feature_key).toBe('feat-02')
+    expect(fixture.features[1].dominant_categories).toEqual(['M', 'L'])
+
+    const seed = await seedAnalysisFixture(page)
+    await gotoAnalysisAndWait(page, seed)
+    await expect(page.locator('#feature-feat-02')).toBeVisible()
+    const empty = buildEmptyAnalysisFixture()
+    expect(empty.total_submissions).toBe(0)
   })
 })

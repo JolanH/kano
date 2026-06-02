@@ -1,6 +1,6 @@
 # Story 5.6: PerCategoryPanels secondary cross-index
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -32,8 +32,8 @@ so that I can answer "which features are Must-have?" with a vertical scan instea
 
 ## Tasks / Subtasks
 
-- [ ] `src/components/PerCategoryPanels.vue` (AC: #1, #2, #3, #4, #5, #9, #10)
-  - [ ] New file:
+- [x] `src/components/PerCategoryPanels.vue` (AC: #1, #2, #3, #4, #5, #9, #10)
+  - [x] New file:
     ```vue
     <script setup lang="ts">
     import { computed } from 'vue'
@@ -144,12 +144,12 @@ so that I can answer "which features are Must-have?" with a vertical scan instea
     .tabular-num { font-variant-numeric: tabular-nums; }
     </style>
     ```
-- [ ] Row `id` + row-pulse CSS on `<AnalysisTable>` (AC: #6, #7)
-  - [ ] Extend `src/components/AnalysisTable.vue` (Story 5.5 is the source) — the `v-data-table` `<tr>` needs `:id="`feature-${item.feature_key}`"` and `tabindex="-1"`. Vuetify 4's `v-data-table` does not expose per-row attributes directly via a template prop; two options:
+- [x] Row `id` + row-pulse CSS on `<AnalysisTable>` (AC: #6, #7)
+  - [x] Extend `src/components/AnalysisTable.vue` (Story 5.5 is the source) — the `v-data-table` `<tr>` needs `:id="`feature-${item.feature_key}`"` and `tabindex="-1"`. Vuetify 4's `v-data-table` does not expose per-row attributes directly via a template prop; two options:
     - (A) Use the `#item="{ item, props: rowProps }"` slot (full-row slot) and compose the `<tr>` yourself. More control but more boilerplate.
     - (B) Rely on Vuetify's data attribute conventions or a post-mount DOM walk that stamps ids. Brittle.
     - **Recommendation**: (A). Adapt the Story 5.5 AnalysisTable to use the full-row slot. The per-cell `#item.*` slots become `<td>` compositions inside the row slot.
-  - [ ] Rewrite the row template:
+  - [x] Rewrite the row template:
     ```vue
     <template #item="{ item }">
       <tr
@@ -164,7 +164,7 @@ so that I can answer "which features are Must-have?" with a vertical scan instea
       </tr>
     </template>
     ```
-  - [ ] Add scoped CSS for the pulse animation (respects reduced-motion):
+  - [x] Add scoped CSS for the pulse animation (respects reduced-motion):
     ```css
     .analysis-row { transition: background-color 200ms ease; }
     .analysis-row.row-pulse { background: rgb(var(--v-theme-surface-bright)); }
@@ -176,24 +176,24 @@ so that I can answer "which features are Must-have?" with a vertical scan instea
       .analysis-row { transition: none; }
     }
     ```
-  - [ ] Verify row-hover still works after the slot refactor (it's Vuetify default, preserved automatically on `<tr>` under `v-data-table`).
-- [ ] Compose in `Analysis.vue` (AC: #8)
-  - [ ] Extend `src/routes/app/Analysis.vue` to render `<PerCategoryPanels>` below `<AnalysisTable>` inside the non-empty branch:
+  - [x] Verify row-hover still works after the slot refactor (it's Vuetify default, preserved automatically on `<tr>` under `v-data-table`).
+- [x] Compose in `Analysis.vue` (AC: #8)
+  - [x] Extend `src/pages/app/Analysis.vue` to render `<PerCategoryPanels>` below `<AnalysisTable>` inside the non-empty branch:
     ```vue
     <template v-else>
       <AnalysisTable :analysis="analysis!" />
       <PerCategoryPanels :analysis="analysis!" />
     </template>
     ```
-  - [ ] Not inside the empty-state branch — per AC #8, panels never render when the table wouldn't.
-- [ ] Copy-deck extensions (AC: #9)
-  - [ ] `src/copy/en.ts` — add:
+  - [x] Not inside the empty-state branch — per AC #8, panels never render when the table wouldn't.
+- [x] Copy-deck extensions (AC: #9)
+  - [x] `src/copy/en.ts` — add:
     - `analysis.panels.heading` → `"By category"` (secondary heading above the panels block)
     - `analysis.panels.entryAriaLabel` → `"Jump to {feature} ({pct} dominant)"` — screen-reader announcement on the anchor link (visible text is feature name + pct; aria-label gives context that the link is navigational)
-  - [ ] Section `<h3>` body comes from `<CatBadge>`'s existing copy key (`pm.category.*` from Story 1.7 / 5.3); no new category copy keys.
-  - [ ] `docs/copy-deck.md` — reflect the new keys.
-- [ ] Vitest spec: `src/components/PerCategoryPanels.spec.ts` (AC: #11)
-  - [ ] Helper: build a `PollAnalysis` fixture with known dominants:
+  - [x] Section `<h3>` body comes from `<CatBadge>`'s existing copy key (`pm.category.*` from Story 1.7 / 5.3); no new category copy keys.
+  - [x] `docs/copy-deck.md` — reflect the new keys.
+- [x] Vitest spec: `tests/unit/per-category-panels.spec.ts` (AC: #11)
+  - [x] Helper: build a `PollAnalysis` fixture with known dominants:
     ```ts
     const fixture: PollAnalysis = {
       poll_id: '...',
@@ -209,7 +209,7 @@ so that I can answer "which features are Must-have?" with a vertical scan instea
       ],
     }
     ```
-  - [ ] Tests:
+  - [x] Tests:
     - Renders 3 panels: Must-have (contains A, C, D), Performance (contains B, D), Delighter (contains E). Indifferent / Reverse / Questionable panels NOT in the DOM.
     - Section order in DOM is Must-have first, then Performance, then Delighter (M, L, E order).
     - Feature D appears in BOTH Must-have and Performance panels (tied — FR35).
@@ -219,8 +219,8 @@ so that I can answer "which features are Must-have?" with a vertical scan instea
     - Rounding: inject a fixture with `dominant_percentage: 33.33` → rendered `"33.3%"`.
     - `total_submissions: 0` case: `mount(...).html()` is empty comment; `console.warn` called.
     - Copy-deck assertion: no bare strings.
-- [ ] Extend E2E spec (AC: #12)
-  - [ ] Extend `kano-frontend/e2e/pm/analysis-page.spec.ts` (Story 5.5):
+- [x] Extend E2E spec (AC: #12)
+  - [x] Extend `kano-frontend/e2e/pm/analysis-page.spec.ts` (Story 5.5):
     ```ts
     test('per-category panels jump to table rows', async ({ page, request }) => {
       const { projectId, pollId } = await seedPopulatedPoll(request)
@@ -347,10 +347,53 @@ Files:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-opus-4-7 (Opus 4.7, 1M context)
 
 ### Debug Log References
 
+- Initial Vitest run failed 3 of 16 PerCategoryPanels onAnchorClick tests with `vi.spyOn() can only spy on a function. Received undefined.` — root cause: jsdom doesn't ship `window.matchMedia`. Fix: install a fresh `vi.fn` mock via `Object.defineProperty` in `beforeEach` instead of spying on the (undefined) global, restore the original (or delete) in `afterEach`. After the fix all 16 PerCategoryPanels specs pass, plus the existing 303 frontend unit tests (319/319 green).
+- `vue-tsc --noEmit` clean.
+
 ### Completion Notes List
 
+- Added `<PerCategoryPanels>` in `kano-frontend/src/components/PerCategoryPanels.vue`. Iterates `CATEGORY_CODES` (the canonical M → L → E → I → C → D order shared with `<KanoStackedBar>` / `<KanoStackedBarTable>`) and only emits sections with at least one dominant feature (AC #1 / #2). Tied features appear in EACH tied panel (FR35 / AC #5).
+- Anchor click handler in PerCategoryPanels smooth-scrolls + focuses + pulses the target row, with `prefers-reduced-motion: reduce` collapsing both the scroll behavior to `auto` and the pulse-hold to 0 ms (AC #7).
+- Extended `AnalysisTable.vue` to use a full-row `#item` slot so each `<tr>` carries `id="feature-{feature_key}"` + `tabindex="-1"` + `class="analysis-row"` (AC #6). Per-cell composition is unchanged; only the outer `<tr>` is new.
+- Added `.analysis-row` / `.row-pulse` / `:focus-visible` / `@media (prefers-reduced-motion: reduce)` scoped styles to `AnalysisTable.vue` (AC #7).
+- Wired `<PerCategoryPanels :analysis="analysis" />` under `<AnalysisTable :analysis="analysis" />` in `src/pages/app/Analysis.vue`'s non-empty branch — never rendered alongside the empty-state surface (AC #8).
+- Added copy keys `analysis.panels.heading` ("By category") and `analysis.panels.entryAriaLabel` ("Jump to {feature} ({pct} dominant)") to `src/copy/en.ts`; mirrored into `docs/copy-deck.md` so `useCopy.spec.ts`'s drift check passes (AC #9).
+- New Vitest spec `tests/unit/per-category-panels.spec.ts` covers: fixed order regardless of input, zero-dominant categories omitted, tied features in each panel, `<h3>` + `<CatBadge>` header wiring, anchor href pattern, percentage rounding (integer / one-decimal / NaN fallback), aria-label template wiring, h2 block heading, `total_submissions === 0` guard branch + dev warn, and `onAnchorClick` behavior (smooth + auto + missing-target no-op) (AC #11). 16/16 passing.
+- Extended `tests/unit/analysis-table.spec.ts`'s v-data-table stub to support the full-row `#item` slot (so existing per-cell assertions keep working) and added a new test pinning `<tr id="feature-…" tabindex="-1" class="analysis-row">` on every row.
+- Extended `tests/unit/analysis-page.spec.ts` with stub + assertions confirming `<PerCategoryPanels>` renders on populated payloads, is suppressed in the empty branch (AC #8), and is suppressed in error / loading branches.
+- Extended `kano-frontend/e2e/pm/analysis-page.spec.ts` with a new `Story 5-6` describe block covering: fixed M→L→E→I→C→D order, tied features appearing in each panel, anchor-click → row scroll + focus, empty-state gating, and axe-core zero violations with panels rendered (AC #12).
+- All 319 frontend unit tests green; vue-tsc clean.
+
 ### File List
+
+- `kano-frontend/src/components/PerCategoryPanels.vue` (new)
+- `kano-frontend/src/components/AnalysisTable.vue` (modified — full-row slot + row-pulse styles)
+- `kano-frontend/src/pages/app/Analysis.vue` (modified — composes PerCategoryPanels in the non-empty branch)
+- `kano-frontend/src/copy/en.ts` (modified — `analysis.panels.heading` + `analysis.panels.entryAriaLabel`)
+- `kano-frontend/tests/unit/per-category-panels.spec.ts` (new)
+- `kano-frontend/tests/unit/analysis-table.spec.ts` (modified — v-data-table stub supports full-row slot; new row-stamping test)
+- `kano-frontend/tests/unit/analysis-page.spec.ts` (modified — `PerCategoryPanelsStub` + presence/absence assertions)
+- `kano-frontend/e2e/pm/analysis-page.spec.ts` (modified — new `Story 5-6` describe block)
+- `docs/copy-deck.md` (modified — Story 5-6 section)
+
+### Change Log
+
+- 2026-05-26: Story 5-6 development complete. PerCategoryPanels secondary cross-index added below the analysis table with fixed M→L→E→I→C→D order, FR35-correct tied feature treatment (feature appears in each tied panel), anchor-jump that smooth-scrolls + focuses + pulses the target table row (reduced-motion collapses both transitions), and copy-deck-driven strings. AnalysisTable migrated to a full-row `#item` slot so rows carry `id="feature-{key}"` + `tabindex="-1"` + `.analysis-row` class for jump-link targeting. 319/319 frontend unit tests pass; vue-tsc clean.
+
+### Review Findings
+
+Adversarial review on 2026-05-28 — Blind Hunter + Edge Case Hunter + Acceptance Auditor. Patches applied 2026-05-28 in the same review session.
+
+- [x] [Review][Patch] E2E test `panel anchor click jumps + focuses + pulses` now asserts `targetRow toHaveClass(/row-pulse/)` so the production pulse handler can't be deleted without the test failing — `kano-frontend/e2e/pm/analysis-page.spec.ts`.
+- [x] [Review][Patch] `onAnchorClick` now tracks pulse timers in a per-feature-key `Map<string, timerId>` and `clearTimeout`s on re-click so rapid re-clicks reset the pulse window cleanly — `kano-frontend/src/components/PerCategoryPanels.vue`.
+- [x] [Review][Patch] Re-render race fixed — the timer callback re-resolves `getElementById('feature-' + featureKey)` at fire time and calls `.remove('row-pulse')` on the live element (if any), so an orphaned closure-captured element no longer freezes the class on a fresh row.
+- [x] [Review][Patch] `onBeforeUnmount` lifecycle hook now clears all pending pulse timers and empties the Map, so click-then-router-push within 1 s no longer leaves a dangling timer.
+- [x] [Review][Patch] Added `analysis.panels.entryAriaLabelTied` copy key ("Jump to {feature} ({pct} in each tied category)") and `entryAriaLabel(entry)` helper that selects between single-dominant and tied variants based on `dominant_categories.length > 1` — `kano-frontend/src/components/PerCategoryPanels.vue` + `kano-frontend/src/copy/en.ts` + `docs/copy-deck.md`.
+- [x] [Review][Patch] `feature_key` sanitization via `SAFE_FEATURE_KEY` regex (`^[A-Za-z0-9._-]+$`) at the panel boundary: unsafe keys are dropped from the panels with a DEV `console.warn`, AND the click handler aborts early on the same check so a malformed key never reaches `getElementById` — `kano-frontend/src/components/PerCategoryPanels.vue`.
+- [x] [Review][Defer] Empty `dominant_categories: []` feature is silently absent from all panels — no dev-warn, no diagnostic. Backend FR24 invariant prevents this in v1; deferred, pre-existing.
+- [x] [Review][Defer] `PerCategoryPanels` `<h2>` + per-section `<h3>` assumes the parent page exposes an `<h1>` — manual sweep verifies in Story 5-8 checklist. Deferred.
+- [x] [Review][Defer] `per-category-panels.spec.ts` does not assert `console.warn` is NOT fired in the zero-features-but-populated case (`features=[]`, `total_submissions=10`). Minor coverage gap. Deferred.

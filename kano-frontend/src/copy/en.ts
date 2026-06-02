@@ -50,6 +50,20 @@ export const en = {
   'pm.category.cont': 'Contradictory',
   'pm.category.doub': 'Doubtful',
 
+  // PM category help tooltips (Story 5-7) — short ≤ 2-line definitions
+  // surfaced by `<CatBadge :with-help="true">` on the analysis page (FR39
+  // first-use help). Suffix vocabulary tracks the backend `Category` enum
+  // (Contradictory / Doubtful) to match `pm.category.cont` / `pm.category.doub`
+  // above; see Story 1-5 (5,1)→D reconciliation. Wording is non-load-bearing
+  // (every category is also labeled visibly via CatBadge); a copy-deck
+  // refinement during low-fidelity review does not require a code change.
+  'pm.category.help.must': 'Users expect this feature. Its absence causes frustration.',
+  'pm.category.help.perf': 'Satisfaction scales with quality. More is better.',
+  'pm.category.help.del': "Aspirational. Users don't expect it, but love it when present.",
+  'pm.category.help.ind': "Users don't care whether this feature exists or not.",
+  'pm.category.help.cont': "Responses contradicted each other. The category is unstable until more data arrives.",
+  'pm.category.help.doub': 'Responses were inconsistent. More data is needed before drawing a conclusion.',
+
   // Respondent Likert option labels (FR22 — plain-language replacements for
   // the Kano-methodology jargon). The wording is Story 4-5 / epics line
   // 1126: lowercase past the first option is intentional (UX register is
@@ -330,6 +344,62 @@ export const en = {
   'analysis.error.load.title': "Couldn't load analysis",
   'analysis.error.load.body': 'Please check your connection and try again.',
   'analysis.error.load.retry': 'Retry',
+
+  // PerCategoryPanels (Story 5-6) — secondary cross-index below the table.
+  // `heading` labels the whole panels block as an h2; per-category section
+  // headers source their visible text from <CatBadge>'s existing
+  // `pm.category.*` label, so no per-category title key is added here.
+  // `entryAriaLabel` is the per-anchor aria-label that adds navigational
+  // intent ("Jump to …") on top of the visible feature-name + percentage.
+  // The tied variant exists because a SR user hearing "50 percent dominant"
+  // on a tied row could parse it as "50 percent is dominant", missing that
+  // the percentage applies in each tied category — FR35.
+  'analysis.panels.heading': 'By category',
+  'analysis.panels.entryAriaLabel': 'Jump to {feature} ({pct} dominant)',
+  'analysis.panels.entryAriaLabelTied':
+    'Jump to {feature} ({pct} in each tied category)',
+
+  // KanoCategoryPie — category-repartition pie at the top of the "By
+  // category" panel. The pie keys on each feature's dominant category; a
+  // tied feature is split fractionally (1/N) across its tied categories so
+  // the slices sum to 100%. `ariaLabel` labels the `role="img"` SVG (the
+  // visible legend carries the per-category numbers as real text);
+  // `sliceLabel` is shared by the per-slice hover tooltip AND the legend
+  // line, mirroring `analysis.stackedBar.tooltip`'s "{name}: {pct}%" shape.
+  'analysis.pie.ariaLabel': 'Dominant-category distribution across features',
+  'analysis.pie.sliceLabel': '{name}: {pct}%',
+
+  // Tie-meaning help (Story 5-7 AC #4) — surfaced by the (i) icon next to
+  // the confidence beat on the analysis page header. Explains what a
+  // dominant-category tie means in plain language (FR35 / FR39).
+  // `analysis.help.tieIconAriaLabel` labels the icon button itself so SRs
+  // announce its role before the tooltip's aria-describedby content reads.
+  'analysis.help.tieMeaning':
+    'When two categories share the top position, customer opinion is genuinely split — both categories are equally dominant.',
+  'analysis.help.tieIconAriaLabel': 'About dominant-category ties',
+
+  // KanoCategoryReference — standing glossary `<aside>` to the right of the
+  // "By category" section. Lists all six Kano categories (always, regardless
+  // of the poll's data) with a fuller, Kano-textbook-grounded description.
+  // Deliberately a SEPARATE namespace from the terse `pm.category.help.*`
+  // CatBadge first-use tooltips (Story 5-7): different surface, different
+  // length budget. `cont`/`doub` track THIS product's matrix semantics
+  // (C = the respondent's paired answers contradict each other → inconclusive;
+  // D = an extreme / questionable answer pattern), not the textbook "Reverse"
+  // reading the product does not model (see kano_matrix.py).
+  'analysis.categoryRef.heading': 'What the categories mean',
+  'analysis.categoryRef.desc.must':
+    'A basic expectation. Its absence causes strong dissatisfaction, yet its presence is taken for granted — the price of entry.',
+  'analysis.categoryRef.desc.perf':
+    'The more, the better. Satisfaction rises and falls in direct proportion to how well this is delivered.',
+  'analysis.categoryRef.desc.del':
+    "An unexpected extra. Users don't ask for it, but its presence sparks delight and sets the product apart.",
+  'analysis.categoryRef.desc.ind':
+    'Users are unmoved either way — its presence or absence makes little difference to how satisfied they feel.',
+  'analysis.categoryRef.desc.cont':
+    "Respondents' paired answers worked against each other, so no stable preference emerged. Treat as inconclusive.",
+  'analysis.categoryRef.desc.doub':
+    'An extreme or unlikely answer pattern. The signal is questionable until more responses arrive.',
 } as const
 
 export type CopyKey = keyof typeof en

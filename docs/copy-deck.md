@@ -58,6 +58,12 @@ Token suffix mirrors the backend `Category` enum (`MANDATORY` / `LINEAR` /
 | `pm.category.ind` | Indifferent | Maps to `INDIFFERENT` |
 | `pm.category.cont` | Contradictory | Maps to `CONTRADICTORY` — answers contradict each other |
 | `pm.category.doub` | Doubtful | Maps to `DOUBTFUL` — extreme / unusual answer pair |
+| `pm.category.help.must` | Users expect this feature. Its absence causes frustration. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+| `pm.category.help.perf` | Satisfaction scales with quality. More is better. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+| `pm.category.help.del` | Aspirational. Users don't expect it, but love it when present. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+| `pm.category.help.ind` | Users don't care whether this feature exists or not. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+| `pm.category.help.cont` | Responses contradicted each other. The category is unstable until more data arrives. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+| `pm.category.help.doub` | Responses were inconsistent. More data is needed before drawing a conclusion. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
 
 ## PM epoch-bump dialog (Story 2-11)
 
@@ -334,3 +340,59 @@ model); the empty-state copy is unparameterized for the same reason.
 | `analysis.error.load.title` | Couldn't load analysis | AnalysisErrorSurface 5xx/network alert title |
 | `analysis.error.load.body` | Please check your connection and try again. | AnalysisErrorSurface 5xx/network alert body |
 | `analysis.error.load.retry` | Retry | AnalysisErrorSurface 5xx/network alert retry button |
+
+## Analysis page — PerCategoryPanels secondary cross-index (Story 5-6)
+
+The cross-index renders below the table when `total_submissions > 0`, with
+one `<section>` per Kano category that has at least one feature for which
+it is dominant (FR36). Per-category section headers reuse `pm.category.*`
+labels via `<CatBadge>` — no per-category title key here. `{feature}` is
+a feature name; `{pct}` is the integer-or-1-decimal percentage string
+(e.g. `70%` or `33.3%`) built by the component to mirror Story 5-1's
+`dominant_percentage` rounding.
+
+| Key | English | Context |
+|---|---|---|
+| `analysis.panels.heading` | By category | PerCategoryPanels block `<h2>` — labels the cross-index region |
+| `analysis.panels.entryAriaLabel` | Jump to {feature} ({pct} dominant) | Per-anchor `aria-label` (single-dominant) — adds navigational intent over the visible feature-name + percentage |
+| `analysis.panels.entryAriaLabelTied` | Jump to {feature} ({pct} in each tied category) | Per-anchor `aria-label` for features with multiple tied dominant categories — disambiguates "{pct} dominant" so a SR user does not parse it as "{pct} is dominant" (FR35) |
+
+## Analysis page — category-repartition pie (By category panel)
+
+| Key | Copy | Notes |
+|-----|------|-------|
+| `analysis.pie.ariaLabel` | Dominant-category distribution across features | `role="img"` label for the KanoCategoryPie SVG; the visible legend carries the per-category numbers as real text |
+| `analysis.pie.sliceLabel` | {name}: {pct}% | Shared by each slice's hover tooltip AND the legend line; mirrors `analysis.stackedBar.tooltip`'s "{name}: {pct}%" shape (tied features split fractionally so slices total 100%) |
+
+## Analysis page — tie-meaning help icon (Story 5-7)
+
+The (i) icon next to the confidence beat opens a tooltip describing what a
+dominant-category tie means (FR35 / FR39 first-use help). The icon also
+carries its own aria-label so SRs announce the activator's role ("About
+dominant-category ties") before reading the tooltip's described-by content.
+
+| Key | English | Context |
+|---|---|---|
+| `analysis.help.tieMeaning` | When two categories share the top position, customer opinion is genuinely split — both categories are equally dominant. | Analysis header tie-meaning tooltip text (opens from the (i) icon next to the confidence beat) |
+| `analysis.help.tieIconAriaLabel` | About dominant-category ties | Aria-label on the (i) icon activator next to the confidence beat |
+
+## Analysis page — Kano category reference panel (By category section)
+
+Standing glossary `<aside>` to the right of the "By category" content. Lists
+all six Kano categories (always, regardless of the poll's data) with a fuller,
+Kano-textbook-grounded description. Separate namespace from the terse
+`pm.category.help.*` CatBadge first-use tooltips — different surface, different
+length budget. `cont` / `doub` descriptions track this product's matrix
+semantics (C = paired answers contradict → inconclusive; D = extreme /
+questionable answer pattern), not the textbook "Reverse" the product does not
+model.
+
+| Key | English | Context |
+|---|---|---|
+| `analysis.categoryRef.heading` | What the categories mean | Reference `<aside>` heading |
+| `analysis.categoryRef.desc.must` | A basic expectation. Its absence causes strong dissatisfaction, yet its presence is taken for granted — the price of entry. | Reference description — Must-have (MANDATORY) |
+| `analysis.categoryRef.desc.perf` | The more, the better. Satisfaction rises and falls in direct proportion to how well this is delivered. | Reference description — Performance (LINEAR) |
+| `analysis.categoryRef.desc.del` | An unexpected extra. Users don't ask for it, but its presence sparks delight and sets the product apart. | Reference description — Delighter (EXCITER) |
+| `analysis.categoryRef.desc.ind` | Users are unmoved either way — its presence or absence makes little difference to how satisfied they feel. | Reference description — Indifferent |
+| `analysis.categoryRef.desc.cont` | Respondents' paired answers worked against each other, so no stable preference emerged. Treat as inconclusive. | Reference description — Contradictory |
+| `analysis.categoryRef.desc.doub` | An extreme or unlikely answer pattern. The signal is questionable until more responses arrive. | Reference description — Doubtful |

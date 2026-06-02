@@ -12,7 +12,7 @@
 | Delighter     | `EXCITER`       | `category-del`   | `#7C3AED` |
 | Indifferent   | `INDIFFERENT`   | `category-ind`   | `#6B7280` |
 | Contradictory | `CONTRADICTORY` | `category-cont`  | `#B45309` |
-| Doubtful      | `DOUBTFUL`      | `category-doub`  | `#78716C` |
+| Doubtful      | `DOUBTFUL`      | `category-doub`  | `#8F6912` |
 
 (Source of truth: `src/theme/tixeo.ts`. Hex values aligned with
 `_bmad-output/planning-artifacts/ux-design-specification.md §Color System`.
@@ -46,10 +46,23 @@ Doubtful`.
 | Performance (teal) ↔ Delighter (violet)       | Cool→cool      | Distinct  | Distinct  | Distinct |
 | Delighter (violet) ↔ Indifferent (gray)       | Saturated→gray | Distinct  | Distinct  | Distinct |
 | Indifferent (gray) ↔ Contradictory (amber)    | Cool→warm      | Distinct  | Distinct  | Distinct |
-| Contradictory (amber) ↔ Doubtful (stone)      | Warm→warm-gray | **Marginal — needs label reinforcement** | Marginal — needs label reinforcement | Distinct |
+| Contradictory (amber) ↔ Doubtful (goldenrod)  | Warm→warm      | **Marginal — needs label reinforcement** | Marginal — needs label reinforcement | Distinct |
+
+**2026-06-02 update — Doubtful recolored `#78716C` (stone) → `#8F6912` (dark
+goldenrod).** The previous stone gray was a near-twin of the cool gray
+Indifferent (`#6B7280`) for normal vision — the two swatches were almost
+indistinguishable side-by-side, which is the user-reported regression this
+change fixes. Indifferent↔Doubtful is now unambiguous (cool gray vs warm
+goldenrod). The trade-off is that Doubtful and Contradictory are now both
+warm hues, so the Contradictory↔Doubtful pair stays the weakest under
+protanopia / deuteranopia — but it is the same **marginal, label-reinforced**
+verdict the stone gray carried, not a regression. Contrast against `surface`
+is ~5:1 — clears the AA 3:1 non-text-UI floor that `theme-contrast.spec.ts`
+enforces for the `category-*` tokens (`largeOrUi`), and is above the 4.5:1
+small-text floor as well.
 
 **Outcome:** The Contradictory↔Doubtful pair is the weakest under protanopia /
-deuteranopia simulation — both collapse toward warm gray. This is acceptable
+deuteranopia simulation — both are warm tones that converge. This is acceptable
 because the architectural promise (per UX spec §Accessibility Considerations)
 is "color is never the sole information carrier" — the stacked bar is always
 accompanied by a category-name + percentage label on each segment, and the

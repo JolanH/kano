@@ -35,6 +35,7 @@ import AnalysisEmptyState from '@/components/AnalysisEmptyState.vue'
 import AnalysisErrorSurface from '@/components/AnalysisErrorSurface.vue'
 import AnalysisTable from '@/components/AnalysisTable.vue'
 import EpochSelector from '@/components/EpochSelector.vue'
+import PerCategoryPanels from '@/components/PerCategoryPanels.vue'
 import { type PollAnalysis } from '@/api/types'
 import { useApi } from '@/composables/useApi'
 import { useCopy } from '@/composables/useCopy'
@@ -162,7 +163,35 @@ onMounted(() => {
           class="confidence-beat"
           data-testid="analysis-confidence-beat"
         >
-          {{ totalLabel }}
+          <span>{{ totalLabel }}</span>
+          <!--
+            Story 5-7 AC #4 — the tie-meaning help (i) icon sits immediately
+            to the right of the confidence-beat text. Hover / focus / click
+            opens a `v-tooltip` that explains what a dominant-category tie
+            means (FR35 + FR39). The icon carries its own aria-label so SRs
+            announce the activator's role before the tooltip's described-by
+            content reads; `max-width="300"` lets the longer explanation
+            wrap without competing with the page's main reading column.
+          -->
+          <v-tooltip
+            :text="copy('analysis.help.tieMeaning')"
+            location="top"
+            :open-delay="300"
+            max-width="300"
+          >
+            <template #activator="{ props: tipProps }">
+              <v-icon
+                v-bind="tipProps"
+                icon="mdi-information-outline"
+                size="16"
+                class="help-icon"
+                tabindex="0"
+                role="button"
+                :aria-label="copy('analysis.help.tieIconAriaLabel')"
+                data-testid="analysis-tie-help-icon"
+              />
+            </template>
+          </v-tooltip>
         </span>
         <EpochSelector
           v-if="projectId"
@@ -186,7 +215,10 @@ onMounted(() => {
       @retry="loadAnalysis"
     />
     <AnalysisEmptyState v-else-if="isEmpty" />
-    <AnalysisTable v-else-if="analysis" :analysis="analysis" />
+    <template v-else-if="analysis">
+      <AnalysisTable :analysis="analysis" />
+      <PerCategoryPanels :analysis="analysis" />
+    </template>
   </section>
 </template>
 
@@ -231,10 +263,29 @@ onMounted(() => {
    * Secondary-text weight per UX-DR21 — the confidence beat communicates
    * response volume without competing with the project title. NOT a
    * banner, never a `<v-alert>`.
+   *
+   * Story 5-7 turned the surface into an inline-flex container so the
+   * tie-meaning (i) icon sits flush against the response-count text on the
+   * same baseline; the icon itself colors to `on-surface-variant` to match
+   * the secondary-text register established by the beat.
    */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 16px;
   font-weight: 400;
   color: rgb(var(--v-theme-on-surface-variant));
+}
+
+.help-icon {
+  cursor: help;
+  color: rgb(var(--v-theme-on-surface-variant));
+}
+
+.help-icon:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
+  border-radius: 50%;
 }
 
 .analysis-skeleton {

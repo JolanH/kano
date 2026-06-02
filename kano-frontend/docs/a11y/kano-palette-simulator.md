@@ -20,12 +20,18 @@ analysis surface via `--v-theme-category-*` CSS vars; never inline.)
 | Delighter     | `category-del`    | #7C3AED  | `EXCITER`       |
 | Indifferent   | `category-ind`    | #6B7280  | `INDIFFERENT`   |
 | Contradictory | `category-cont`   | #B45309  | `CONTRADICTORY` |
-| Doubtful      | `category-doub`   | #78716C  | `DOUBTFUL`      |
+| Doubtful      | `category-doub`   | #8F6912  | `DOUBTFUL`      |
 
 Note — the bottom-two suffix vocabulary (`cont` / `doub`, not `rev` /
 `que` as the original Story 5-4 spec text referenced) tracks the backend
-`Category` enum names per the Story 1-5 (5,1)→D reconciliation. The hex
-values are unchanged.
+`Category` enum names per the Story 1-5 (5,1)→D reconciliation.
+
+Doubtful was recolored stone gray `#78716C` → dark goldenrod `#8F6912` on
+2026-06-02 because the stone gray was visually indistinguishable from the
+cool gray Indifferent (`#6B7280`) for normal vision. See the analytical
+breakdown in `docs/accessibility/kano-palette-validation.md` for the CVD
+re-validation (Contradictory↔Doubtful remains the marginal, label-reinforced
+pair).
 
 ## Simulation procedure (Chrome DevTools)
 

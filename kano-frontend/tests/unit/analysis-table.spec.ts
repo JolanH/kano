@@ -39,52 +39,70 @@ interface DataTableHeader {
   key: string
 }
 
+// VDataTableStub mirrors the production v-data-table's slot contract used by
+// AnalysisTable. Story 5-6 switched AnalysisTable to a full-row `#item` slot
+// (so each `<tr>` can carry `id="feature-{key}"` + `tabindex="-1"` for the
+// PerCategoryPanels jump-link pattern). If the consumer provides the `item`
+// slot, the stub renders its output directly inside the `<tbody>` so the
+// outer `<tr>` from the consumer is what hits the DOM (and is what the spec
+// asserts against). Per-cell `item.<key>` slots are preserved as the
+// fallback rendering path for any consumer that hasn't migrated.
 const VDataTableStub = defineComponent({
   props: ['items', 'headers'],
   setup(props, { slots, attrs }) {
-    return () =>
-      h(
+    return () => {
+      const rowSlot = slots['item']
+      const headerRow = h(
+        'thead',
+        {},
+        h(
+          'tr',
+          {},
+          (props.headers as DataTableHeader[]).map((header) =>
+            h('th', { 'data-key': header.key }, ''),
+          ),
+        ),
+      )
+
+      const bodyChildren = (props.items as DataTableRow[]).map((item) => {
+        if (rowSlot) {
+          return rowSlot({ item })
+        }
+        return h(
+          'tr',
+          { 'data-row-key': item.feature_key },
+          (props.headers as DataTableHeader[]).map((header) => {
+            const slot = slots[`item.${header.key}`]
+            return h(
+              'td',
+              { 'data-cell-key': header.key },
+              slot ? slot({ item }) : '',
+            )
+          }),
+        )
+      })
+
+      return h(
         'table',
         { 'data-testid': attrs['data-testid'] ?? undefined },
-        [
-          h(
-            'thead',
-            {},
-            h(
-              'tr',
-              {},
-              (props.headers as DataTableHeader[]).map((header) =>
-                h('th', { 'data-key': header.key }, ''),
-              ),
-            ),
-          ),
-          h(
-            'tbody',
-            {},
-            (props.items as DataTableRow[]).map((item) =>
-              h(
-                'tr',
-                { 'data-row-key': item.feature_key },
-                (props.headers as DataTableHeader[]).map((header) => {
-                  const slot = slots[`item.${header.key}`]
-                  return h(
-                    'td',
-                    { 'data-cell-key': header.key },
-                    slot ? slot({ item }) : '',
-                  )
-                }),
-              ),
-            ),
-          ),
-        ],
+        [headerRow, h('tbody', {}, bodyChildren)],
       )
+    }
   },
 })
 
 const CatBadgeStub = defineComponent({
-  props: ['category'],
+  props: ['category', 'withHelp'],
   setup(props) {
-    return () => h('span', { 'data-cat-badge': props.category }, String(props.category))
+    return () =>
+      h(
+        'span',
+        {
+          'data-cat-badge': props.category,
+          'data-with-help': String(props.withHelp ?? false),
+        },
+        String(props.category),
+      )
   },
 })
 
@@ -308,6 +326,70 @@ describe('AnalysisTable — composition', () => {
     const table = wrapper.find('[data-stacked-bar-table]')
     expect(bar.attributes('data-aria-labelled-by')).toBe('stb-feat-x')
     expect(table.attributes('data-stbt-id')).toBe('stb-feat-x')
+  })
+
+  test('Dominant-cell CatBadges receive :with-help="true" (Story 5-7)', () => {
+    // Story 5-7 AC #1 / AC #9 — every CatBadge surfaced in the Dominant
+    // column opts into the first-use help tooltip. Theme-audit and other
+    // call sites leave the prop at its default `false`.
+    const wrapper = mount(AnalysisTable, {
+      global: { stubs: globalStubs },
+      props: {
+        analysis: analysis([
+          {
+            feature_key: 'feat-tie',
+            name: 'Tie',
+            description: null,
+            distribution: dist({ M: 5, L: 5 }),
+            dominant_categories: ['M', 'L'],
+            dominant_percentage: 50,
+          },
+        ]),
+      },
+    })
+
+    const badges = wrapper.findAll('[data-cat-badge]')
+    expect(badges).toHaveLength(2)
+    for (const badge of badges) {
+      expect(badge.attributes('data-with-help')).toBe('true')
+    }
+  })
+
+  test('each <tr> carries id="feature-{key}" and tabindex="-1" (Story 5-6)', () => {
+    // Story 5-6 AC #6 / #7 — PerCategoryPanels anchor links target the
+    // table row's stable id; the row is programmatically focusable but not
+    // in the natural Tab order (WCAG H91 / SC 2.4.3).
+    const wrapper = mount(AnalysisTable, {
+      global: { stubs: globalStubs },
+      props: {
+        analysis: analysis([
+          {
+            feature_key: 'feat-a',
+            name: 'A',
+            description: null,
+            distribution: dist({ M: 5 }),
+            dominant_categories: ['M'],
+            dominant_percentage: 100,
+          },
+          {
+            feature_key: 'feat-b',
+            name: 'B',
+            description: null,
+            distribution: dist({ L: 5 }),
+            dominant_categories: ['L'],
+            dominant_percentage: 100,
+          },
+        ]),
+      },
+    })
+
+    const rowA = wrapper.find('tr#feature-feat-a')
+    const rowB = wrapper.find('tr#feature-feat-b')
+    expect(rowA.exists()).toBe(true)
+    expect(rowB.exists()).toBe(true)
+    expect(rowA.attributes('tabindex')).toBe('-1')
+    expect(rowB.attributes('tabindex')).toBe('-1')
+    expect(rowA.classes()).toContain('analysis-row')
   })
 
   test('table renders no click handler on rows (drill-down deferred per UX spec)', () => {

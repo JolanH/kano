@@ -58,7 +58,12 @@ export const tixeoColors = {
   'category-del': '#7C3AED',
   'category-ind': '#6B7280',
   'category-cont': '#B45309',
-  'category-doub': '#78716C',
+  // Doubtful was a warm stone gray (#78716C) that read as a near-twin of the
+  // cool gray `category-ind` (#6B7280) — the two swatches were almost
+  // indistinguishable side-by-side. Moved off gray to a dark goldenrod so
+  // Doubtful is unmistakable from Indifferent. Darkened to ~5:1 on `surface`
+  // (a lighter gold sat at 2.7:1 and failed the AA floor in theme-contrast).
+  'category-doub': '#8F6912',
 } as const
 
 export type TixeoColorToken = keyof typeof tixeoColors

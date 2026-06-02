@@ -82,11 +82,61 @@ const VChipStub = defineComponent({
   },
 })
 
+// Story 5-7 — confidence-beat tie-meaning (i) icon + tooltip. The stub
+// surfaces `text` / `location` / `open-delay` / `max-width` so the spec
+// pins every Vuetify prop the production template binds; a regression
+// that drops `max-width` (the long-text wrap budget) or shortens
+// `open-delay` (the hover-sweep guard) would otherwise slip through.
+// The v-icon stub surfaces `icon` / `aria-label` / `data-testid` so the
+// spec can assert against them.
+const VTooltipStub = defineComponent({
+  props: ['text', 'location', 'openDelay', 'maxWidth'],
+  setup(props, { slots }) {
+    return () =>
+      h(
+        'span',
+        {
+          'data-stub': 'v-tooltip',
+          'data-tooltip-text': props.text,
+          'data-tooltip-location': props.location,
+          'data-tooltip-open-delay': props.openDelay,
+          'data-tooltip-max-width': props.maxWidth,
+        },
+        slots.activator?.({ props: {} }),
+      )
+  },
+})
+
+const VIconStub = defineComponent({
+  props: ['icon', 'size', 'ariaLabel'],
+  setup(props, { attrs }) {
+    return () =>
+      h('i', {
+        'data-stub': 'v-icon',
+        'data-icon': props.icon,
+        'data-size': props.size,
+        'aria-label': attrs['aria-label'] ?? props.ariaLabel,
+        'data-testid': attrs['data-testid'] ?? undefined,
+      })
+  },
+})
+
 const AnalysisTableStub = defineComponent({
   props: ['analysis'],
   setup(props) {
     return () =>
       h('div', { 'data-stub': 'AnalysisTable', 'data-features': props.analysis?.features.length ?? 0 })
+  },
+})
+
+const PerCategoryPanelsStub = defineComponent({
+  props: ['analysis'],
+  setup(props) {
+    return () =>
+      h('div', {
+        'data-stub': 'PerCategoryPanels',
+        'data-features': props.analysis?.features.length ?? 0,
+      })
   },
 })
 
@@ -134,6 +184,9 @@ const globalStubs = {
   AnalysisEmptyState: AnalysisEmptyStateStub,
   AnalysisErrorSurface: AnalysisErrorSurfaceStub,
   EpochSelector: EpochSelectorStub,
+  PerCategoryPanels: PerCategoryPanelsStub,
+  'v-tooltip': VTooltipStub,
+  'v-icon': VIconStub,
 }
 
 function problem(overrides: Partial<ProblemDetails> = {}): ProblemDetails {
@@ -204,21 +257,26 @@ describe('Analysis page — branching', () => {
     await flushPromises()
   })
 
-  test('renders AnalysisTable on populated payload', async () => {
+  test('renders AnalysisTable AND PerCategoryPanels on populated payload', async () => {
     apiSeed.analysis = populated(10)
     const wrapper = await mountAnalysisPage()
     await flushPromises()
     expect(wrapper.find('[data-stub="AnalysisTable"]').exists()).toBe(true)
+    // Story 5-6: PerCategoryPanels sits below the table in the non-empty
+    // branch and is NOT rendered when the empty-state surface takes over.
+    expect(wrapper.find('[data-stub="PerCategoryPanels"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="analysis-empty-state"]').exists()).toBe(false)
     expect(wrapper.find('[data-stub="AnalysisErrorSurface"]').exists()).toBe(false)
   })
 
-  test('renders AnalysisEmptyState when total_submissions === 0', async () => {
+  test('renders AnalysisEmptyState (no panels) when total_submissions === 0', async () => {
     apiSeed.analysis = { ...populated(0), features: [] }
     const wrapper = await mountAnalysisPage()
     await flushPromises()
     expect(wrapper.find('[data-testid="analysis-empty-state"]').exists()).toBe(true)
     expect(wrapper.find('[data-stub="AnalysisTable"]').exists()).toBe(false)
+    // Story 5-6 AC #8: panels never render alongside the empty-state surface.
+    expect(wrapper.find('[data-stub="PerCategoryPanels"]').exists()).toBe(false)
   })
 
   test('renders AnalysisErrorSurface on KanoApiError (NotFound)', async () => {
@@ -261,15 +319,52 @@ describe('Analysis page — branching', () => {
   })
 
   test('confidence-beat uses singular copy on 1 response, plural otherwise', async () => {
+    // Story 5-7 placed a tie-help icon next to the response-count text; the
+    // count itself lives in the first child <span> of the beat, so assert
+    // against that rather than the full beat (which would include the icon
+    // stub's aria-label text in some test-utils versions).
     apiSeed.analysis = populated(1)
     const wrapper = await mountAnalysisPage()
     await flushPromises()
-    expect(wrapper.find('[data-testid="analysis-confidence-beat"]').text()).toBe('1 response')
+    expect(
+      wrapper.find('[data-testid="analysis-confidence-beat"] > span').text(),
+    ).toBe('1 response')
 
     apiSeed.analysis = populated(7)
     const wrapper2 = await mountAnalysisPage()
     await flushPromises()
-    expect(wrapper2.find('[data-testid="analysis-confidence-beat"]').text()).toBe('7 responses')
+    expect(
+      wrapper2.find('[data-testid="analysis-confidence-beat"] > span').text(),
+    ).toBe('7 responses')
+  })
+
+  test('tie-meaning help icon renders next to the confidence beat (Story 5-7)', async () => {
+    apiSeed.analysis = populated(5)
+    const wrapper = await mountAnalysisPage()
+    await flushPromises()
+
+    const icon = wrapper.find('[data-testid="analysis-tie-help-icon"]')
+    expect(icon.exists()).toBe(true)
+    expect(icon.attributes('data-icon')).toBe('mdi-information-outline')
+    expect(icon.attributes('aria-label')).toBe(en['analysis.help.tieIconAriaLabel'])
+
+    // The wrapping v-tooltip stub carries the tooltip text from the copy
+    // deck, proving the wiring (no inline literals). The `open-delay` and
+    // `max-width` props are pinned too — both are load-bearing UX choices
+    // (hover-sweep guard at 300 ms, long-text wrap budget at 300 px) that
+    // a future refactor could silently drop without breaking other tests.
+    const tooltip = wrapper.find('[data-stub="v-tooltip"]')
+    expect(tooltip.exists()).toBe(true)
+    expect(tooltip.attributes('data-tooltip-text')).toBe(en['analysis.help.tieMeaning'])
+    expect(tooltip.attributes('data-tooltip-open-delay')).toBe('300')
+    expect(tooltip.attributes('data-tooltip-max-width')).toBe('300')
+  })
+
+  test('tie-help icon is suppressed in the empty-state branch (no confidence beat to attach to)', async () => {
+    apiSeed.analysis = { ...populated(0), features: [] }
+    const wrapper = await mountAnalysisPage()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="analysis-tie-help-icon"]').exists()).toBe(false)
   })
 
   test('retry handler refires the analysis fetch', async () => {
