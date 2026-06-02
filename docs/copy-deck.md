@@ -15,11 +15,9 @@ fails CI.
   The two never cross — see UX spec §Component Strategy. A regression test
   (`useCopy.spec.ts::user-facing copy never says "Epoch"`) iterates **every**
   entry in `en.ts` and fails on any `epoch`-substring match.
-- The bottom two Kano category labels are **"Contradictory"** / **"Doubtful"**
-  — matching the backend `Category` enum. Earlier drafts used
-  *"Reverse"* / *"Questionable"* (extended-Kano vocabulary) — those terms
-  mean different things in Kano theory and were corrected in the story 1-6
-  fix-up.
+- The six Kano category labels follow the **standard Kano evaluation table**:
+  Attractive, Must-be, Performance, Indifferent, Reverse, Questionable —
+  matching the backend `Category` enum values `A / M / O / I / R / Q`.
 
 ## Common chrome
 
@@ -46,24 +44,24 @@ fails CI.
 
 ## PM Kano category labels
 
-Token suffix mirrors the backend `Category` enum (`MANDATORY` / `LINEAR` /
-`EXCITER` / `INDIFFERENT` / `CONTRADICTORY` / `DOUBTFUL`) — see
-`src/theme/tixeo.ts` and `docs/accessibility/kano-palette-validation.md`.
+Token suffix mirrors the backend `Category` enum (`MUSTBE` / `PERFORMANCE` /
+`ATTRACTIVE` / `INDIFFERENT` / `REVERSE` / `QUESTIONABLE`) — see
+`src/theme/tixeo.ts`.
 
 | Key | English | Context |
 |---|---|---|
-| `pm.category.must` | Must-have | Maps to `MANDATORY` — friendlier industry term |
-| `pm.category.perf` | Performance | Maps to `LINEAR` — friendlier industry term |
-| `pm.category.del` | Delighter | Maps to `EXCITER` — friendlier industry term |
+| `pm.category.must` | Must-be | Maps to `MUSTBE` (code `M`) |
+| `pm.category.perf` | Performance | Maps to `PERFORMANCE` (code `O`) |
+| `pm.category.attr` | Attractive | Maps to `ATTRACTIVE` — friendlier industry term |
 | `pm.category.ind` | Indifferent | Maps to `INDIFFERENT` |
-| `pm.category.cont` | Contradictory | Maps to `CONTRADICTORY` — answers contradict each other |
-| `pm.category.doub` | Doubtful | Maps to `DOUBTFUL` — extreme / unusual answer pair |
+| `pm.category.rev` | Reverse | Maps to `REVERSE` — users prefer the feature absent |
+| `pm.category.que` | Questionable | Maps to `QUESTIONABLE` — contradictory / unreliable answer pair |
 | `pm.category.help.must` | Users expect this feature. Its absence causes frustration. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
 | `pm.category.help.perf` | Satisfaction scales with quality. More is better. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
-| `pm.category.help.del` | Aspirational. Users don't expect it, but love it when present. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+| `pm.category.help.attr` | Aspirational. Users don't expect it, but love it when present. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
 | `pm.category.help.ind` | Users don't care whether this feature exists or not. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
-| `pm.category.help.cont` | Responses contradicted each other. The category is unstable until more data arrives. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
-| `pm.category.help.doub` | Responses were inconsistent. More data is needed before drawing a conclusion. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+| `pm.category.help.rev` | Users actively prefer this feature absent. Presence reduces satisfaction. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+| `pm.category.help.que` | Contradictory answers — usually a misread question. Treat the result with caution. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
 
 ## PM epoch-bump dialog (Story 2-11)
 
@@ -382,17 +380,15 @@ Standing glossary `<aside>` to the right of the "By category" content. Lists
 all six Kano categories (always, regardless of the poll's data) with a fuller,
 Kano-textbook-grounded description. Separate namespace from the terse
 `pm.category.help.*` CatBadge first-use tooltips — different surface, different
-length budget. `cont` / `doub` descriptions track this product's matrix
-semantics (C = paired answers contradict → inconclusive; D = extreme /
-questionable answer pattern), not the textbook "Reverse" the product does not
-model.
+length budget. `rev` / `que` descriptions follow the standard Kano table
+(R = the user prefers the feature absent; Q = a contradictory answer pair).
 
 | Key | English | Context |
 |---|---|---|
 | `analysis.categoryRef.heading` | What the categories mean | Reference `<aside>` heading |
-| `analysis.categoryRef.desc.must` | A basic expectation. Its absence causes strong dissatisfaction, yet its presence is taken for granted — the price of entry. | Reference description — Must-have (MANDATORY) |
-| `analysis.categoryRef.desc.perf` | The more, the better. Satisfaction rises and falls in direct proportion to how well this is delivered. | Reference description — Performance (LINEAR) |
-| `analysis.categoryRef.desc.del` | An unexpected extra. Users don't ask for it, but its presence sparks delight and sets the product apart. | Reference description — Delighter (EXCITER) |
+| `analysis.categoryRef.desc.must` | A basic expectation. Its absence causes strong dissatisfaction, yet its presence is taken for granted — the price of entry. | Reference description — Must-be (`MUSTBE`) |
+| `analysis.categoryRef.desc.perf` | The more, the better. Satisfaction rises and falls in direct proportion to how well this is delivered. | Reference description — Performance (`PERFORMANCE`) |
+| `analysis.categoryRef.desc.attr` | An unexpected extra. Users don't ask for it, but its presence sparks delight and sets the product apart. | Reference description — Attractive (`ATTRACTIVE`) |
 | `analysis.categoryRef.desc.ind` | Users are unmoved either way — its presence or absence makes little difference to how satisfied they feel. | Reference description — Indifferent |
-| `analysis.categoryRef.desc.cont` | Respondents' paired answers worked against each other, so no stable preference emerged. Treat as inconclusive. | Reference description — Contradictory |
-| `analysis.categoryRef.desc.doub` | An extreme or unlikely answer pattern. The signal is questionable until more responses arrive. | Reference description — Doubtful |
+| `analysis.categoryRef.desc.rev` | Users actively prefer this feature absent — building it would work against satisfaction, not for it. | Reference description — Reverse |
+| `analysis.categoryRef.desc.que` | A contradictory answer pair, usually a misread question. The signal is unreliable; treat it with caution. | Reference description — Questionable |

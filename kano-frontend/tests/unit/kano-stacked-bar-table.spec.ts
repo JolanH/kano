@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * KanoStackedBarTable (Story 5-4) — accessible-fallback companion to
- * `<KanoStackedBar>`. Always six rows in fixed M→L→E→I→C→D order
+ * `<KanoStackedBar>`. Always six rows in fixed M→O→A→I→R→Q order
  * regardless of which categories are zero (a screen reader announces
  * "row 4 of 6, Indifferent, 0, 0.0%" — the zero is informative).
  *
@@ -19,19 +19,19 @@ import type { Category } from '@/api/types'
 import KanoStackedBarTable from '@/components/KanoStackedBarTable.vue'
 import en from '@/copy/en'
 
-const FIXED_ORDER: readonly Category[] = ['M', 'L', 'E', 'I', 'C', 'D'] as const
+const FIXED_ORDER: readonly Category[] = ['M', 'O', 'A', 'I', 'R', 'Q'] as const
 
 const CATEGORY_LABEL: Record<Category, string> = {
   M: en['pm.category.must'],
-  L: en['pm.category.perf'],
-  E: en['pm.category.del'],
+  O: en['pm.category.perf'],
+  A: en['pm.category.attr'],
   I: en['pm.category.ind'],
-  C: en['pm.category.cont'],
-  D: en['pm.category.doub'],
+  R: en['pm.category.rev'],
+  Q: en['pm.category.que'],
 }
 
 function dist(overrides: Partial<Record<Category, number>>): Record<Category, number> {
-  const base = { M: 0, L: 0, E: 0, I: 0, C: 0, D: 0 }
+  const base = { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0 }
   return { ...base, ...overrides }
 }
 
@@ -44,10 +44,10 @@ describe('KanoStackedBarTable — row composition', () => {
     expect(wrapper.findAll('tbody tr')).toHaveLength(6)
   })
 
-  test('row order is fixed M→L→E→I→C→D regardless of prop key order', () => {
+  test('row order is fixed M→O→A→I→R→Q regardless of prop key order', () => {
     const wrapper = mount(KanoStackedBarTable, {
       props: {
-        distribution: { D: 1, C: 2, I: 3, E: 4, L: 5, M: 6 },
+        distribution: { Q: 1, R: 2, I: 3, A: 4, O: 5, M: 6 },
         total: 21,
         id: 'stb-test',
       },
@@ -60,7 +60,7 @@ describe('KanoStackedBarTable — row composition', () => {
   test('category labels come from the copy deck', () => {
     const wrapper = mount(KanoStackedBarTable, {
       props: {
-        distribution: dist({ M: 1, L: 1, E: 1, I: 1, C: 1, D: 1 }),
+        distribution: dist({ M: 1, O: 1, A: 1, I: 1, R: 1, Q: 1 }),
         total: 6,
         id: 'stb-test',
       },
@@ -108,17 +108,17 @@ describe('KanoStackedBarTable — sr-only / visible toggle', () => {
 describe('KanoStackedBarTable — percentage rendering', () => {
   test('1/3 of total renders as 33.3% per row', () => {
     const wrapper = mount(KanoStackedBarTable, {
-      props: { distribution: dist({ M: 1, L: 1, E: 1 }), total: 3, id: 'stb-test' },
+      props: { distribution: dist({ M: 1, O: 1, A: 1 }), total: 3, id: 'stb-test' },
     })
 
     const cells = wrapper.findAll('tbody tr td:nth-child(3)').map((td) => td.text())
-    // M / L / E each show 33.3%; I / C / D each show 0.0%.
+    // M / O / A each show 33.3%; I / R / Q each show 0.0%.
     expect(cells).toEqual(['33.3%', '33.3%', '33.3%', '0.0%', '0.0%', '0.0%'])
   })
 
   test('count cell mirrors the distribution prop verbatim', () => {
     const wrapper = mount(KanoStackedBarTable, {
-      props: { distribution: dist({ M: 7, L: 3 }), total: 10, id: 'stb-test' },
+      props: { distribution: dist({ M: 7, O: 3 }), total: 10, id: 'stb-test' },
     })
 
     const counts = wrapper.findAll('tbody tr td:nth-child(2)').map((td) => td.text())
@@ -220,7 +220,7 @@ describe('KanoStackedBarTable — rounding parity with backend Story 5-1', () =>
   //   from kano.services.kano_matrix import Category
   //   for count, total in [(1, 3), ...]:
   //       d = dict.fromkeys(Category, 0)
-  //       d[Category.MANDATORY] = count
+  //       d[Category.MUSTBE] = count
   //       _, pct = _dominant(d, total=total)
   //       print(count, total, pct)
   const PYTHON_ROUNDED_FIXTURE: ReadonlyArray<{ count: number; total: number; python_pct: string }> = [

@@ -45,11 +45,11 @@ const tooltipStubs = { 'v-tooltip': VTooltipStub }
 
 const VARIANTS = [
   { code: 'M', swatch: 'swatch-must' },
-  { code: 'L', swatch: 'swatch-perf' },
-  { code: 'E', swatch: 'swatch-del' },
+  { code: 'O', swatch: 'swatch-perf' },
+  { code: 'A', swatch: 'swatch-attr' },
   { code: 'I', swatch: 'swatch-ind' },
-  { code: 'C', swatch: 'swatch-cont' },
-  { code: 'D', swatch: 'swatch-doub' },
+  { code: 'R', swatch: 'swatch-rev' },
+  { code: 'Q', swatch: 'swatch-que' },
 ] as const satisfies ReadonlyArray<{ code: Category; swatch: string }>
 
 describe('CatBadge — six valid variants', () => {
@@ -147,7 +147,7 @@ describe('CatBadge — with-help tooltip (Story 5-7)', () => {
   })
 
   test('each category code resolves to its own help-key tooltip text', () => {
-    const codes: Category[] = ['M', 'L', 'E', 'I', 'C', 'D']
+    const codes: Category[] = ['M', 'O', 'A', 'I', 'R', 'Q']
     for (const code of codes) {
       const wrapper = mount(CatBadge, {
         props: { category: code, withHelp: true },

@@ -30,11 +30,11 @@ export const EMPTY_POLL_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
 
 const ZERO_DIST: Record<Category, number> = {
   M: 0,
-  L: 0,
-  E: 0,
+  O: 0,
+  A: 0,
   I: 0,
-  C: 0,
-  D: 0,
+  R: 0,
+  Q: 0,
 }
 
 function dist(overrides: Partial<Record<Category, number>>): Record<Category, number> {
@@ -49,20 +49,20 @@ function dist(overrides: Partial<Record<Category, number>>): Record<Category, nu
  * seeder, so the manual sweep's "row 2 is the tie row" expectation holds
  * regardless of which seed path produced the data):
  *
- * - feat-01 — single-dominant MANDATORY (~500 M, sparse L/E/I noise)
- * - feat-02 — 50/50 MANDATORY ↔ LINEAR tie (250 M, 250 L)
- * - feat-03 — 50/50 LINEAR ↔ EXCITER tie (250 L, 250 E)
+ * - feat-01 — single-dominant Must-be (~500 M, sparse O/A/I noise)
+ * - feat-02 — 50/50 Must-be ↔ Performance tie (250 M, 250 O)
+ * - feat-03 — 50/50 Performance ↔ Attractive tie (250 O, 250 A)
  * - feat-04..feat-20 — pseudo-random distributions seeded from a fixed RNG
  *   so the fixture is reproducible run-to-run.
  */
 export function buildAnalysisFixture(): PollAnalysis {
   const features: PollAnalysis['features'] = []
 
-  // feat-01: 100 % MANDATORY (the manual sweep references this as the
+  // feat-01: 100 % Must-be (the manual sweep references this as the
   // "single dominant" reference row). The Python seeder's `single_M` shape
-  // deterministically emits (2, 5) → MANDATORY on every response — this
+  // deterministically emits (2, 5) → MUSTBE on every response — this
   // fixture mirrors that exact distribution so the JS fixture and the live
-  // seeded backend present the same "100 percent. Must-have" announcement
+  // seeded backend present the same "100 percent. Must-be" announcement
   // to VoiceOver against `analysis-checklist.md` row #11.
   features.push({
     feature_key: 'feat-01',
@@ -73,23 +73,23 @@ export function buildAnalysisFixture(): PollAnalysis {
     dominant_percentage: 100,
   })
 
-  // feat-02: 50/50 MANDATORY ↔ LINEAR tie — the load-bearing tie row.
+  // feat-02: 50/50 Must-be ↔ Performance tie — the load-bearing tie row.
   features.push({
     feature_key: 'feat-02',
     name: 'Feature 02',
     description: 'Auto-generated description for Feature 02',
-    distribution: dist({ M: 250, L: 250 }),
-    dominant_categories: ['M', 'L'],
+    distribution: dist({ M: 250, O: 250 }),
+    dominant_categories: ['M', 'O'],
     dominant_percentage: 50,
   })
 
-  // feat-03: 50/50 LINEAR ↔ EXCITER tie.
+  // feat-03: 50/50 Performance ↔ Attractive tie.
   features.push({
     feature_key: 'feat-03',
     name: 'Feature 03',
     description: 'Auto-generated description for Feature 03',
-    distribution: dist({ L: 250, E: 250 }),
-    dominant_categories: ['L', 'E'],
+    distribution: dist({ O: 250, A: 250 }),
+    dominant_categories: ['O', 'A'],
     dominant_percentage: 50,
   })
 
@@ -105,7 +105,7 @@ export function buildAnalysisFixture(): PollAnalysis {
     return (lcgState >>> 0) / 0x100000000
   }
 
-  const FALLBACK_CATEGORIES: Category[] = ['M', 'L', 'E', 'I', 'C', 'D']
+  const FALLBACK_CATEGORIES: Category[] = ['M', 'O', 'A', 'I', 'R', 'Q']
   for (let i = 4; i <= 20; i++) {
     const key = `feat-${String(i).padStart(2, '0')}`
     // Build a six-bucket distribution biased toward one of the six

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * KanoStackedBar (Story 5-4) — proportional SVG segments in fixed
- * M→L→E→I→C→D order, percent-based viewBox, v-tooltip per segment,
+ * M→O→A→I→R→Q order, percent-based viewBox, v-tooltip per segment,
  * `role="img"` + `aria-labelledby` wired to the companion table, dev-mode
  * warning when mounted with `total=0`.
  *
@@ -34,18 +34,18 @@ const VTooltipStub = defineComponent({
 
 const globalStubs = { 'v-tooltip': VTooltipStub }
 
-const FIXED_ORDER: readonly Category[] = ['M', 'L', 'E', 'I', 'C', 'D'] as const
+const FIXED_ORDER: readonly Category[] = ['M', 'O', 'A', 'I', 'R', 'Q'] as const
 
 function dist(overrides: Partial<Record<Category, number>>): Record<Category, number> {
-  const base = { M: 0, L: 0, E: 0, I: 0, C: 0, D: 0 }
+  const base = { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0 }
   return { ...base, ...overrides }
 }
 
 describe('KanoStackedBar — segment composition', () => {
-  test('renders only non-zero segments in fixed M→L→E→I→C→D order', () => {
+  test('renders only non-zero segments in fixed M→O→A→I→R→Q order', () => {
     const wrapper = mount(KanoStackedBar, {
       props: {
-        distribution: dist({ M: 3, L: 2 }),
+        distribution: dist({ M: 3, O: 2 }),
         total: 5,
         ariaLabelledBy: 'stb-test',
       },
@@ -55,13 +55,13 @@ describe('KanoStackedBar — segment composition', () => {
     const rects = wrapper.findAll('rect')
     expect(rects).toHaveLength(2)
     expect(rects[0].attributes('data-category')).toBe('M')
-    expect(rects[1].attributes('data-category')).toBe('L')
+    expect(rects[1].attributes('data-category')).toBe('O')
   })
 
   test('segment widths and x-offsets are proportional to count/total', () => {
     const wrapper = mount(KanoStackedBar, {
       props: {
-        distribution: dist({ M: 3, L: 2 }),
+        distribution: dist({ M: 3, O: 2 }),
         total: 5,
         ariaLabelledBy: 'stb-test',
       },
@@ -76,10 +76,10 @@ describe('KanoStackedBar — segment composition', () => {
   })
 
   test('iteration order ignores prop object-key insertion order', () => {
-    // Pass keys in reverse order (D first) — output must still be M→L→E→I→C→D.
+    // Pass keys in reverse order (Q first) — output must still be M→O→A→I→R→Q.
     const wrapper = mount(KanoStackedBar, {
       props: {
-        distribution: { D: 1, C: 1, I: 1, E: 1, L: 1, M: 1 },
+        distribution: { Q: 1, R: 1, I: 1, A: 1, O: 1, M: 1 },
         total: 6,
         ariaLabelledBy: 'stb-test',
       },
@@ -110,7 +110,7 @@ describe('KanoStackedBar — accessibility wiring', () => {
   test('every rendered segment has tabindex="0"', () => {
     const wrapper = mount(KanoStackedBar, {
       props: {
-        distribution: dist({ M: 1, L: 1, E: 1, I: 1, C: 1, D: 1 }),
+        distribution: dist({ M: 1, O: 1, A: 1, I: 1, R: 1, Q: 1 }),
         total: 6,
         ariaLabelledBy: 'stb-test',
       },
@@ -127,7 +127,7 @@ describe('KanoStackedBar — tooltip text', () => {
   test('tooltip uses the copy-deck template with name/count/pct interpolation', () => {
     const wrapper = mount(KanoStackedBar, {
       props: {
-        distribution: dist({ M: 7, L: 3 }),
+        distribution: dist({ M: 7, O: 3 }),
         total: 10,
         ariaLabelledBy: 'stb-test',
       },
@@ -136,7 +136,7 @@ describe('KanoStackedBar — tooltip text', () => {
 
     const groups = wrapper.findAll('g[data-tooltip-text]')
     expect(groups).toHaveLength(2)
-    expect(groups[0].attributes('data-tooltip-text')).toBe('Must-have: 7 responses (70.0%)')
+    expect(groups[0].attributes('data-tooltip-text')).toBe('Must-be: 7 responses (70.0%)')
     expect(groups[1].attributes('data-tooltip-text')).toBe('Performance: 3 responses (30.0%)')
     expect(groups[0].attributes('data-tooltip-location')).toBe('top')
   })

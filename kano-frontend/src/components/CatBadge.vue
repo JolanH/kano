@@ -1,14 +1,13 @@
 <script setup lang="ts">
 /**
  * <CatBadge> — color swatch + human-readable category name for a Kano
- * category code (M/L/E/I/C/D). The swatch is decorative (`aria-hidden`);
+ * category code (A/M/O/I/R/Q). The swatch is decorative (`aria-hidden`);
  * the label is the sole accessible information channel (NFR10, UX spec
  * line 580 — color never the sole signal).
  *
- * Suffix vocabulary (`cont`/`doub`) tracks the backend `Category` enum
- * (`Contradictory`/`Doubtful`), not the UX-draft `Reverse`/`Questionable`
- * the original story spec referenced — corrected during the Story 1-5
- * (5,1)→D reconciliation.
+ * Suffix vocabulary (`attr`/`rev`/`que`) tracks the backend `Category` enum
+ * values (Attractive/Reverse/Questionable) — the standard Kano evaluation
+ * table the matrix follows (see kano_matrix.py).
  *
  * Story 5-7 added the optional `withHelp` prop: when set, the badge is
  * wrapped in a `<v-tooltip>` whose text is a short first-use definition
@@ -140,8 +139,8 @@ if (import.meta.env.DEV) {
 
 .swatch-must { background-color: rgb(var(--v-theme-category-must)); }
 .swatch-perf { background-color: rgb(var(--v-theme-category-perf)); }
-.swatch-del  { background-color: rgb(var(--v-theme-category-del)); }
+.swatch-attr { background-color: rgb(var(--v-theme-category-attr)); }
 .swatch-ind  { background-color: rgb(var(--v-theme-category-ind)); }
-.swatch-cont { background-color: rgb(var(--v-theme-category-cont)); }
-.swatch-doub { background-color: rgb(var(--v-theme-category-doub)); }
+.swatch-rev  { background-color: rgb(var(--v-theme-category-rev)); }
+.swatch-que  { background-color: rgb(var(--v-theme-category-que)); }
 </style>

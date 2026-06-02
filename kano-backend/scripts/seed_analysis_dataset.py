@@ -98,9 +98,9 @@ def _force_tie_indices(num_features: int) -> set[int]:
 
     Returned indices align with `_build_responses_for_feature`:
 
-    - ``0`` — feature dominates single-category Must-have (high M signal)
-    - ``1`` — feature ties between Must-have and Performance (M ≈ L)
-    - ``2`` — feature ties between Performance and Delighter (L ≈ E)
+    - ``0`` — feature dominates single-category Must-be (high M signal)
+    - ``1`` — feature ties between Must-be and Performance (M ≈ O)
+    - ``2`` — feature ties between Performance and Attractive (O ≈ A)
     """
 
     _ = num_features  # kept in the signature for future scaling.
@@ -128,26 +128,26 @@ def _next_tie_index(shape: str) -> int:
 def _likert_pair_for_shape(shape: str, rng: random.Random) -> tuple[int, int]:
     """Return a (functional, dysfunctional) Likert pair biased toward ``shape``.
 
-    Pairs are chosen from the canonical Kano matrix (Story 1-5
-    ``kano_matrix._MATRIX``) — "love it / hate it" intuition is misleading
-    because (1, 5) lands on LINEAR, not MANDATORY:
+    Pairs are chosen from the canonical Kano matrix
+    (``kano_matrix._MATRIX``) — "like it / dislike it" intuition is misleading
+    because (1, 5) lands on PERFORMANCE, not MUSTBE:
 
-    - MANDATORY: (2, 5) | (3, 5) | (4, 5)  (functional is lukewarm-to-
-      negative, dysfunctional is "I hate it" → the feature is a hygiene
+    - MUSTBE: (2, 5) | (3, 5) | (4, 5)  (functional is lukewarm-to-
+      negative, dysfunctional is "I dislike it" → the feature is a hygiene
       requirement).
-    - LINEAR: (1, 5)  (the only LINEAR cell).
-    - EXCITER: (1, 2) | (1, 3) | (1, 4).
+    - PERFORMANCE: (1, 5)  (the only Performance cell).
+    - ATTRACTIVE: (1, 2) | (1, 3) | (1, 4).
 
     Shapes the manual sweep needs:
 
-    - ``"single_M"`` — heavily Must-have: returns the prototypical (2, 5)
-      MANDATORY cell on every call.
-    - ``"tie_M_L"`` — 50/50 between Must-have and Performance — true
-      alternation between (2, 5) MANDATORY (even calls) and (1, 5) LINEAR
+    - ``"single_M"`` — heavily Must-be: returns the prototypical (2, 5)
+      MUSTBE cell on every call.
+    - ``"tie_M_O"`` — 50/50 between Must-be and Performance — true
+      alternation between (2, 5) MUSTBE (even calls) and (1, 5) PERFORMANCE
       (odd calls). 500 submissions yield exactly 250 of each.
-    - ``"tie_L_E"`` — 50/50 between Performance and Delighter — true
-      alternation between (1, 5) LINEAR (even calls) and (1, 3) EXCITER
-      (odd calls). 500 submissions yield exactly 250 of each.
+    - ``"tie_O_A"`` — 50/50 between Performance and Attractive — true
+      alternation between (1, 5) PERFORMANCE (even calls) and (1, 3)
+      ATTRACTIVE (odd calls). 500 submissions yield exactly 250 of each.
     - ``"random"`` — uniformly random over the 5 × 5 space.
 
     The ``rng`` argument is only consumed by ``"random"``; the tied shapes
@@ -157,9 +157,9 @@ def _likert_pair_for_shape(shape: str, rng: random.Random) -> tuple[int, int]:
 
     if shape == "single_M":
         return (2, 5)
-    if shape == "tie_M_L":
+    if shape == "tie_M_O":
         return (2, 5) if _next_tie_index(shape) % 2 == 0 else (1, 5)
-    if shape == "tie_L_E":
+    if shape == "tie_O_A":
         return (1, 5) if _next_tie_index(shape) % 2 == 0 else (1, 3)
     return (rng.randint(1, 5), rng.randint(1, 5))
 
@@ -168,9 +168,9 @@ def _shape_for_feature_index(idx: int) -> str:
     if idx == 0:
         return "single_M"
     if idx == 1:
-        return "tie_M_L"
+        return "tie_M_O"
     if idx == 2:
-        return "tie_L_E"
+        return "tie_O_A"
     return "random"
 
 

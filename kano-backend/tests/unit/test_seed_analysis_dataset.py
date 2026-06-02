@@ -1,11 +1,11 @@
 """Smoke tests for ``scripts/seed_analysis_dataset.py`` — Story 5-8.
 
 Validates the DB-free portion of the seeder: deterministic Likert pairs for
-each forced-tie shape (``single_M``, ``tie_M_L``, ``tie_L_E``), the canonical
+each forced-tie shape (``single_M``, ``tie_M_O``, ``tie_O_A``), the canonical
 constants (20 features, 500 submissions), and a sanity check that the forced
 distributions actually produce the expected dominant categories via the
 pure ``compute_category`` function. Catches regressions where someone
-accidentally maps ``tie_M_L`` to a non-MANDATORY-leaning Likert pair (a
+accidentally maps ``tie_M_O`` to a non-MUSTBE-leaning Likert pair (a
 common drift since the matrix labels are subtle).
 
 DB-touching code paths (``_seed_populated_poll`` / ``_seed_empty_poll``) are
@@ -68,38 +68,38 @@ class TestSeedConstants:
 
 
 class TestLikertShapes:
-    def test_single_m_pair_resolves_to_mandatory(self, seeder: Any) -> None:
+    def test_single_m_pair_resolves_to_mustbe(self, seeder: Any) -> None:
         rng = random.Random(42)
         fq, dq = seeder._likert_pair_for_shape("single_M", rng)
-        # (2, 5) is the canonical MANDATORY cell per kano_matrix._MATRIX —
-        # NOT (1, 5), which lands on LINEAR. Pinning the exact pair plus
+        # (2, 5) is the canonical MUSTBE cell per kano_matrix._MATRIX —
+        # NOT (1, 5), which lands on PERFORMANCE. Pinning the exact pair plus
         # the matrix output catches drift in either direction.
         assert (fq, dq) == (2, 5)
-        assert compute_category(fq, dq) is Category.MANDATORY
+        assert compute_category(fq, dq) is Category.MUSTBE
 
-    def test_tie_m_l_alternates_between_mandatory_and_linear(self, seeder: Any) -> None:
+    def test_tie_m_o_alternates_between_mustbe_and_performance(self, seeder: Any) -> None:
         # 200 draws is plenty to hit both branches; assert both categories
         # appear at least once. The exact split depends on the RNG state,
         # but ~50/50 is the design.
         rng = random.Random(42)
         cats: set[Category] = set()
         for _ in range(200):
-            fq, dq = seeder._likert_pair_for_shape("tie_M_L", rng)
+            fq, dq = seeder._likert_pair_for_shape("tie_M_O", rng)
             cats.add(compute_category(fq, dq))
-        assert Category.MANDATORY in cats
-        assert Category.LINEAR in cats
+        assert Category.MUSTBE in cats
+        assert Category.PERFORMANCE in cats
         # And NO third category leaks in — the shape is a clean two-way tie.
-        assert cats == {Category.MANDATORY, Category.LINEAR}
+        assert cats == {Category.MUSTBE, Category.PERFORMANCE}
 
-    def test_tie_l_e_alternates_between_linear_and_exciter(self, seeder: Any) -> None:
+    def test_tie_o_a_alternates_between_performance_and_attractive(self, seeder: Any) -> None:
         rng = random.Random(42)
         cats: set[Category] = set()
         for _ in range(200):
-            fq, dq = seeder._likert_pair_for_shape("tie_L_E", rng)
+            fq, dq = seeder._likert_pair_for_shape("tie_O_A", rng)
             cats.add(compute_category(fq, dq))
-        assert Category.LINEAR in cats
-        assert Category.EXCITER in cats
-        assert cats == {Category.LINEAR, Category.EXCITER}
+        assert Category.PERFORMANCE in cats
+        assert Category.ATTRACTIVE in cats
+        assert cats == {Category.PERFORMANCE, Category.ATTRACTIVE}
 
     def test_random_shape_emits_uniformly_over_full_5x5_grid(self, seeder: Any) -> None:
         rng = random.Random(42)
@@ -118,13 +118,13 @@ class TestShapeForFeatureIndex:
     def test_feature_0_is_single_dominant_must_have(self, seeder: Any) -> None:
         assert seeder._shape_for_feature_index(0) == "single_M"
 
-    def test_feature_1_is_two_way_tie_m_l(self, seeder: Any) -> None:
+    def test_feature_1_is_two_way_tie_m_o(self, seeder: Any) -> None:
         # The manual VoiceOver sweep references "Feature 02" as the
         # tied-dominant row (idx=1, name "Feature 02" per the f-string).
-        assert seeder._shape_for_feature_index(1) == "tie_M_L"
+        assert seeder._shape_for_feature_index(1) == "tie_M_O"
 
-    def test_feature_2_is_two_way_tie_l_e(self, seeder: Any) -> None:
-        assert seeder._shape_for_feature_index(2) == "tie_L_E"
+    def test_feature_2_is_two_way_tie_o_a(self, seeder: Any) -> None:
+        assert seeder._shape_for_feature_index(2) == "tie_O_A"
 
     def test_features_3_through_19_are_random(self, seeder: Any) -> None:
         for idx in range(3, 20):

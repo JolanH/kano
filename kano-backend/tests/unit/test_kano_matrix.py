@@ -20,20 +20,20 @@ from kano.services.kano_matrix import Category, compute_category
 # Cells laid out as a literal 5×5 grid for human review against the spec:
 # rows = FQ (1..5), columns = DQ (1..5). Short aliases keep each row on one
 # line so the human-reviewable grid stays visually rectangular.
-_M = Category.MANDATORY
-_L = Category.LINEAR
-_E = Category.EXCITER
+_M = Category.MUSTBE
+_O = Category.PERFORMANCE
+_A = Category.ATTRACTIVE
 _I = Category.INDIFFERENT
-_C = Category.CONTRADICTORY
-_D = Category.DOUBTFUL
+_R = Category.REVERSE
+_Q = Category.QUESTIONABLE
 
 _EXPECTED_GRID: list[list[Category]] = [
     # DQ=1  DQ=2  DQ=3  DQ=4  DQ=5
-    [  _D,   _E,   _E,   _E,   _L  ],  # FQ = 1
-    [  _C,   _I,   _I,   _I,   _M  ],  # FQ = 2
-    [  _C,   _I,   _I,   _I,   _M  ],  # FQ = 3
-    [  _C,   _I,   _I,   _I,   _M  ],  # FQ = 4
-    [  _D,   _C,   _C,   _C,   _D  ],  # FQ = 5
+    [  _Q,   _A,   _A,   _A,   _O  ],  # FQ = 1
+    [  _R,   _Q,   _I,   _I,   _M  ],  # FQ = 2
+    [  _R,   _I,   _I,   _I,   _M  ],  # FQ = 3
+    [  _R,   _I,   _I,   _Q,   _M  ],  # FQ = 4
+    [  _R,   _R,   _R,   _R,   _Q  ],  # FQ = 5
 ]  # fmt: skip
 
 _ALL_CELLS: list[tuple[int, int, Category]] = [
@@ -100,7 +100,7 @@ def test_non_int_inputs_raise_value_error(fq: object, dq: object) -> None:
 def test_category_value_is_single_uppercase_letter() -> None:
     """``Category.value`` must match the DB ``CHAR(1)`` domain (Story 1.2)."""
 
-    expected = {"M", "L", "E", "I", "C", "D"}
+    expected = {"A", "M", "O", "I", "R", "Q"}
     actual = {member.value for member in Category}
     assert actual == expected
     for member in Category:

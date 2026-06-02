@@ -13,11 +13,11 @@ import type { Category } from '@/api/types'
 
 export const FILL_CLASS: Record<Category, string> = {
   M: 'fill-must',
-  L: 'fill-perf',
-  E: 'fill-del',
+  O: 'fill-perf',
+  A: 'fill-attr',
   I: 'fill-ind',
-  C: 'fill-cont',
-  D: 'fill-doub',
+  R: 'fill-rev',
+  Q: 'fill-que',
 }
 
 export interface Props {
@@ -130,7 +130,7 @@ function arcPath(startFraction: number, endFraction: number): string {
 }
 
 const weights = computed<Record<Category, number>>(() => {
-  const acc: Record<Category, number> = { M: 0, L: 0, E: 0, I: 0, C: 0, D: 0 }
+  const acc: Record<Category, number> = { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0 }
   for (const feature of props.analysis.features) {
     const cats = feature.dominant_categories
     if (!cats || cats.length === 0) continue
@@ -266,10 +266,10 @@ const slices = computed<Slice[]>(() => {
 
 .fill-must { fill: rgb(var(--v-theme-category-must)); }
 .fill-perf { fill: rgb(var(--v-theme-category-perf)); }
-.fill-del  { fill: rgb(var(--v-theme-category-del)); }
+.fill-attr { fill: rgb(var(--v-theme-category-attr)); }
 .fill-ind  { fill: rgb(var(--v-theme-category-ind)); }
-.fill-cont { fill: rgb(var(--v-theme-category-cont)); }
-.fill-doub { fill: rgb(var(--v-theme-category-doub)); }
+.fill-rev  { fill: rgb(var(--v-theme-category-rev)); }
+.fill-que  { fill: rgb(var(--v-theme-category-que)); }
 
 .pie-legend {
   list-style: none;

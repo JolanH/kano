@@ -1,0 +1,2634 @@
+diff --git a/docs/copy-deck.md b/docs/copy-deck.md
+index ea06772..9efa2cd 100644
+--- a/docs/copy-deck.md
++++ b/docs/copy-deck.md
+@@ -52,18 +52,18 @@ Token suffix mirrors the backend `Category` enum (`MANDATORY` / `LINEAR` /
+ 
+ | Key | English | Context |
+ |---|---|---|
+-| `pm.category.must` | Must-have | Maps to `MANDATORY` — friendlier industry term |
+-| `pm.category.perf` | Performance | Maps to `LINEAR` — friendlier industry term |
+-| `pm.category.del` | Delighter | Maps to `EXCITER` — friendlier industry term |
++| `pm.category.must` | Must-be | Maps to `MANDATORY` — friendlier industry term |
++| `pm.category.perf` | Performance | Maps to `ONE_DIMENSIONAL` — friendlier industry term |
++| `pm.category.attr` | Attractive | Maps to `ATTRACTIVE` — friendlier industry term |
+ | `pm.category.ind` | Indifferent | Maps to `INDIFFERENT` |
+-| `pm.category.cont` | Contradictory | Maps to `CONTRADICTORY` — answers contradict each other |
+-| `pm.category.doub` | Doubtful | Maps to `DOUBTFUL` — extreme / unusual answer pair |
++| `pm.category.rev` | Reverse | Maps to `REVERSE` — users prefer the feature absent |
++| `pm.category.que` | Questionable | Maps to `QUESTIONABLE` — contradictory / unreliable answer pair |
+ | `pm.category.help.must` | Users expect this feature. Its absence causes frustration. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+ | `pm.category.help.perf` | Satisfaction scales with quality. More is better. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+-| `pm.category.help.del` | Aspirational. Users don't expect it, but love it when present. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
++| `pm.category.help.attr` | Aspirational. Users don't expect it, but love it when present. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+ | `pm.category.help.ind` | Users don't care whether this feature exists or not. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+-| `pm.category.help.cont` | Responses contradicted each other. The category is unstable until more data arrives. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+-| `pm.category.help.doub` | Responses were inconsistent. More data is needed before drawing a conclusion. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
++| `pm.category.help.rev` | Users actively prefer this feature absent. Presence reduces satisfaction. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
++| `pm.category.help.que` | Contradictory answers — usually a misread question. Treat the result with caution. | CatBadge tooltip — `with-help` first-use help text (Story 5-7) |
+ 
+ ## PM epoch-bump dialog (Story 2-11)
+ 
+@@ -390,9 +390,9 @@ model.
+ | Key | English | Context |
+ |---|---|---|
+ | `analysis.categoryRef.heading` | What the categories mean | Reference `<aside>` heading |
+-| `analysis.categoryRef.desc.must` | A basic expectation. Its absence causes strong dissatisfaction, yet its presence is taken for granted — the price of entry. | Reference description — Must-have (MANDATORY) |
+-| `analysis.categoryRef.desc.perf` | The more, the better. Satisfaction rises and falls in direct proportion to how well this is delivered. | Reference description — Performance (LINEAR) |
+-| `analysis.categoryRef.desc.del` | An unexpected extra. Users don't ask for it, but its presence sparks delight and sets the product apart. | Reference description — Delighter (EXCITER) |
++| `analysis.categoryRef.desc.must` | A basic expectation. Its absence causes strong dissatisfaction, yet its presence is taken for granted — the price of entry. | Reference description — Must-be (MANDATORY) |
++| `analysis.categoryRef.desc.perf` | The more, the better. Satisfaction rises and falls in direct proportion to how well this is delivered. | Reference description — Performance (ONE_DIMENSIONAL) |
++| `analysis.categoryRef.desc.attr` | An unexpected extra. Users don't ask for it, but its presence sparks delight and sets the product apart. | Reference description — Attractive (ATTRACTIVE) |
+ | `analysis.categoryRef.desc.ind` | Users are unmoved either way — its presence or absence makes little difference to how satisfied they feel. | Reference description — Indifferent |
+-| `analysis.categoryRef.desc.cont` | Respondents' paired answers worked against each other, so no stable preference emerged. Treat as inconclusive. | Reference description — Contradictory |
+-| `analysis.categoryRef.desc.doub` | An extreme or unlikely answer pattern. The signal is questionable until more responses arrive. | Reference description — Doubtful |
++| `analysis.categoryRef.desc.rev` | Users actively prefer this feature absent — building it would work against satisfaction, not for it. | Reference description — Reverse |
++| `analysis.categoryRef.desc.que` | A contradictory answer pair, usually a misread question. The signal is unreliable; treat it with caution. | Reference description — Questionable |
+diff --git a/kano-backend/scripts/seed_analysis_dataset.py b/kano-backend/scripts/seed_analysis_dataset.py
+index c7e63fa..bd88513 100644
+--- a/kano-backend/scripts/seed_analysis_dataset.py
++++ b/kano-backend/scripts/seed_analysis_dataset.py
+@@ -98,9 +98,9 @@ def _force_tie_indices(num_features: int) -> set[int]:
+ 
+     Returned indices align with `_build_responses_for_feature`:
+ 
+-    - ``0`` — feature dominates single-category Must-have (high M signal)
+-    - ``1`` — feature ties between Must-have and Performance (M ≈ L)
+-    - ``2`` — feature ties between Performance and Delighter (L ≈ E)
++    - ``0`` — feature dominates single-category Must-be (high M signal)
++    - ``1`` — feature ties between Must-be and Performance (M ≈ O)
++    - ``2`` — feature ties between Performance and Attractive (O ≈ A)
+     """
+ 
+     _ = num_features  # kept in the signature for future scaling.
+@@ -128,26 +128,26 @@ def _next_tie_index(shape: str) -> int:
+ def _likert_pair_for_shape(shape: str, rng: random.Random) -> tuple[int, int]:
+     """Return a (functional, dysfunctional) Likert pair biased toward ``shape``.
+ 
+-    Pairs are chosen from the canonical Kano matrix (Story 1-5
+-    ``kano_matrix._MATRIX``) — "love it / hate it" intuition is misleading
+-    because (1, 5) lands on LINEAR, not MANDATORY:
++    Pairs are chosen from the canonical Kano matrix
++    (``kano_matrix._MATRIX``) — "like it / dislike it" intuition is misleading
++    because (1, 5) lands on PERFORMANCE, not MUSTBE:
+ 
+-    - MANDATORY: (2, 5) | (3, 5) | (4, 5)  (functional is lukewarm-to-
+-      negative, dysfunctional is "I hate it" → the feature is a hygiene
++    - MUSTBE: (2, 5) | (3, 5) | (4, 5)  (functional is lukewarm-to-
++      negative, dysfunctional is "I dislike it" → the feature is a hygiene
+       requirement).
+-    - LINEAR: (1, 5)  (the only LINEAR cell).
+-    - EXCITER: (1, 2) | (1, 3) | (1, 4).
++    - PERFORMANCE: (1, 5)  (the only Performance cell).
++    - ATTRACTIVE: (1, 2) | (1, 3) | (1, 4).
+ 
+     Shapes the manual sweep needs:
+ 
+-    - ``"single_M"`` — heavily Must-have: returns the prototypical (2, 5)
+-      MANDATORY cell on every call.
+-    - ``"tie_M_L"`` — 50/50 between Must-have and Performance — true
+-      alternation between (2, 5) MANDATORY (even calls) and (1, 5) LINEAR
+-      (odd calls). 500 submissions yield exactly 250 of each.
+-    - ``"tie_L_E"`` — 50/50 between Performance and Delighter — true
+-      alternation between (1, 5) LINEAR (even calls) and (1, 3) EXCITER
++    - ``"single_M"`` — heavily Must-be: returns the prototypical (2, 5)
++      MUSTBE cell on every call.
++    - ``"tie_M_O"`` — 50/50 between Must-be and Performance — true
++      alternation between (2, 5) MUSTBE (even calls) and (1, 5) PERFORMANCE
+       (odd calls). 500 submissions yield exactly 250 of each.
++    - ``"tie_O_A"`` — 50/50 between Performance and Attractive — true
++      alternation between (1, 5) PERFORMANCE (even calls) and (1, 3)
++      ATTRACTIVE (odd calls). 500 submissions yield exactly 250 of each.
+     - ``"random"`` — uniformly random over the 5 × 5 space.
+ 
+     The ``rng`` argument is only consumed by ``"random"``; the tied shapes
+@@ -157,9 +157,9 @@ def _likert_pair_for_shape(shape: str, rng: random.Random) -> tuple[int, int]:
+ 
+     if shape == "single_M":
+         return (2, 5)
+-    if shape == "tie_M_L":
++    if shape == "tie_M_O":
+         return (2, 5) if _next_tie_index(shape) % 2 == 0 else (1, 5)
+-    if shape == "tie_L_E":
++    if shape == "tie_O_A":
+         return (1, 5) if _next_tie_index(shape) % 2 == 0 else (1, 3)
+     return (rng.randint(1, 5), rng.randint(1, 5))
+ 
+@@ -168,9 +168,9 @@ def _shape_for_feature_index(idx: int) -> str:
+     if idx == 0:
+         return "single_M"
+     if idx == 1:
+-        return "tie_M_L"
++        return "tie_M_O"
+     if idx == 2:
+-        return "tie_L_E"
++        return "tie_O_A"
+     return "random"
+ 
+ 
+diff --git a/kano-backend/src/kano/models/response.py b/kano-backend/src/kano/models/response.py
+index d42a476..4c38f45 100644
+--- a/kano-backend/src/kano/models/response.py
++++ b/kano-backend/src/kano/models/response.py
+@@ -1,8 +1,9 @@
+ """Response ORM model — one (Functional, Dysfunctional) Likert pair per feature.
+ 
+-The ``category`` column is the precomputed Kano cell (M / L / E / I / C / D)
+-derived from the (fq_answer, dq_answer) pair via the matrix in Story 1.5;
+-storing it here keeps analysis queries to a single GROUP BY (Story 5.1).
++The ``category`` column is the precomputed Kano cell (A / M / O / I / R / Q)
++derived from the (fq_answer, dq_answer) pair via the standard Kano matrix in
++``kano.services.kano_matrix``; storing it here keeps analysis queries to a
++single GROUP BY (Story 5.1).
+ """
+ 
+ from __future__ import annotations
+@@ -30,12 +31,12 @@ class Category(str, Enum):
+     enum in :mod:`kano.services.kano_matrix` so they cannot drift.
+     """
+ 
+-    MANDATORY = "M"
+-    LINEAR = "L"
+-    EXCITER = "E"
++    MUSTBE = "M"
++    PERFORMANCE = "O"
++    ATTRACTIVE = "A"
+     INDIFFERENT = "I"
+-    CONTRADICTORY = "C"
+-    DOUBTFUL = "D"
++    REVERSE = "R"
++    QUESTIONABLE = "Q"
+ 
+ 
+ class Response(Base):
+@@ -58,7 +59,7 @@ class Response(Base):
+         CheckConstraint("fq_answer BETWEEN 1 AND 5", name="fq_answer_range"),
+         CheckConstraint("dq_answer BETWEEN 1 AND 5", name="dq_answer_range"),
+         CheckConstraint(
+-            "category IN ('M', 'L', 'E', 'I', 'C', 'D')",
++            "category IN ('A', 'M', 'O', 'I', 'R', 'Q')",
+             name="category_enum",
+         ),
+     )
+diff --git a/kano-backend/src/kano/services/analysis.py b/kano-backend/src/kano/services/analysis.py
+index 2f92374..fb22e42 100644
+--- a/kano-backend/src/kano/services/analysis.py
++++ b/kano-backend/src/kano/services/analysis.py
+@@ -34,18 +34,18 @@ from kano.services.kano_matrix import Category
+ 
+ logger = structlog.get_logger(__name__)
+ 
+-# Canonical Kano scan order (M → L → E → I → C → D) — pinned in UX spec line
+-# 1277 and used by every Epic 5 surface (frontend CATEGORY_CODES, stacked-bar
+-# segments, table rows). The wire shape's `dominant_categories` list sorts
+-# against this order so a 2-way M/L tie always reads "M, L" everywhere on
+-# the analysis page, not "L, M" in the JSON and "M, L" on the chips.
++# Canonical Kano scan order (M → O → A → I → R → Q) — used by every Epic 5
++# surface (frontend CATEGORY_CODES, stacked-bar segments, table rows). The
++# wire shape's `dominant_categories` list sorts against this order so a 2-way
++# M/O tie always reads "M, O" everywhere on the analysis page, not "O, M" in
++# the JSON and "M, O" on the chips.
+ _CANONICAL_ORDER: tuple[Category, ...] = (
+-    Category.MANDATORY,
+-    Category.LINEAR,
+-    Category.EXCITER,
++    Category.MUSTBE,
++    Category.PERFORMANCE,
++    Category.ATTRACTIVE,
+     Category.INDIFFERENT,
+-    Category.CONTRADICTORY,
+-    Category.DOUBTFUL,
++    Category.REVERSE,
++    Category.QUESTIONABLE,
+ )
+ 
+ 
+@@ -246,9 +246,9 @@ def _dominant(
+ 
+     Tie handling (FR35): when 2+ categories share the max count, **all**
+     are returned. The list is sorted against ``_CANONICAL_ORDER``
+-    (M → L → E → I → C → D) so the wire output matches the scan order
+-    every other Epic 5 surface uses — a 2-way M/L tie reads "M, L" in the
+-    JSON and "M, L" on the chips, not "L, M" in the JSON and "M, L" on the
++    (M → O → A → I → R → Q) so the wire output matches the scan order
++    every other Epic 5 surface uses — a 2-way M/O tie reads "M, O" in the
++    JSON and "M, O" on the chips, not "O, M" in the JSON and "M, O" on the
+     chips.
+ 
+     Zero-response features (``total == 0``) return ``([], 0.0)`` — the
+diff --git a/kano-backend/src/kano/services/kano_matrix.py b/kano-backend/src/kano/services/kano_matrix.py
+index a47f8fe..5ca01ff 100644
+--- a/kano-backend/src/kano/services/kano_matrix.py
++++ b/kano-backend/src/kano/services/kano_matrix.py
+@@ -5,22 +5,31 @@ or ``sqlalchemy``. Depends only on the stdlib ``enum`` module. Importing this
+ module must not pull in any persistence or web framework — that property is
+ exercised by ``tests/unit/test_kano_matrix.py::test_module_is_pure``.
+ 
+-The 25-cell matrix is transcribed from ``initial-specification.md`` (root of
+-the repo) — the authoritative source. The spec now lists nine rules that
+-exhaustively cover all 25 cells; the ``(fq=5, dq=1)`` cell resolves to
+-``DOUBTFUL``, joining ``(1, 1)`` and ``(5, 5)`` as the three "extreme"
+-answer pairs. ``C`` in this matrix means *the respondent's two answers
+-contradict each other* (e.g. ``(2, 1)``: "nice to have it" and "love not
+-having it"); ``(5, 1)`` does not fit that meaning — it is a coherent,
+-strongly negative requirement (would map to "Reverse" in extended Kano),
+-which this product does not model. Bucketing ``(5, 1)`` as ``D`` keeps the
+-six-category contract intact while honestly flagging the answer pair as
+-extreme / not directly actionable rather than mislabelling it as
+-self-contradictory.
++The 25-cell matrix is the **standard Kano evaluation table**. Rows are the
++respondent's *functional* answer (feature present), columns the *dysfunctional*
++answer (feature absent); both run Like → Expect → Don't-care → Live-with-it →
++Dislike, encoded as the 1..5 Likert integers ``fq`` / ``dq``. Each cell maps to
++one of the six classic categories:
++
++    A — Attractive    (delighter: present pleases, absent is fine)
++    M — Must-be       (expected baseline: absent dissatisfies)
++    O — Performance   (one-dimensional: satisfaction scales with fulfilment)
++    I — Indifferent   (presence/absence does not move the respondent)
++    R — Reverse       (respondent actively prefers the feature absent)
++    Q — Questionable  (implausible / contradictory answer pair)
++
++Human-reviewable grid (rows = fq 1..5, cols = dq 1..5):
++
++          dq1  dq2  dq3  dq4  dq5
++    fq1    Q    A    A    A    O
++    fq2    R    Q    I    I    M
++    fq3    R    I    I    I    M
++    fq4    R    I    I    Q    M
++    fq5    R    R    R    R    Q
+ 
+ The single-character ``.value`` of each enum member matches the ``CHAR(1)``
+-DB domain on ``responses.category`` (Story 1.2), so persisting a category is
+-``response.category = compute_category(fq, dq).value``.
++DB domain on ``responses.category`` (Story 1.2, migration 0002), so persisting
++a category is ``response.category = compute_category(fq, dq).value``.
+ """
+ 
+ from __future__ import annotations
+@@ -29,35 +38,40 @@ from enum import Enum
+ 
+ 
+ class Category(str, Enum):
+-    """Kano category. ``.value`` is the DB-side single-letter domain code."""
++    """Kano category. ``.value`` is the DB-side single-letter domain code.
+ 
+-    MANDATORY = "M"
+-    LINEAR = "L"
+-    EXCITER = "E"
++    Declared in the canonical scan order (M → O → A → I → R → Q) so that
++    iterating ``Category`` yields that order everywhere the distribution is
++    assembled or rendered.
++    """
++
++    MUSTBE = "M"
++    PERFORMANCE = "O"
++    ATTRACTIVE = "A"
+     INDIFFERENT = "I"
+-    CONTRADICTORY = "C"
+-    DOUBTFUL = "D"
++    REVERSE = "R"
++    QUESTIONABLE = "Q"
+ 
+ 
+-_M = Category.MANDATORY
+-_L = Category.LINEAR
+-_E = Category.EXCITER
++_M = Category.MUSTBE
++_O = Category.PERFORMANCE
++_A = Category.ATTRACTIVE
+ _I = Category.INDIFFERENT
+-_C = Category.CONTRADICTORY
+-_D = Category.DOUBTFUL
++_R = Category.REVERSE
++_Q = Category.QUESTIONABLE
+ 
+ 
+ _MATRIX: dict[tuple[int, int], Category] = {
+-    # FQ = 1 (functional answer: "I love it")
+-    (1, 1): _D, (1, 2): _E, (1, 3): _E, (1, 4): _E, (1, 5): _L,
+-    # FQ = 2 (functional answer: "It is nice but expected")
+-    (2, 1): _C, (2, 2): _I, (2, 3): _I, (2, 4): _I, (2, 5): _M,
+-    # FQ = 3 (functional answer: "I am neutral")
+-    (3, 1): _C, (3, 2): _I, (3, 3): _I, (3, 4): _I, (3, 5): _M,
+-    # FQ = 4 (functional answer: "I dislike it but I can manage")
+-    (4, 1): _C, (4, 2): _I, (4, 3): _I, (4, 4): _I, (4, 5): _M,
+-    # FQ = 5 (functional answer: "I hate it")
+-    (5, 1): _D, (5, 2): _C, (5, 3): _C, (5, 4): _C, (5, 5): _D,
++    # FQ = 1 (functional answer: "I like it")
++    (1, 1): _Q, (1, 2): _A, (1, 3): _A, (1, 4): _A, (1, 5): _O,
++    # FQ = 2 (functional answer: "I expect it")
++    (2, 1): _R, (2, 2): _Q, (2, 3): _I, (2, 4): _I, (2, 5): _M,
++    # FQ = 3 (functional answer: "I am neutral / don't care")
++    (3, 1): _R, (3, 2): _I, (3, 3): _I, (3, 4): _I, (3, 5): _M,
++    # FQ = 4 (functional answer: "I can live with it")
++    (4, 1): _R, (4, 2): _I, (4, 3): _I, (4, 4): _Q, (4, 5): _M,
++    # FQ = 5 (functional answer: "I dislike it")
++    (5, 1): _R, (5, 2): _R, (5, 3): _R, (5, 4): _R, (5, 5): _Q,
+ }  # fmt: skip
+ 
+ 
+diff --git a/kano-backend/tests/integration/test_alembic_roundtrip.py b/kano-backend/tests/integration/test_alembic_roundtrip.py
+index c06491d..df01759 100644
+--- a/kano-backend/tests/integration/test_alembic_roundtrip.py
++++ b/kano-backend/tests/integration/test_alembic_roundtrip.py
+@@ -1,9 +1,11 @@
+-"""AC #6: ``alembic upgrade head && alembic downgrade -1 && alembic upgrade head``
++"""AC #6: ``alembic upgrade head && alembic downgrade base && alembic upgrade head``
+ must complete without error against a clean Postgres 17 database.
+ 
+-This is the CI-gated proof that migration ``0001_initial_schema`` is reversible
+-and idempotent — the safety net for the most irreversible artifact in the
+-project.
++This is the CI-gated proof that the migration chain (``0001_initial_schema`` →
++``0002_kano_category_standard_amoirq``) is reversible and idempotent — the
++safety net for the most irreversible artifact in the project. The full
++``downgrade base`` exercises every migration's ``downgrade()`` in turn, so the
++0002 category-domain swap is reversed before 0001 drops the tables.
+ """
+ 
+ from __future__ import annotations
+@@ -50,12 +52,12 @@ def test_alembic_upgrade_head(alembic_config: Config, db_url: str) -> None:
+ 
+ 
+ def test_alembic_roundtrip_completes(alembic_config: Config, db_url: str) -> None:
+-    """upgrade head → downgrade -1 → upgrade head completes without error."""
++    """upgrade head → downgrade base → upgrade head completes without error."""
+ 
+     command.upgrade(alembic_config, "head")
+-    command.downgrade(alembic_config, "-1")
++    command.downgrade(alembic_config, "base")
+ 
+-    # After downgrading the only migration, no domain tables remain.
++    # After downgrading the whole chain to base, no domain tables remain.
+     engine = create_engine(db_url)
+     try:
+         inspector = inspect(engine)
+diff --git a/kano-backend/tests/integration/test_analysis_api.py b/kano-backend/tests/integration/test_analysis_api.py
+index 8b58d79..01ed765 100644
+--- a/kano-backend/tests/integration/test_analysis_api.py
++++ b/kano-backend/tests/integration/test_analysis_api.py
+@@ -143,7 +143,7 @@ class TestGetAnalysisHappyPath:
+         db_engine: Engine,
+     ) -> None:
+         # Seed: 3 features × 5 submissions with known (fq, dq) cells →
+-        # known categories: (3, 5) → MANDATORY; (1, 5) → LINEAR; (1, 3) → EXCITER.
++        # known categories: (3, 5) → MUSTBE; (1, 5) → PERFORMANCE; (1, 3) → ATTRACTIVE.
+         project_id = _seed_project(db_engine)
+         fid_a, fkey_a = _seed_feature(
+             db_engine, project_id=project_id, name="Auto-save", description="desc-A"
+@@ -161,9 +161,9 @@ class TestGetAnalysisHappyPath:
+                 db_engine,
+                 poll_id=poll_id,
+                 responses=[
+-                    (fid_a, 3, 5),  # MANDATORY
+-                    (fid_b, 1, 5),  # LINEAR
+-                    (fid_c, 1, 3),  # EXCITER
++                    (fid_a, 3, 5),  # MUSTBE
++                    (fid_b, 1, 5),  # PERFORMANCE
++                    (fid_c, 1, 3),  # ATTRACTIVE
+                 ],
+             )
+ 
+@@ -192,37 +192,37 @@ class TestGetAnalysisHappyPath:
+                 "dominant_percentage",
+             }
+             # AC #2 — distribution always carries all six category keys.
+-            assert set(feature["distribution"].keys()) == {"M", "L", "E", "I", "C", "D"}
++            assert set(feature["distribution"].keys()) == {"A", "M", "O", "I", "R", "Q"}
+             # dominant_categories is a list, dominant_percentage is a number.
+             assert isinstance(feature["dominant_categories"], list)
+             assert isinstance(feature["dominant_percentage"], int | float)
+ 
+         by_key = {UUID(f["feature_key"]): f for f in body["features"]}
+ 
+-        # Feature A: 5 × MANDATORY.
++        # Feature A: 5 × MUSTBE.
+         assert by_key[fkey_a]["name"] == "Auto-save"
+         assert by_key[fkey_a]["description"] == "desc-A"
+         assert by_key[fkey_a]["distribution"] == {
+             "M": 5,
+-            "L": 0,
+-            "E": 0,
++            "O": 0,
++            "A": 0,
+             "I": 0,
+-            "C": 0,
+-            "D": 0,
++            "R": 0,
++            "Q": 0,
+         }
+         assert by_key[fkey_a]["dominant_categories"] == ["M"]
+         assert by_key[fkey_a]["dominant_percentage"] == 100.0
+ 
+-        # Feature B: 5 × LINEAR (description may serialize as None).
++        # Feature B: 5 × PERFORMANCE (description may serialize as None).
+         assert by_key[fkey_b]["name"] == "Dark mode"
+         assert by_key[fkey_b]["description"] is None
+-        assert by_key[fkey_b]["distribution"]["L"] == 5
+-        assert by_key[fkey_b]["dominant_categories"] == ["L"]
++        assert by_key[fkey_b]["distribution"]["O"] == 5
++        assert by_key[fkey_b]["dominant_categories"] == ["O"]
+         assert by_key[fkey_b]["dominant_percentage"] == 100.0
+ 
+-        # Feature C: 5 × EXCITER.
+-        assert by_key[fkey_c]["distribution"]["E"] == 5
+-        assert by_key[fkey_c]["dominant_categories"] == ["E"]
++        # Feature C: 5 × ATTRACTIVE.
++        assert by_key[fkey_c]["distribution"]["A"] == 5
++        assert by_key[fkey_c]["dominant_categories"] == ["A"]
+         assert by_key[fkey_c]["dominant_percentage"] == 100.0
+ 
+ 
+@@ -254,11 +254,11 @@ class TestGetAnalysisZeroSubmissions:
+             # this verbatim and renders the empty-state segment.
+             assert feature["distribution"] == {
+                 "M": 0,
+-                "L": 0,
+-                "E": 0,
++                "O": 0,
++                "A": 0,
+                 "I": 0,
+-                "C": 0,
+-                "D": 0,
++                "R": 0,
++                "Q": 0,
+             }
+             assert feature["dominant_categories"] == []
+             assert feature["dominant_percentage"] == 0.0
+@@ -273,13 +273,13 @@ class TestGetAnalysisTieHandling:
+         client_migrated: FlaskClient,
+         db_engine: Engine,
+     ) -> None:
+-        # 4 submissions: 2 × M, 2 × L on one feature. FR35 surfaces both
+-        # winners; sort is by Category.value so the order is ["L", "M"].
++        # 4 submissions: 2 × M, 2 × O on one feature. FR35 surfaces both
++        # winners, sorted in canonical scan order so the order is ["M", "O"].
+         project_id = _seed_project(db_engine)
+         fid, _ = _seed_feature(db_engine, project_id=project_id, name="Solo")
+         poll_id = _seed_poll(db_engine, project_id=project_id)
+ 
+-        # (3, 5) → MANDATORY; (1, 5) → LINEAR.
++        # (3, 5) → MUSTBE; (1, 5) → PERFORMANCE.
+         for _ in range(2):
+             _seed_submission(db_engine, poll_id=poll_id, responses=[(fid, 3, 5)])
+         for _ in range(2):
+@@ -290,8 +290,8 @@ class TestGetAnalysisTieHandling:
+ 
+         assert body["total_submissions"] == 4
+         feature = body["features"][0]
+-        # Canonical Kano scan order (M → L → E → I → C → D): M precedes L.
+-        assert feature["dominant_categories"] == ["M", "L"]
++        # Canonical Kano scan order (M → O → A → I → R → Q): M precedes O.
++        assert feature["dominant_categories"] == ["M", "O"]
+         assert feature["dominant_percentage"] == 50.0
+ 
+ 
+@@ -338,7 +338,7 @@ class TestGetAnalysisExpiredPoll:
+             expires_at=datetime.now(tz=UTC) - timedelta(days=1),
+         )
+ 
+-        # (3, 5) → MANDATORY × 3.
++        # (3, 5) → MUSTBE × 3.
+         for _ in range(3):
+             _seed_submission(db_engine, poll_id=poll_id, responses=[(fid, 3, 5)])
+ 
+@@ -474,8 +474,8 @@ class TestGetAnalysisSnapshotFrozen:
+                 db_engine,
+                 poll_id=poll_id,
+                 responses=[
+-                    (fid_a_e1, 3, 5),  # MANDATORY
+-                    (fid_b_e1, 1, 5),  # LINEAR
++                    (fid_a_e1, 3, 5),  # MUSTBE
++                    (fid_b_e1, 1, 5),  # PERFORMANCE
+                 ],
+             )
+ 
+diff --git a/kano-backend/tests/integration/test_analysis_service.py b/kano-backend/tests/integration/test_analysis_service.py
+index 8dd6799..4b3e2d3 100644
+--- a/kano-backend/tests/integration/test_analysis_service.py
++++ b/kano-backend/tests/integration/test_analysis_service.py
+@@ -217,7 +217,7 @@ class TestSingleGroupByQueryGate:
+         fid_b, _ = _seed_feature(db_engine, project_id=project_id, name="B")
+         fid_c, _ = _seed_feature(db_engine, project_id=project_id, name="C")
+         poll_id = _seed_poll(db_engine, project_id=project_id)
+-        # 5 submissions, each with 3 responses (M / L / E across the 3 features)
++        # 5 submissions, each with 3 responses (M / O / A across the 3 features)
+         for _ in range(5):
+             _seed_submission_with_responses(
+                 db_engine,
+@@ -264,12 +264,12 @@ class TestShapeMatrix:
+         assert len(result.features) == 3
+         for feature in result.features:
+             assert feature.distribution == {
+-                Category.MANDATORY: 0,
+-                Category.LINEAR: 0,
+-                Category.EXCITER: 0,
++                Category.MUSTBE: 0,
++                Category.PERFORMANCE: 0,
++                Category.ATTRACTIVE: 0,
+                 Category.INDIFFERENT: 0,
+-                Category.CONTRADICTORY: 0,
+-                Category.DOUBTFUL: 0,
++                Category.REVERSE: 0,
++                Category.QUESTIONABLE: 0,
+             }
+             assert feature.dominant_categories == []
+             assert feature.dominant_percentage == 0.0
+@@ -279,13 +279,13 @@ class TestShapeMatrix:
+         app_with_migrated_db: Flask,
+         db_engine: Engine,
+     ) -> None:
+-        # 1 feature, 10 submissions: 7 MANDATORY, 2 LINEAR, 1 DOUBTFUL.
+-        # Map (fq, dq) cells to those categories: 3,5 → M; 1,5 → L; 5,5 → D.
++        # 1 feature, 10 submissions: 7 MUSTBE, 2 PERFORMANCE, 1 QUESTIONABLE.
++        # Map (fq, dq) cells to those categories: 3,5 → M; 1,5 → O; 5,5 → Q.
+         project_id = _seed_project(db_engine)
+         fid, fkey = _seed_feature(db_engine, project_id=project_id, name="Solo")
+         poll_id = _seed_poll(db_engine, project_id=project_id)
+ 
+-        # (fq, dq) cells: (3, 5) → MANDATORY; (1, 5) → LINEAR; (5, 5) → DOUBTFUL.
++        # (fq, dq) cells: (3, 5) → M; (1, 5) → O; (5, 5) → Q.
+         cells: list[tuple[int, int]] = [(3, 5)] * 7 + [(1, 5)] * 2 + [(5, 5)] * 1
+         for fq, dq in cells:
+             _seed_submission_with_responses(
+@@ -302,14 +302,14 @@ class TestShapeMatrix:
+         feature = result.features[0]
+         assert feature.feature_key == fkey
+         assert feature.distribution == {
+-            Category.MANDATORY: 7,
+-            Category.LINEAR: 2,
+-            Category.EXCITER: 0,
++            Category.MUSTBE: 7,
++            Category.PERFORMANCE: 2,
++            Category.ATTRACTIVE: 0,
+             Category.INDIFFERENT: 0,
+-            Category.CONTRADICTORY: 0,
+-            Category.DOUBTFUL: 1,
++            Category.REVERSE: 0,
++            Category.QUESTIONABLE: 1,
+         }
+-        assert feature.dominant_categories == [Category.MANDATORY]
++        assert feature.dominant_categories == [Category.MUSTBE]
+         assert feature.dominant_percentage == 70.0
+ 
+     def test_two_way_tie(
+@@ -317,12 +317,12 @@ class TestShapeMatrix:
+         app_with_migrated_db: Flask,
+         db_engine: Engine,
+     ) -> None:
+-        # 5 submissions: 2 M, 2 L, 1 E
++        # 5 submissions: 2 M, 2 O, 1 A
+         project_id = _seed_project(db_engine)
+         fid, _ = _seed_feature(db_engine, project_id=project_id, name="Solo")
+         poll_id = _seed_poll(db_engine, project_id=project_id)
+ 
+-        # (3, 5) → MANDATORY; (1, 5) → LINEAR; (1, 3) → EXCITER. Tie at M / L.
++        # (3, 5) → M; (1, 5) → O; (1, 3) → A. Tie at M / O.
+         cells: list[tuple[int, int]] = [(3, 5)] * 2 + [(1, 5)] * 2 + [(1, 3)] * 1
+         for fq, dq in cells:
+             _seed_submission_with_responses(
+@@ -336,9 +336,9 @@ class TestShapeMatrix:
+ 
+         assert result.total_submissions == 5
+         feature = result.features[0]
+-        # Sorted in canonical Kano scan order (M → L → E → I → C → D):
+-        # the M-L tie reads "M, L" everywhere on the analysis page.
+-        assert feature.dominant_categories == [Category.MANDATORY, Category.LINEAR]
++        # Sorted in canonical Kano scan order (M → O → A → I → R → Q):
++        # the M-O tie reads "M, O" everywhere on the analysis page.
++        assert feature.dominant_categories == [Category.MUSTBE, Category.PERFORMANCE]
+         assert feature.dominant_percentage == 40.0
+ 
+     def test_three_way_tie(
+@@ -346,12 +346,12 @@ class TestShapeMatrix:
+         app_with_migrated_db: Flask,
+         db_engine: Engine,
+     ) -> None:
+-        # 3 submissions: 1 M, 1 L, 1 E → tie at 33.3%
++        # 3 submissions: 1 M, 1 O, 1 A → tie at 33.3%
+         project_id = _seed_project(db_engine)
+         fid, _ = _seed_feature(db_engine, project_id=project_id, name="Solo")
+         poll_id = _seed_poll(db_engine, project_id=project_id)
+ 
+-        # (3, 5) → MANDATORY; (1, 5) → LINEAR; (1, 3) → EXCITER. 3-way tie.
++        # (3, 5) → M; (1, 5) → O; (1, 3) → A. 3-way tie.
+         for fq, dq in [(3, 5), (1, 5), (1, 3)]:
+             _seed_submission_with_responses(
+                 db_engine,
+@@ -364,11 +364,11 @@ class TestShapeMatrix:
+ 
+         assert result.total_submissions == 3
+         feature = result.features[0]
+-        # Sorted in canonical Kano scan order: M → L → E.
++        # Sorted in canonical Kano scan order: M → O → A.
+         assert feature.dominant_categories == [
+-            Category.MANDATORY,
+-            Category.LINEAR,
+-            Category.EXCITER,
++            Category.MUSTBE,
++            Category.PERFORMANCE,
++            Category.ATTRACTIVE,
+         ]
+         assert feature.dominant_percentage == 33.3
+ 
+@@ -396,12 +396,12 @@ class TestShapeMatrix:
+         assert result.total_submissions == 5
+         feature = result.features[0]
+         assert feature.distribution == {
+-            Category.MANDATORY: 0,
+-            Category.LINEAR: 0,
+-            Category.EXCITER: 0,
++            Category.MUSTBE: 0,
++            Category.PERFORMANCE: 0,
++            Category.ATTRACTIVE: 0,
+             Category.INDIFFERENT: 5,
+-            Category.CONTRADICTORY: 0,
+-            Category.DOUBTFUL: 0,
++            Category.REVERSE: 0,
++            Category.QUESTIONABLE: 0,
+         }
+         assert feature.dominant_categories == [Category.INDIFFERENT]
+         assert feature.dominant_percentage == 100.0
+@@ -426,7 +426,7 @@ class TestShapeMatrix:
+         poll_id = _seed_poll(db_engine, project_id=project_id)
+ 
+         # 2 submissions, but only feature A and B get responses (C is skipped).
+-        # (3, 5) → MANDATORY for A; (1, 5) → LINEAR for B.
++        # (3, 5) → MUSTBE for A; (1, 5) → PERFORMANCE for B.
+         for _ in range(2):
+             _seed_submission_with_responses(
+                 db_engine,
+@@ -446,19 +446,19 @@ class TestShapeMatrix:
+         assert fkey_c in by_key
+ 
+         # A: 2 M
+-        assert by_key[fkey_a].distribution[Category.MANDATORY] == 2
+-        assert by_key[fkey_a].dominant_categories == [Category.MANDATORY]
+-        # B: 2 L
+-        assert by_key[fkey_b].distribution[Category.LINEAR] == 2
+-        assert by_key[fkey_b].dominant_categories == [Category.LINEAR]
++        assert by_key[fkey_a].distribution[Category.MUSTBE] == 2
++        assert by_key[fkey_a].dominant_categories == [Category.MUSTBE]
++        # B: 2 O
++        assert by_key[fkey_b].distribution[Category.PERFORMANCE] == 2
++        assert by_key[fkey_b].dominant_categories == [Category.PERFORMANCE]
+         # C: all zeros, empty dominants
+         assert by_key[fkey_c].distribution == {
+-            Category.MANDATORY: 0,
+-            Category.LINEAR: 0,
+-            Category.EXCITER: 0,
++            Category.MUSTBE: 0,
++            Category.PERFORMANCE: 0,
++            Category.ATTRACTIVE: 0,
+             Category.INDIFFERENT: 0,
+-            Category.CONTRADICTORY: 0,
+-            Category.DOUBTFUL: 0,
++            Category.REVERSE: 0,
++            Category.QUESTIONABLE: 0,
+         }
+         assert by_key[fkey_c].dominant_categories == []
+         assert by_key[fkey_c].dominant_percentage == 0.0
+@@ -499,7 +499,7 @@ class TestPollLifecycle:
+             expires_at=datetime.now(tz=UTC) - timedelta(days=1),
+         )
+ 
+-        # (3, 5) → MANDATORY.
++        # (3, 5) → MUSTBE.
+         for _ in range(3):
+             _seed_submission_with_responses(
+                 db_engine,
+@@ -512,7 +512,7 @@ class TestPollLifecycle:
+ 
+         assert result.total_submissions == 3
+         assert len(result.features) == 1
+-        assert result.features[0].distribution[Category.MANDATORY] == 3
++        assert result.features[0].distribution[Category.MUSTBE] == 3
+ 
+ 
+ class TestSnapshotFrozenAfterEpochBump:
+@@ -531,7 +531,7 @@ class TestSnapshotFrozenAfterEpochBump:
+         fid_b_e1, fkey_b_e1 = _seed_feature(db_engine, project_id=project_id, epoch=1, name="B")
+         poll_id = _seed_poll(db_engine, project_id=project_id, epoch=1)
+ 
+-        # (3, 5) → MANDATORY for A; (1, 5) → LINEAR for B.
++        # (3, 5) → MUSTBE for A; (1, 5) → PERFORMANCE for B.
+         for _ in range(3):
+             _seed_submission_with_responses(
+                 db_engine,
+diff --git a/kano-backend/tests/integration/test_poll_service_submissions.py b/kano-backend/tests/integration/test_poll_service_submissions.py
+index 0635c57..5b0e37b 100644
+--- a/kano-backend/tests/integration/test_poll_service_submissions.py
++++ b/kano-backend/tests/integration/test_poll_service_submissions.py
+@@ -175,15 +175,15 @@ class TestRecordFullSubmissionHappyPath:
+         # Three cells spanning distinct Kano categories — proves the service
+         # is calling kano_matrix and not hard-coding a value.
+         project_id = _seed_project(db_engine)
+-        _, key_m = _seed_feature(db_engine, project_id=project_id, name="Must-have")
+-        _, key_l = _seed_feature(db_engine, project_id=project_id, name="Linear")
+-        _, key_e = _seed_feature(db_engine, project_id=project_id, name="Exciter")
++        _, key_m = _seed_feature(db_engine, project_id=project_id, name="Must-be")
++        _, key_l = _seed_feature(db_engine, project_id=project_id, name="Performance")
++        _, key_e = _seed_feature(db_engine, project_id=project_id, name="Attractive")
+         poll_id = _seed_poll(db_engine, project_id=project_id)
+ 
+         pairs = [
+-            (key_m, 3, 5, Category.MANDATORY),
+-            (key_l, 1, 5, Category.LINEAR),
+-            (key_e, 1, 3, Category.EXCITER),
++            (key_m, 3, 5, Category.MUSTBE),
++            (key_l, 1, 5, Category.PERFORMANCE),
++            (key_e, 1, 3, Category.ATTRACTIVE),
+         ]
+         body = PollSubmission(
+             answers=[
+@@ -211,11 +211,11 @@ class TestRecordFullSubmissionHappyPath:
+     @pytest.mark.parametrize(
+         ("fq", "dq", "expected"),
+         [
+-            (3, 5, Category.MANDATORY),
+-            (1, 5, Category.LINEAR),
+-            (1, 3, Category.EXCITER),
+-            (5, 5, Category.DOUBTFUL),
+-            (5, 3, Category.CONTRADICTORY),
++            (3, 5, Category.MUSTBE),
++            (1, 5, Category.PERFORMANCE),
++            (1, 3, Category.ATTRACTIVE),
++            (5, 5, Category.QUESTIONABLE),
++            (5, 3, Category.REVERSE),
+             (3, 3, Category.INDIFFERENT),
+         ],
+     )
+diff --git a/kano-backend/tests/unit/test_analysis_dominant.py b/kano-backend/tests/unit/test_analysis_dominant.py
+index 92b4abb..f88cf1a 100644
+--- a/kano-backend/tests/unit/test_analysis_dominant.py
++++ b/kano-backend/tests/unit/test_analysis_dominant.py
+@@ -15,12 +15,12 @@ from __future__ import annotations
+ from kano.services.analysis import _dominant
+ from kano.services.kano_matrix import Category
+ 
+-_M = Category.MANDATORY
+-_L = Category.LINEAR
+-_E = Category.EXCITER
++_M = Category.MUSTBE
++_O = Category.PERFORMANCE
++_A = Category.ATTRACTIVE
+ _I = Category.INDIFFERENT
+-_C = Category.CONTRADICTORY
+-_D = Category.DOUBTFUL
++_R = Category.REVERSE
++_Q = Category.QUESTIONABLE
+ 
+ 
+ def _zero_dist() -> dict[Category, int]:
+@@ -32,11 +32,11 @@ def _dist(**overrides: int) -> dict[Category, int]:
+     dist = _zero_dist()
+     name_to_cat = {
+         "M": _M,
+-        "L": _L,
+-        "E": _E,
++        "O": _O,
++        "A": _A,
+         "I": _I,
+-        "C": _C,
+-        "D": _D,
++        "R": _R,
++        "Q": _Q,
+     }
+     for key, value in overrides.items():
+         dist[name_to_cat[key]] = value
+@@ -58,7 +58,7 @@ class TestZeroTotal:
+ class TestSingleWinner:
+     def test_strict_majority(self) -> None:
+         # 7 M out of 10 → M wins, 70.0%
+-        dist = _dist(M=7, E=2, D=1)
++        dist = _dist(M=7, A=2, Q=1)
+         winners, pct = _dominant(dist, total=10)
+         assert winners == [_M]
+         assert pct == 70.0
+@@ -71,7 +71,7 @@ class TestSingleWinner:
+         assert pct == 100.0
+ 
+     def test_single_winner_with_only_two_categories(self) -> None:
+-        dist = _dist(M=4, L=1)
++        dist = _dist(M=4, O=1)
+         winners, pct = _dominant(dist, total=5)
+         assert winners == [_M]
+         assert pct == 80.0
+@@ -79,29 +79,29 @@ class TestSingleWinner:
+ 
+ class TestTies:
+     def test_two_way_tie_returns_both_sorted(self) -> None:
+-        # 2 M, 2 L, 1 E → tie between M and L at 40%
+-        dist = _dist(M=2, L=2, E=1)
++        # 2 M, 2 O, 1 A → tie between M and O at 40%
++        dist = _dist(M=2, O=2, A=1)
+         winners, pct = _dominant(dist, total=5)
+-        # Sorted in canonical Kano scan order (M → L → E → I → C → D):
+-        # M precedes L, so the M-L tie reads "M, L" everywhere on the page.
+-        assert winners == [_M, _L]
++        # Sorted in canonical Kano scan order (M → O → A → I → R → Q):
++        # M precedes O, so the M-O tie reads "M, O" everywhere on the page.
++        assert winners == [_M, _O]
+         assert pct == 40.0
+ 
+     def test_three_way_tie_returns_all_three_sorted(self) -> None:
+-        # 1 M, 1 L, 1 E → tie at 33.3%
+-        dist = _dist(M=1, L=1, E=1)
++        # 1 M, 1 O, 1 A → tie at 33.3%
++        dist = _dist(M=1, O=1, A=1)
+         winners, pct = _dominant(dist, total=3)
+-        # Canonical Kano scan order: M → L → E.
+-        assert winners == [_M, _L, _E]
++        # Canonical Kano scan order: M → O → A.
++        assert winners == [_M, _O, _A]
+         assert pct == 33.3
+ 
+     def test_six_way_tie_returns_all_six_sorted(self) -> None:
+         # Degenerate but possible: 6 submissions, one each in every category.
+-        dist = _dist(M=1, L=1, E=1, I=1, C=1, D=1)
++        dist = _dist(M=1, O=1, A=1, I=1, R=1, Q=1)
+         winners, pct = _dominant(dist, total=6)
+         # All 6 categories in canonical Kano scan order:
+-        # M → L → E → I → C → D.
+-        assert winners == [_M, _L, _E, _I, _C, _D]
++        # M → O → A → I → R → Q.
++        assert winners == [_M, _O, _A, _I, _R, _Q]
+         # 1/6 = 16.6666… → 16.7
+         assert pct == 16.7
+ 
+@@ -118,39 +118,39 @@ class TestTies:
+ class TestRounding:
+     def test_one_third_rounds_down(self) -> None:
+         # 33.3333… → 33.3
+-        winners, pct = _dominant(_dist(M=1, L=1, E=1), total=3)
++        winners, pct = _dominant(_dist(M=1, O=1, A=1), total=3)
+         assert pct == 33.3
+-        # Canonical Kano scan order: M → L → E.
+-        assert winners == [_M, _L, _E]
++        # Canonical Kano scan order: M → O → A.
++        assert winners == [_M, _O, _A]
+ 
+     def test_two_thirds_rounds_up(self) -> None:
+         # 66.6666… → 66.7
+-        winners, pct = _dominant(_dist(M=2, L=1), total=3)
++        winners, pct = _dominant(_dist(M=2, O=1), total=3)
+         assert pct == 66.7
+         assert winners == [_M]
+ 
+     def test_exact_half_stays_exact(self) -> None:
+         # 50.0 stays 50.0 (2:2 tie)
+-        winners, pct = _dominant(_dist(M=2, L=2), total=4)
++        winners, pct = _dominant(_dist(M=2, O=2), total=4)
+         assert pct == 50.0
+-        # Canonical Kano scan order: M precedes L.
+-        assert winners == [_M, _L]
++        # Canonical Kano scan order: M precedes O.
++        assert winners == [_M, _O]
+ 
+     def test_majority_4_of_7_rounds_down(self) -> None:
+         # 4/7 = 57.142857… → 57.1
+-        # 7 total: 4 M (max), 3 L. M wins uniquely.
+-        winners, pct = _dominant(_dist(M=4, L=3), total=7)
++        # 7 total: 4 M (max), 3 O. M wins uniquely.
++        winners, pct = _dominant(_dist(M=4, O=3), total=7)
+         assert winners == [_M]
+         assert pct == 57.1
+ 
+     def test_majority_5_of_7_rounds_up(self) -> None:
+         # 5/7 = 71.428571… → 71.4
+-        winners, pct = _dominant(_dist(M=5, L=2), total=7)
++        winners, pct = _dominant(_dist(M=5, O=2), total=7)
+         assert winners == [_M]
+         assert pct == 71.4
+ 
+     def test_majority_6_of_7_rounds_up(self) -> None:
+         # 6/7 = 85.714285… → 85.7
+-        winners, pct = _dominant(_dist(M=6, L=1), total=7)
++        winners, pct = _dominant(_dist(M=6, O=1), total=7)
+         assert winners == [_M]
+         assert pct == 85.7
+diff --git a/kano-backend/tests/unit/test_analysis_shape_rows.py b/kano-backend/tests/unit/test_analysis_shape_rows.py
+index fa0558e..391e815 100644
+--- a/kano-backend/tests/unit/test_analysis_shape_rows.py
++++ b/kano-backend/tests/unit/test_analysis_shape_rows.py
+@@ -45,9 +45,9 @@ class TestShapeRowsOrderingInvariant:
+ 
+         rows: list[Any] = [
+             _row(fid_a, fkey_a, "A", "M", 3),
+-            _row(fid_a, fkey_a, "A", "L", 2),
++            _row(fid_a, fkey_a, "A", "O", 2),
+             _row(fid_b, fkey_b, "B", "M", 1),
+-            _row(fid_b, fkey_b, "B", "E", 4),
++            _row(fid_b, fkey_b, "B", "A", 4),
+         ]
+ 
+         features, total = _shape_rows(rows)
+@@ -55,9 +55,9 @@ class TestShapeRowsOrderingInvariant:
+         assert len(features) == 2
+         by_key = {f.feature_key: f for f in features}
+         assert by_key[fkey_a].distribution["M"] == 3  # type: ignore[index]
+-        assert by_key[fkey_a].distribution["L"] == 2  # type: ignore[index]
++        assert by_key[fkey_a].distribution["O"] == 2  # type: ignore[index]
+         assert by_key[fkey_b].distribution["M"] == 1  # type: ignore[index]
+-        assert by_key[fkey_b].distribution["E"] == 4  # type: ignore[index]
++        assert by_key[fkey_b].distribution["A"] == 4  # type: ignore[index]
+         assert total == 5  # max-per-feature: B has 5, A has 5; both tie.
+ 
+     def test_interleaved_rows_break_grouping_pin_the_invariant(self) -> None:
+@@ -72,8 +72,8 @@ class TestShapeRowsOrderingInvariant:
+         rows: list[Any] = [
+             _row(fid_a, fkey_a, "A", "M", 3),
+             _row(fid_b, fkey_b, "B", "M", 1),
+-            _row(fid_a, fkey_a, "A", "L", 2),
+-            _row(fid_b, fkey_b, "B", "E", 4),
++            _row(fid_a, fkey_a, "A", "O", 2),
++            _row(fid_b, fkey_b, "B", "A", 4),
+         ]
+ 
+         features, _ = _shape_rows(rows)
+@@ -104,11 +104,11 @@ class TestShapeRowsOrderingInvariant:
+         assert len(features) == 1
+         assert features[0].distribution == {
+             "M": 0,  # type: ignore[dict-item]
+-            "L": 0,  # type: ignore[dict-item]
+-            "E": 0,  # type: ignore[dict-item]
++            "O": 0,  # type: ignore[dict-item]
++            "A": 0,  # type: ignore[dict-item]
+             "I": 0,  # type: ignore[dict-item]
+-            "C": 0,  # type: ignore[dict-item]
+-            "D": 0,  # type: ignore[dict-item]
++            "R": 0,  # type: ignore[dict-item]
++            "Q": 0,  # type: ignore[dict-item]
+         }
+         assert features[0].dominant_categories == []
+         assert features[0].dominant_percentage == 0.0
+@@ -121,14 +121,14 @@ class TestShapeRowsOrderingInvariant:
+         fid, fkey = uuid4(), uuid4()
+         rows: list[Any] = [
+             _row(fid, fkey, "Z", "M", 3),
+-            _row(fid, fkey, "Z", "BOGUS", 99),  # not in M/L/E/I/C/D
+-            _row(fid, fkey, "Z", "L", 2),
++            _row(fid, fkey, "Z", "BOGUS", 99),  # not in A/M/O/I/R/Q
++            _row(fid, fkey, "Z", "O", 2),
+         ]
+ 
+         features, total = _shape_rows(rows, poll_id=uuid4())
+ 
+         assert len(features) == 1
+-        # BOGUS row dropped; M and L counted normally.
++        # BOGUS row dropped; M and O counted normally.
+         assert features[0].distribution["M"] == 3  # type: ignore[index]
+-        assert features[0].distribution["L"] == 2  # type: ignore[index]
++        assert features[0].distribution["O"] == 2  # type: ignore[index]
+         assert total == 5
+diff --git a/kano-backend/tests/unit/test_category_check_parity.py b/kano-backend/tests/unit/test_category_check_parity.py
+index 4486881..5532e2c 100644
+--- a/kano-backend/tests/unit/test_category_check_parity.py
++++ b/kano-backend/tests/unit/test_category_check_parity.py
+@@ -4,9 +4,10 @@ These are two independent representations of the same six-letter domain:
+ 
+ * ``kano.services.kano_matrix.Category`` — Python-side enum returned by
+   ``compute_category()``; ``.value`` is what gets persisted to ``responses.category``.
+-* ``migrations/versions/0001_initial_schema.py`` — SQL
+-  ``CHECK (category IN (...))`` constraint that rejects unknown letters at the
+-  database level.
++* ``migrations/versions/0002_kano_category_standard_amoirq.py`` — the head
++  migration that establishes the current ``CHECK (category IN (...))`` domain
++  (``A/M/O/I/R/Q``). Migration 0001 holds the superseded ``M/L/E/I/C/D`` domain
++  and is intentionally not consulted here — it is history, not the live schema.
+ 
+ Adding a member to one without the other ships a runtime CHECK violation on
+ the first INSERT. This test is the cheap, table-free guard that ties them
+@@ -21,11 +22,16 @@ from pathlib import Path
+ from kano.services.kano_matrix import Category
+ 
+ _MIGRATION_PATH = (
+-    Path(__file__).resolve().parents[2] / "migrations" / "versions" / "0001_initial_schema.py"
++    Path(__file__).resolve().parents[2]
++    / "migrations"
++    / "versions"
++    / "0002_kano_category_standard_amoirq.py"
+ )
+ 
+ # Matches the CHECK body for the ``category`` column. Single-quoted single
+-# letters separated by commas, e.g. ``'M', 'L', 'E', 'I', 'C', 'D'``.
++# letters separated by commas, e.g. ``'A', 'M', 'O', 'I', 'R', 'Q'``. The
++# first match in 0002 is the new (upgrade) domain ``_NEW``, which is declared
++# before the ``_OLD`` downgrade-target domain.
+ _CATEGORY_CHECK_BODY = re.compile(r"category\s+IN\s+\(\s*((?:'[A-Z]'\s*(?:,\s*)?)+)\)")
+ _LETTER = re.compile(r"'([A-Z])'")
+ 
+diff --git a/kano-backend/tests/unit/test_kano_matrix.py b/kano-backend/tests/unit/test_kano_matrix.py
+index 96c8b3a..480ac93 100644
+--- a/kano-backend/tests/unit/test_kano_matrix.py
++++ b/kano-backend/tests/unit/test_kano_matrix.py
+@@ -20,20 +20,20 @@ from kano.services.kano_matrix import Category, compute_category
+ # Cells laid out as a literal 5×5 grid for human review against the spec:
+ # rows = FQ (1..5), columns = DQ (1..5). Short aliases keep each row on one
+ # line so the human-reviewable grid stays visually rectangular.
+-_M = Category.MANDATORY
+-_L = Category.LINEAR
+-_E = Category.EXCITER
++_M = Category.MUSTBE
++_O = Category.PERFORMANCE
++_A = Category.ATTRACTIVE
+ _I = Category.INDIFFERENT
+-_C = Category.CONTRADICTORY
+-_D = Category.DOUBTFUL
++_R = Category.REVERSE
++_Q = Category.QUESTIONABLE
+ 
+ _EXPECTED_GRID: list[list[Category]] = [
+     # DQ=1  DQ=2  DQ=3  DQ=4  DQ=5
+-    [  _D,   _E,   _E,   _E,   _L  ],  # FQ = 1
+-    [  _C,   _I,   _I,   _I,   _M  ],  # FQ = 2
+-    [  _C,   _I,   _I,   _I,   _M  ],  # FQ = 3
+-    [  _C,   _I,   _I,   _I,   _M  ],  # FQ = 4
+-    [  _D,   _C,   _C,   _C,   _D  ],  # FQ = 5
++    [  _Q,   _A,   _A,   _A,   _O  ],  # FQ = 1
++    [  _R,   _Q,   _I,   _I,   _M  ],  # FQ = 2
++    [  _R,   _I,   _I,   _I,   _M  ],  # FQ = 3
++    [  _R,   _I,   _I,   _Q,   _M  ],  # FQ = 4
++    [  _R,   _R,   _R,   _R,   _Q  ],  # FQ = 5
+ ]  # fmt: skip
+ 
+ _ALL_CELLS: list[tuple[int, int, Category]] = [
+@@ -100,7 +100,7 @@ def test_non_int_inputs_raise_value_error(fq: object, dq: object) -> None:
+ def test_category_value_is_single_uppercase_letter() -> None:
+     """``Category.value`` must match the DB ``CHAR(1)`` domain (Story 1.2)."""
+ 
+-    expected = {"M", "L", "E", "I", "C", "D"}
++    expected = {"A", "M", "O", "I", "R", "Q"}
+     actual = {member.value for member in Category}
+     assert actual == expected
+     for member in Category:
+diff --git a/kano-backend/tests/unit/test_seed_analysis_dataset.py b/kano-backend/tests/unit/test_seed_analysis_dataset.py
+index fe2d6aa..6db119a 100644
+--- a/kano-backend/tests/unit/test_seed_analysis_dataset.py
++++ b/kano-backend/tests/unit/test_seed_analysis_dataset.py
+@@ -1,11 +1,11 @@
+ """Smoke tests for ``scripts/seed_analysis_dataset.py`` — Story 5-8.
+ 
+ Validates the DB-free portion of the seeder: deterministic Likert pairs for
+-each forced-tie shape (``single_M``, ``tie_M_L``, ``tie_L_E``), the canonical
++each forced-tie shape (``single_M``, ``tie_M_O``, ``tie_O_A``), the canonical
+ constants (20 features, 500 submissions), and a sanity check that the forced
+ distributions actually produce the expected dominant categories via the
+ pure ``compute_category`` function. Catches regressions where someone
+-accidentally maps ``tie_M_L`` to a non-MANDATORY-leaning Likert pair (a
++accidentally maps ``tie_M_O`` to a non-MUSTBE-leaning Likert pair (a
+ common drift since the matrix labels are subtle).
+ 
+ DB-touching code paths (``_seed_populated_poll`` / ``_seed_empty_poll``) are
+@@ -68,38 +68,38 @@ class TestSeedConstants:
+ 
+ 
+ class TestLikertShapes:
+-    def test_single_m_pair_resolves_to_mandatory(self, seeder: Any) -> None:
++    def test_single_m_pair_resolves_to_mustbe(self, seeder: Any) -> None:
+         rng = random.Random(42)
+         fq, dq = seeder._likert_pair_for_shape("single_M", rng)
+-        # (2, 5) is the canonical MANDATORY cell per kano_matrix._MATRIX —
+-        # NOT (1, 5), which lands on LINEAR. Pinning the exact pair plus
++        # (2, 5) is the canonical MUSTBE cell per kano_matrix._MATRIX —
++        # NOT (1, 5), which lands on PERFORMANCE. Pinning the exact pair plus
+         # the matrix output catches drift in either direction.
+         assert (fq, dq) == (2, 5)
+-        assert compute_category(fq, dq) is Category.MANDATORY
++        assert compute_category(fq, dq) is Category.MUSTBE
+ 
+-    def test_tie_m_l_alternates_between_mandatory_and_linear(self, seeder: Any) -> None:
++    def test_tie_m_o_alternates_between_mustbe_and_performance(self, seeder: Any) -> None:
+         # 200 draws is plenty to hit both branches; assert both categories
+         # appear at least once. The exact split depends on the RNG state,
+         # but ~50/50 is the design.
+         rng = random.Random(42)
+         cats: set[Category] = set()
+         for _ in range(200):
+-            fq, dq = seeder._likert_pair_for_shape("tie_M_L", rng)
++            fq, dq = seeder._likert_pair_for_shape("tie_M_O", rng)
+             cats.add(compute_category(fq, dq))
+-        assert Category.MANDATORY in cats
+-        assert Category.LINEAR in cats
++        assert Category.MUSTBE in cats
++        assert Category.PERFORMANCE in cats
+         # And NO third category leaks in — the shape is a clean two-way tie.
+-        assert cats == {Category.MANDATORY, Category.LINEAR}
++        assert cats == {Category.MUSTBE, Category.PERFORMANCE}
+ 
+-    def test_tie_l_e_alternates_between_linear_and_exciter(self, seeder: Any) -> None:
++    def test_tie_o_a_alternates_between_performance_and_attractive(self, seeder: Any) -> None:
+         rng = random.Random(42)
+         cats: set[Category] = set()
+         for _ in range(200):
+-            fq, dq = seeder._likert_pair_for_shape("tie_L_E", rng)
++            fq, dq = seeder._likert_pair_for_shape("tie_O_A", rng)
+             cats.add(compute_category(fq, dq))
+-        assert Category.LINEAR in cats
+-        assert Category.EXCITER in cats
+-        assert cats == {Category.LINEAR, Category.EXCITER}
++        assert Category.PERFORMANCE in cats
++        assert Category.ATTRACTIVE in cats
++        assert cats == {Category.PERFORMANCE, Category.ATTRACTIVE}
+ 
+     def test_random_shape_emits_uniformly_over_full_5x5_grid(self, seeder: Any) -> None:
+         rng = random.Random(42)
+@@ -118,13 +118,13 @@ class TestShapeForFeatureIndex:
+     def test_feature_0_is_single_dominant_must_have(self, seeder: Any) -> None:
+         assert seeder._shape_for_feature_index(0) == "single_M"
+ 
+-    def test_feature_1_is_two_way_tie_m_l(self, seeder: Any) -> None:
++    def test_feature_1_is_two_way_tie_m_o(self, seeder: Any) -> None:
+         # The manual VoiceOver sweep references "Feature 02" as the
+         # tied-dominant row (idx=1, name "Feature 02" per the f-string).
+-        assert seeder._shape_for_feature_index(1) == "tie_M_L"
++        assert seeder._shape_for_feature_index(1) == "tie_M_O"
+ 
+-    def test_feature_2_is_two_way_tie_l_e(self, seeder: Any) -> None:
+-        assert seeder._shape_for_feature_index(2) == "tie_L_E"
++    def test_feature_2_is_two_way_tie_o_a(self, seeder: Any) -> None:
++        assert seeder._shape_for_feature_index(2) == "tie_O_A"
+ 
+     def test_features_3_through_19_are_random(self, seeder: Any) -> None:
+         for idx in range(3, 20):
+diff --git a/kano-frontend/e2e/pm/_seed-helpers.ts b/kano-frontend/e2e/pm/_seed-helpers.ts
+index ac90447..045129d 100644
+--- a/kano-frontend/e2e/pm/_seed-helpers.ts
++++ b/kano-frontend/e2e/pm/_seed-helpers.ts
+@@ -30,11 +30,11 @@ export const EMPTY_POLL_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+ 
+ const ZERO_DIST: Record<Category, number> = {
+   M: 0,
+-  L: 0,
+-  E: 0,
++  O: 0,
++  A: 0,
+   I: 0,
+-  C: 0,
+-  D: 0,
++  R: 0,
++  Q: 0,
+ }
+ 
+ function dist(overrides: Partial<Record<Category, number>>): Record<Category, number> {
+@@ -50,8 +50,8 @@ function dist(overrides: Partial<Record<Category, number>>): Record<Category, nu
+  * regardless of which seed path produced the data):
+  *
+  * - feat-01 — single-dominant MANDATORY (~500 M, sparse L/E/I noise)
+- * - feat-02 — 50/50 MANDATORY ↔ LINEAR tie (250 M, 250 L)
+- * - feat-03 — 50/50 LINEAR ↔ EXCITER tie (250 L, 250 E)
++ * - feat-02 — 50/50 MANDATORY ↔ ONE-DIMENSIONAL tie (250 M, 250 O)
++ * - feat-03 — 50/50 ONE-DIMENSIONAL ↔ ATTRACTIVE tie (250 O, 250 A)
+  * - feat-04..feat-20 — pseudo-random distributions seeded from a fixed RNG
+  *   so the fixture is reproducible run-to-run.
+  */
+@@ -62,7 +62,7 @@ export function buildAnalysisFixture(): PollAnalysis {
+   // "single dominant" reference row). The Python seeder's `single_M` shape
+   // deterministically emits (2, 5) → MANDATORY on every response — this
+   // fixture mirrors that exact distribution so the JS fixture and the live
+-  // seeded backend present the same "100 percent. Must-have" announcement
++  // seeded backend present the same "100 percent. Must-be" announcement
+   // to VoiceOver against `analysis-checklist.md` row #11.
+   features.push({
+     feature_key: 'feat-01',
+@@ -73,23 +73,23 @@ export function buildAnalysisFixture(): PollAnalysis {
+     dominant_percentage: 100,
+   })
+ 
+-  // feat-02: 50/50 MANDATORY ↔ LINEAR tie — the load-bearing tie row.
++  // feat-02: 50/50 MANDATORY ↔ ONE-DIMENSIONAL tie — the load-bearing tie row.
+   features.push({
+     feature_key: 'feat-02',
+     name: 'Feature 02',
+     description: 'Auto-generated description for Feature 02',
+-    distribution: dist({ M: 250, L: 250 }),
+-    dominant_categories: ['M', 'L'],
++    distribution: dist({ M: 250, O: 250 }),
++    dominant_categories: ['M', 'O'],
+     dominant_percentage: 50,
+   })
+ 
+-  // feat-03: 50/50 LINEAR ↔ EXCITER tie.
++  // feat-03: 50/50 ONE-DIMENSIONAL ↔ ATTRACTIVE tie.
+   features.push({
+     feature_key: 'feat-03',
+     name: 'Feature 03',
+     description: 'Auto-generated description for Feature 03',
+-    distribution: dist({ L: 250, E: 250 }),
+-    dominant_categories: ['L', 'E'],
++    distribution: dist({ O: 250, A: 250 }),
++    dominant_categories: ['O', 'A'],
+     dominant_percentage: 50,
+   })
+ 
+@@ -105,7 +105,7 @@ export function buildAnalysisFixture(): PollAnalysis {
+     return (lcgState >>> 0) / 0x100000000
+   }
+ 
+-  const FALLBACK_CATEGORIES: Category[] = ['M', 'L', 'E', 'I', 'C', 'D']
++  const FALLBACK_CATEGORIES: Category[] = ['M', 'O', 'A', 'I', 'R', 'Q']
+   for (let i = 4; i <= 20; i++) {
+     const key = `feat-${String(i).padStart(2, '0')}`
+     // Build a six-bucket distribution biased toward one of the six
+diff --git a/kano-frontend/e2e/pm/analysis-page.spec.ts b/kano-frontend/e2e/pm/analysis-page.spec.ts
+index 9530cb5..6dfac34 100644
+--- a/kano-frontend/e2e/pm/analysis-page.spec.ts
++++ b/kano-frontend/e2e/pm/analysis-page.spec.ts
+@@ -54,7 +54,7 @@ const populatedAnalysis = {
+       feature_key: 'feat-a',
+       name: 'Feature A',
+       description: 'First feature',
+-      distribution: { M: 14, L: 4, E: 2, I: 0, C: 0, D: 0 },
++      distribution: { M: 14, O: 4, A: 2, I: 0, R: 0, Q: 0 },
+       dominant_categories: ['M'],
+       dominant_percentage: 70,
+     },
+@@ -62,31 +62,31 @@ const populatedAnalysis = {
+       feature_key: 'feat-tie',
+       name: 'Tied Feature',
+       description: 'Two-way tie',
+-      distribution: { M: 10, L: 10, E: 0, I: 0, C: 0, D: 0 },
+-      dominant_categories: ['M', 'L'],
++      distribution: { M: 10, O: 10, A: 0, I: 0, R: 0, Q: 0 },
++      dominant_categories: ['M', 'O'],
+       dominant_percentage: 50,
+     },
+     {
+       feature_key: 'feat-three',
+       name: 'Three-way',
+       description: null,
+-      distribution: { M: 6, L: 7, E: 7, I: 0, C: 0, D: 0 },
+-      dominant_categories: ['L', 'E'],
++      distribution: { M: 6, O: 7, A: 7, I: 0, R: 0, Q: 0 },
++      dominant_categories: ['O', 'A'],
+       dominant_percentage: 35,
+     },
+     {
+       feature_key: 'feat-allsame',
+       name: 'Even Split',
+       description: 'No clear dominant — four-way tie',
+-      distribution: { M: 4, L: 4, E: 4, I: 4, C: 2, D: 2 },
+-      dominant_categories: ['M', 'L', 'E', 'I'],
++      distribution: { M: 4, O: 4, A: 4, I: 4, R: 2, Q: 2 },
++      dominant_categories: ['M', 'O', 'A', 'I'],
+       dominant_percentage: 20,
+     },
+     {
+       feature_key: 'feat-modest',
+       name: 'Modest Dominant',
+       description: 'Single dominant at a lower magnitude',
+-      distribution: { M: 9, L: 6, E: 3, I: 1, C: 1, D: 0 },
++      distribution: { M: 9, O: 6, A: 3, I: 1, R: 1, Q: 0 },
+       dominant_categories: ['M'],
+       dominant_percentage: 45,
+     },
+@@ -178,14 +178,14 @@ test.describe('Story 5-5 — analysis page (populated)', () => {
+     await expect(table).toBeVisible()
+     await expect(table.locator('[data-testid^="analysis-row-"]')).toHaveCount(5)
+ 
+-    // Single-dominant row (70% Must-have). Asserts the single-badge case.
++    // Single-dominant row (70% Must-be). Asserts the single-badge case.
+     await expect(page.getByTestId('analysis-row-feat-a')).toBeVisible()
+     const aRow = page.locator('tr', { has: page.getByTestId('analysis-row-feat-a') })
+     await expect(aRow.getByTestId('analysis-dominant-pct')).toHaveText('70%')
+     await expect(page.getByTestId('analysis-n-feat-a')).toHaveText('20')
+     await expect(aRow.locator('.badges .cat-badge')).toHaveCount(1)
+ 
+-    // Two-way tie row (50% each across M+L). Asserts the 2-badge tie case.
++    // Two-way tie row (50% each across M+O). Asserts the 2-badge tie case.
+     const tieRow = page.locator('tr', { has: page.getByTestId('analysis-row-feat-tie') })
+     await expect(tieRow.getByTestId('analysis-dominant-pct')).toHaveText('50% each')
+     await expect(tieRow.locator('.badges .cat-badge')).toHaveCount(2)
+@@ -195,7 +195,7 @@ test.describe('Story 5-5 — analysis page (populated)', () => {
+     await expect(threeRow.getByTestId('analysis-dominant-pct')).toHaveText('35% each')
+     await expect(threeRow.locator('.badges .cat-badge')).toHaveCount(2)
+ 
+-    // All-same / 4-way tie row (20% each across M+L+E+I). Asserts the
++    // All-same / 4-way tie row (20% each across M+O+A+I). Asserts the
+     // multi-badge tie case at the largest cardinality covered by v1.
+     const allSameRow = page.locator('tr', { has: page.getByTestId('analysis-row-feat-allsame') })
+     await expect(allSameRow.getByTestId('analysis-dominant-pct')).toHaveText('20% each')
+@@ -254,7 +254,7 @@ test.describe('Story 5-5 — analysis page (404)', () => {
+ })
+ 
+ test.describe('Story 5-6 — PerCategoryPanels secondary cross-index', () => {
+-  test('renders one panel per dominant category in fixed M→L→E→I→C→D order', async ({
++  test('renders one panel per dominant category in fixed M→O→A→I→R→Q order', async ({
+     page,
+   }) => {
+     await mockCsrf(page)
+@@ -264,17 +264,17 @@ test.describe('Story 5-6 — PerCategoryPanels secondary cross-index', () => {
+ 
+     await expect(page.getByTestId('per-category-panels')).toBeVisible()
+ 
+-    // populatedAnalysis dominants: feat-a (M), feat-tie (M,L),
+-    // feat-three (L,E), feat-allsame (M,L,E,I), feat-modest (M).
+-    // Expected panels: M, L, E, I — in that order. No C / D panels.
++    // populatedAnalysis dominants: feat-a (M), feat-tie (M,O),
++    // feat-three (O,A), feat-allsame (M,O,A,I), feat-modest (M).
++    // Expected panels: M, O, A, I — in that order. No R / Q panels.
+     const sections = page.locator('section.category-panel')
+     await expect(sections).toHaveCount(4)
+     await expect(sections.nth(0)).toHaveClass(/panel-m/)
+-    await expect(sections.nth(1)).toHaveClass(/panel-l/)
+-    await expect(sections.nth(2)).toHaveClass(/panel-e/)
++    await expect(sections.nth(1)).toHaveClass(/panel-o/)
++    await expect(sections.nth(2)).toHaveClass(/panel-a/)
+     await expect(sections.nth(3)).toHaveClass(/panel-i/)
+-    await expect(page.locator('.panel-c')).toHaveCount(0)
+-    await expect(page.locator('.panel-d')).toHaveCount(0)
++    await expect(page.locator('.panel-r')).toHaveCount(0)
++    await expect(page.locator('.panel-q')).toHaveCount(0)
+   })
+ 
+   test('tied feature appears in EACH of its dominant panels (FR35)', async ({
+@@ -285,16 +285,16 @@ test.describe('Story 5-6 — PerCategoryPanels secondary cross-index', () => {
+     await seedAnalysis(page, POLL_ID, populatedAnalysis)
+     await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
+ 
+-    // feat-tie is dominant in M and L — must show up in both panels.
++    // feat-tie is dominant in M and O — must show up in both panels.
+     await expect(
+       page.getByTestId('per-category-entry-M-feat-tie'),
+     ).toBeVisible()
+     await expect(
+-      page.getByTestId('per-category-entry-L-feat-tie'),
++      page.getByTestId('per-category-entry-O-feat-tie'),
+     ).toBeVisible()
+ 
+-    // feat-allsame is tied across M+L+E+I — exactly one entry per panel.
+-    for (const cat of ['M', 'L', 'E', 'I'] as const) {
++    // feat-allsame is tied across M+O+A+I — exactly one entry per panel.
++    for (const cat of ['M', 'O', 'A', 'I'] as const) {
+       await expect(
+         page.getByTestId(`per-category-entry-${cat}-feat-allsame`),
+       ).toBeVisible()
+@@ -357,8 +357,8 @@ test.describe('Story 5-7 — category help tooltips on first use', () => {
+     await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
+     await expect(page.getByTestId('analysis-table')).toBeVisible()
+ 
+-    // Hover the first Must-have badge in the Dominant column.
+-    const mustBadge = page.locator('.cat-badge-help').filter({ hasText: 'Must-have' }).first()
++    // Hover the first Must-be badge in the Dominant column.
++    const mustBadge = page.locator('.cat-badge-help').filter({ hasText: 'Must-be' }).first()
+     await mustBadge.hover()
+     await expect(page.getByRole('tooltip')).toContainText(/Users expect this feature/i)
+   })
+@@ -463,7 +463,7 @@ test.describe('Story 5-8 — axe-core at scale (20 features × 500 submissions)'
+     expect(await axeRun(page)).toEqual([])
+   })
+ 
+-  test('fixture shape sanity: 20 rows, feat-02 is tied M+L (FR35 reference row)', async ({
++  test('fixture shape sanity: 20 rows, feat-02 is tied M+O (FR35 reference row)', async ({
+     page,
+   }) => {
+     // Pin the fixture shape one last time at the spec layer so the perf /
+@@ -473,7 +473,7 @@ test.describe('Story 5-8 — axe-core at scale (20 features × 500 submissions)'
+     expect(fixture.features).toHaveLength(20)
+     expect(fixture.total_submissions).toBe(500)
+     expect(fixture.features[1].feature_key).toBe('feat-02')
+-    expect(fixture.features[1].dominant_categories).toEqual(['M', 'L'])
++    expect(fixture.features[1].dominant_categories).toEqual(['M', 'O'])
+ 
+     const seed = await seedAnalysisFixture(page)
+     await gotoAnalysisAndWait(page, seed)
+diff --git a/kano-frontend/src/api/types.ts b/kano-frontend/src/api/types.ts
+index 0caeb7c..c4b1a1c 100644
+--- a/kano-frontend/src/api/types.ts
++++ b/kano-frontend/src/api/types.ts
+@@ -128,7 +128,7 @@ export function classifyApiError(problem: ProblemDetails, status: number): KanoA
+  * cross the wire; the human-readable names live in `src/copy/en.ts` under
+  * `pm.category.*` and are resolved at render time by `<CatBadge>`.
+  */
+-export type Category = 'M' | 'L' | 'E' | 'I' | 'C' | 'D'
++export type Category = 'A' | 'M' | 'O' | 'I' | 'R' | 'Q'
+ 
+ export interface ProjectSummary {
+   id: string
+diff --git a/kano-frontend/src/components/AnalysisTable.vue b/kano-frontend/src/components/AnalysisTable.vue
+index c77a215..517ba62 100644
+--- a/kano-frontend/src/components/AnalysisTable.vue
++++ b/kano-frontend/src/components/AnalysisTable.vue
+@@ -154,7 +154,7 @@ function dominantLabel(row: AnalysisRow): string {
+                 <!--
+                   Story 5-7 — `:with-help="true"` opts the badge into the
+                   first-use category tooltip (FR39). The dominant cell is the
+-                  primary surface where Paola needs the "what does Must-have
++                  primary surface where Paola needs the "what does Must-be
+                   mean" explainer; theme-audit and other surfaces leave the
+                   prop at its default `false`.
+                 -->
+diff --git a/kano-frontend/src/components/CatBadge.vue b/kano-frontend/src/components/CatBadge.vue
+index 62ddc2d..54d21ea 100644
+--- a/kano-frontend/src/components/CatBadge.vue
++++ b/kano-frontend/src/components/CatBadge.vue
+@@ -1,14 +1,13 @@
+ <script setup lang="ts">
+ /**
+  * <CatBadge> — color swatch + human-readable category name for a Kano
+- * category code (M/L/E/I/C/D). The swatch is decorative (`aria-hidden`);
++ * category code (A/M/O/I/R/Q). The swatch is decorative (`aria-hidden`);
+  * the label is the sole accessible information channel (NFR10, UX spec
+  * line 580 — color never the sole signal).
+  *
+- * Suffix vocabulary (`cont`/`doub`) tracks the backend `Category` enum
+- * (`Contradictory`/`Doubtful`), not the UX-draft `Reverse`/`Questionable`
+- * the original story spec referenced — corrected during the Story 1-5
+- * (5,1)→D reconciliation.
++ * Suffix vocabulary (`attr`/`rev`/`que`) tracks the backend `Category` enum
++ * values (Attractive/Reverse/Questionable) — the standard Kano evaluation
++ * table the matrix follows (see kano_matrix.py).
+  *
+  * Story 5-7 added the optional `withHelp` prop: when set, the badge is
+  * wrapped in a `<v-tooltip>` whose text is a short first-use definition
+@@ -140,8 +139,8 @@ if (import.meta.env.DEV) {
+ 
+ .swatch-must { background-color: rgb(var(--v-theme-category-must)); }
+ .swatch-perf { background-color: rgb(var(--v-theme-category-perf)); }
+-.swatch-del  { background-color: rgb(var(--v-theme-category-del)); }
++.swatch-attr { background-color: rgb(var(--v-theme-category-attr)); }
+ .swatch-ind  { background-color: rgb(var(--v-theme-category-ind)); }
+-.swatch-cont { background-color: rgb(var(--v-theme-category-cont)); }
+-.swatch-doub { background-color: rgb(var(--v-theme-category-doub)); }
++.swatch-rev  { background-color: rgb(var(--v-theme-category-rev)); }
++.swatch-que  { background-color: rgb(var(--v-theme-category-que)); }
+ </style>
+diff --git a/kano-frontend/src/components/KanoCategoryPie.vue b/kano-frontend/src/components/KanoCategoryPie.vue
+index fd1854a..8bb4d82 100644
+--- a/kano-frontend/src/components/KanoCategoryPie.vue
++++ b/kano-frontend/src/components/KanoCategoryPie.vue
+@@ -13,11 +13,11 @@ import type { Category } from '@/api/types'
+ 
+ export const FILL_CLASS: Record<Category, string> = {
+   M: 'fill-must',
+-  L: 'fill-perf',
+-  E: 'fill-del',
++  O: 'fill-perf',
++  A: 'fill-attr',
+   I: 'fill-ind',
+-  C: 'fill-cont',
+-  D: 'fill-doub',
++  R: 'fill-rev',
++  Q: 'fill-que',
+ }
+ 
+ export interface Props {
+@@ -130,7 +130,7 @@ function arcPath(startFraction: number, endFraction: number): string {
+ }
+ 
+ const weights = computed<Record<Category, number>>(() => {
+-  const acc: Record<Category, number> = { M: 0, L: 0, E: 0, I: 0, C: 0, D: 0 }
++  const acc: Record<Category, number> = { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0 }
+   for (const feature of props.analysis.features) {
+     const cats = feature.dominant_categories
+     if (!cats || cats.length === 0) continue
+@@ -266,10 +266,10 @@ const slices = computed<Slice[]>(() => {
+ 
+ .fill-must { fill: rgb(var(--v-theme-category-must)); }
+ .fill-perf { fill: rgb(var(--v-theme-category-perf)); }
+-.fill-del  { fill: rgb(var(--v-theme-category-del)); }
++.fill-attr { fill: rgb(var(--v-theme-category-attr)); }
+ .fill-ind  { fill: rgb(var(--v-theme-category-ind)); }
+-.fill-cont { fill: rgb(var(--v-theme-category-cont)); }
+-.fill-doub { fill: rgb(var(--v-theme-category-doub)); }
++.fill-rev  { fill: rgb(var(--v-theme-category-rev)); }
++.fill-que  { fill: rgb(var(--v-theme-category-que)); }
+ 
+ .pie-legend {
+   list-style: none;
+diff --git a/kano-frontend/src/components/KanoCategoryReference.vue b/kano-frontend/src/components/KanoCategoryReference.vue
+index 90c7fcc..b198839 100644
+--- a/kano-frontend/src/components/KanoCategoryReference.vue
++++ b/kano-frontend/src/components/KanoCategoryReference.vue
+@@ -120,8 +120,8 @@ const HEADING_ID = 'kano-category-reference-heading'
+ 
+ .swatch-must { background-color: rgb(var(--v-theme-category-must)); }
+ .swatch-perf { background-color: rgb(var(--v-theme-category-perf)); }
+-.swatch-del  { background-color: rgb(var(--v-theme-category-del)); }
++.swatch-attr { background-color: rgb(var(--v-theme-category-attr)); }
+ .swatch-ind  { background-color: rgb(var(--v-theme-category-ind)); }
+-.swatch-cont { background-color: rgb(var(--v-theme-category-cont)); }
+-.swatch-doub { background-color: rgb(var(--v-theme-category-doub)); }
++.swatch-rev  { background-color: rgb(var(--v-theme-category-rev)); }
++.swatch-que  { background-color: rgb(var(--v-theme-category-que)); }
+ </style>
+diff --git a/kano-frontend/src/components/KanoStackedBar.vue b/kano-frontend/src/components/KanoStackedBar.vue
+index 669e405..2ecdc44 100644
+--- a/kano-frontend/src/components/KanoStackedBar.vue
++++ b/kano-frontend/src/components/KanoStackedBar.vue
+@@ -15,11 +15,11 @@ import type { Category } from '@/api/types'
+ 
+ export const FILL_CLASS: Record<Category, string> = {
+   M: 'fill-must',
+-  L: 'fill-perf',
+-  E: 'fill-del',
++  O: 'fill-perf',
++  A: 'fill-attr',
+   I: 'fill-ind',
+-  C: 'fill-cont',
+-  D: 'fill-doub',
++  R: 'fill-rev',
++  Q: 'fill-que',
+ }
+ 
+ export interface Props {
+@@ -223,16 +223,16 @@ if (import.meta.env.DEV) {
+ 
+ .fill-must { fill: rgb(var(--v-theme-category-must)); }
+ .fill-perf { fill: rgb(var(--v-theme-category-perf)); }
+-.fill-del  { fill: rgb(var(--v-theme-category-del)); }
++.fill-attr { fill: rgb(var(--v-theme-category-attr)); }
+ .fill-ind  { fill: rgb(var(--v-theme-category-ind)); }
+-.fill-cont { fill: rgb(var(--v-theme-category-cont)); }
+-.fill-doub { fill: rgb(var(--v-theme-category-doub)); }
++.fill-rev  { fill: rgb(var(--v-theme-category-rev)); }
++.fill-que  { fill: rgb(var(--v-theme-category-que)); }
+ 
+ /*
+  * Focus ring — 2 px Tixeo primary outline + 1 px offset (per AC #3 and
+  * UX spec line 581). The single-color outline meets 3:1 contrast against
+  * most of the Kano palette but lands closer to 2:1 against the
+- * Contradictory amber-700 segment. If the Story 5-8 manual a11y sweep
++ * Reverse amber-700 segment. If the Story 5-8 manual a11y sweep
+  * flags this, escalate to a composed pattern (orange outline + 1 px
+  * inner white ring via `box-shadow`); the Dev Notes pin the recipe.
+  */
+diff --git a/kano-frontend/src/components/kano-categories.ts b/kano-frontend/src/components/kano-categories.ts
+index c8d0e69..efa3cf0 100644
+--- a/kano-frontend/src/components/kano-categories.ts
++++ b/kano-frontend/src/components/kano-categories.ts
+@@ -1,9 +1,9 @@
+ /**
+  * Cross-component constants for the six Kano categories.
+  *
+- * `CATEGORY_CODES` is the canonical iteration order — the Kano-textbook
+- * order Must-have → Performance → Delighter → Indifferent → Contradictory
+- * → Doubtful (UX spec line 1277). Every analysis surface that renders the
++ * `CATEGORY_CODES` is the canonical iteration order — the standard-Kano
++ * order Must-be → Performance → Attractive → Indifferent → Reverse
++ * → Questionable. Every analysis surface that renders the
+  * six categories side-by-side (CatBadge lineup, KanoStackedBar segments,
+  * KanoStackedBarTable rows, per-category panels) MUST iterate this list
+  * so the visual scan-order stays consistent across the page.
+@@ -21,15 +21,15 @@
+ import type { Category } from '@/api/types'
+ import type { CopyKey } from '@/copy/en'
+ 
+-export const CATEGORY_CODES: readonly Category[] = ['M', 'L', 'E', 'I', 'C', 'D'] as const
++export const CATEGORY_CODES: readonly Category[] = ['M', 'O', 'A', 'I', 'R', 'Q'] as const
+ 
+ export const COPY_KEY: Record<Category, CopyKey> = {
+   M: 'pm.category.must',
+-  L: 'pm.category.perf',
+-  E: 'pm.category.del',
++  O: 'pm.category.perf',
++  A: 'pm.category.attr',
+   I: 'pm.category.ind',
+-  C: 'pm.category.cont',
+-  D: 'pm.category.doub',
++  R: 'pm.category.rev',
++  Q: 'pm.category.que',
+ }
+ 
+ /**
+@@ -40,11 +40,11 @@ export const COPY_KEY: Record<Category, CopyKey> = {
+  */
+ export const HELP_KEY: Record<Category, CopyKey> = {
+   M: 'pm.category.help.must',
+-  L: 'pm.category.help.perf',
+-  E: 'pm.category.help.del',
++  O: 'pm.category.help.perf',
++  A: 'pm.category.help.attr',
+   I: 'pm.category.help.ind',
+-  C: 'pm.category.help.cont',
+-  D: 'pm.category.help.doub',
++  R: 'pm.category.help.rev',
++  Q: 'pm.category.help.que',
+ }
+ 
+ /**
+@@ -56,18 +56,18 @@ export const HELP_KEY: Record<Category, CopyKey> = {
+  */
+ export const DESC_KEY: Record<Category, CopyKey> = {
+   M: 'analysis.categoryRef.desc.must',
+-  L: 'analysis.categoryRef.desc.perf',
+-  E: 'analysis.categoryRef.desc.del',
++  O: 'analysis.categoryRef.desc.perf',
++  A: 'analysis.categoryRef.desc.attr',
+   I: 'analysis.categoryRef.desc.ind',
+-  C: 'analysis.categoryRef.desc.cont',
+-  D: 'analysis.categoryRef.desc.doub',
++  R: 'analysis.categoryRef.desc.rev',
++  Q: 'analysis.categoryRef.desc.que',
+ }
+ 
+ export const SWATCH_CLASS: Record<Category, string> = {
+   M: 'swatch-must',
+-  L: 'swatch-perf',
+-  E: 'swatch-del',
++  O: 'swatch-perf',
++  A: 'swatch-attr',
+   I: 'swatch-ind',
+-  C: 'swatch-cont',
+-  D: 'swatch-doub',
++  R: 'swatch-rev',
++  Q: 'swatch-que',
+ }
+diff --git a/kano-frontend/src/copy/en.ts b/kano-frontend/src/copy/en.ts
+index 90a6067..42a036f 100644
+--- a/kano-frontend/src/copy/en.ts
++++ b/kano-frontend/src/copy/en.ts
+@@ -34,35 +34,31 @@ export const en = {
+   'pm.layout.sidebar.resources': 'Resources',
+   'pm.layout.appBar.title': 'Kano',
+ 
+-  // PM category labels (mirror the six theme tokens in src/theme/tixeo.ts)
+-  // Display labels are the friendlier industry-standard Kano terms for the
+-  // first three categories (Must-have ↔ MANDATORY, Performance ↔ LINEAR,
+-  // Delighter ↔ EXCITER) — these map 1:1. The bottom two use the spec's own
+-  // names (Contradictory, Doubtful) rather than the extended-Kano vocabulary
+-  // (Reverse, Questionable) that drafts inadvertently used — those terms
+-  // mean *different things* in Kano theory and conflict with the backend
+-  // semantics (e.g. C means "respondent answers contradict each other,"
+-  // not "user wants the inverse feature"). See story 1-5 (5,1)→D fix.
+-  'pm.category.must': 'Must-have',
++  // PM category labels (mirror the six theme tokens in src/theme/tixeo.ts).
++  // Standard Kano evaluation-table vocabulary: A=Attractive, M=Must-be,
++  // O=Performance, I=Indifferent, R=Reverse, Q=Questionable. Suffixes track
++  // the backend `Category` enum values and the `pm.category.*` key map in
++  // `kano-categories.ts` (must/perf/attr/ind/rev/que).
++  'pm.category.must': 'Must-be',
+   'pm.category.perf': 'Performance',
+-  'pm.category.del': 'Delighter',
++  'pm.category.attr': 'Attractive',
+   'pm.category.ind': 'Indifferent',
+-  'pm.category.cont': 'Contradictory',
+-  'pm.category.doub': 'Doubtful',
++  'pm.category.rev': 'Reverse',
++  'pm.category.que': 'Questionable',
+ 
+   // PM category help tooltips (Story 5-7) — short ≤ 2-line definitions
+   // surfaced by `<CatBadge :with-help="true">` on the analysis page (FR39
+   // first-use help). Suffix vocabulary tracks the backend `Category` enum
+-  // (Contradictory / Doubtful) to match `pm.category.cont` / `pm.category.doub`
+-  // above; see Story 1-5 (5,1)→D reconciliation. Wording is non-load-bearing
++  // (Attractive / Reverse / Questionable) to match `pm.category.attr` /
++  // `pm.category.rev` / `pm.category.que` above. Wording is non-load-bearing
+   // (every category is also labeled visibly via CatBadge); a copy-deck
+   // refinement during low-fidelity review does not require a code change.
+   'pm.category.help.must': 'Users expect this feature. Its absence causes frustration.',
+   'pm.category.help.perf': 'Satisfaction scales with quality. More is better.',
+-  'pm.category.help.del': "Aspirational. Users don't expect it, but love it when present.",
++  'pm.category.help.attr': "Aspirational. Users don't expect it, but love it when present.",
+   'pm.category.help.ind': "Users don't care whether this feature exists or not.",
+-  'pm.category.help.cont': "Responses contradicted each other. The category is unstable until more data arrives.",
+-  'pm.category.help.doub': 'Responses were inconsistent. More data is needed before drawing a conclusion.',
++  'pm.category.help.rev': 'Users actively prefer this feature absent. Presence reduces satisfaction.',
++  'pm.category.help.que': 'Contradictory answers — usually a misread question. Treat the result with caution.',
+ 
+   // Respondent Likert option labels (FR22 — plain-language replacements for
+   // the Kano-methodology jargon). The wording is Story 4-5 / epics line
+@@ -384,23 +380,22 @@ export const en = {
+   // of the poll's data) with a fuller, Kano-textbook-grounded description.
+   // Deliberately a SEPARATE namespace from the terse `pm.category.help.*`
+   // CatBadge first-use tooltips (Story 5-7): different surface, different
+-  // length budget. `cont`/`doub` track THIS product's matrix semantics
+-  // (C = the respondent's paired answers contradict each other → inconclusive;
+-  // D = an extreme / questionable answer pattern), not the textbook "Reverse"
+-  // reading the product does not model (see kano_matrix.py).
++  // length budget. Standard Kano evaluation-table vocabulary — `rev`/`que`
++  // are Reverse (the user prefers the feature absent) and Questionable (a
++  // contradictory answer pair); see kano_matrix.py.
+   'analysis.categoryRef.heading': 'What the categories mean',
+   'analysis.categoryRef.desc.must':
+     'A basic expectation. Its absence causes strong dissatisfaction, yet its presence is taken for granted — the price of entry.',
+   'analysis.categoryRef.desc.perf':
+     'The more, the better. Satisfaction rises and falls in direct proportion to how well this is delivered.',
+-  'analysis.categoryRef.desc.del':
++  'analysis.categoryRef.desc.attr':
+     "An unexpected extra. Users don't ask for it, but its presence sparks delight and sets the product apart.",
+   'analysis.categoryRef.desc.ind':
+     'Users are unmoved either way — its presence or absence makes little difference to how satisfied they feel.',
+-  'analysis.categoryRef.desc.cont':
+-    "Respondents' paired answers worked against each other, so no stable preference emerged. Treat as inconclusive.",
+-  'analysis.categoryRef.desc.doub':
+-    'An extreme or unlikely answer pattern. The signal is questionable until more responses arrive.',
++  'analysis.categoryRef.desc.rev':
++    'Users actively prefer this feature absent — building it would work against satisfaction, not for it.',
++  'analysis.categoryRef.desc.que':
++    'A contradictory answer pair, usually a misread question. The signal is unreliable; treat it with caution.',
+ } as const
+ 
+ export type CopyKey = keyof typeof en
+diff --git a/kano-frontend/src/pages/dev/ThemeAudit.vue b/kano-frontend/src/pages/dev/ThemeAudit.vue
+index ef0acf1..9cfc277 100644
+--- a/kano-frontend/src/pages/dev/ThemeAudit.vue
++++ b/kano-frontend/src/pages/dev/ThemeAudit.vue
+@@ -44,7 +44,7 @@
+     <!-- ============================ Typography ============================ -->
+     <section class="mb-10">
+       <h2 class="text-h3 mb-4">{{ copy('dev.themeAudit.typography') }}</h2>
+-      <div class="text-display mb-2">Display 32 — Must-have 71%</div>
++      <div class="text-display mb-2">Display 32 — Must-be 71%</div>
+       <div class="text-h1 mb-2">H1 24 — Page title</div>
+       <div class="text-h2 mb-2">H2 20 — Section heading</div>
+       <div class="text-h3 mb-2">H3 16 — Card title</div>
+@@ -108,7 +108,7 @@
+       <v-textarea label="Feature description" rows="3" />
+       <v-select
+         label="Category"
+-        :items="['Must-have', 'Performance', 'Delighter']"
++        :items="['Must-be', 'Performance', 'Attractive']"
+       />
+       <!--
+         Likert demo uses the real `respondent.likert.*` values from the copy
+@@ -230,7 +230,7 @@
+       <v-list lines="two">
+         <v-list-item
+           title="First feature"
+-          subtitle="Must-have · 8 of 12 responses"
++          subtitle="Must-be · 8 of 12 responses"
+         >
+           <template #title>
+             <v-list-item-title>First feature</v-list-item-title>
+@@ -242,7 +242,7 @@
+         />
+         <v-list-item
+           title="Third feature"
+-          subtitle="Delighter · 3 of 12 responses"
++          subtitle="Attractive · 3 of 12 responses"
+         />
+       </v-list>
+     </section>
+@@ -349,12 +349,12 @@ const colorSwatches: ColorSwatch[] = [
+   { token: 'warning', label: 'Warning', hex: tixeoColors.warning },
+   { token: 'error', label: 'Error', hex: tixeoColors.error },
+   { token: 'info', label: 'Info', hex: tixeoColors.info },
+-  { token: 'category-must', label: 'Must-have', hex: tixeoColors['category-must'] },
++  { token: 'category-must', label: 'Must-be', hex: tixeoColors['category-must'] },
+   { token: 'category-perf', label: 'Performance', hex: tixeoColors['category-perf'] },
+-  { token: 'category-del', label: 'Delighter', hex: tixeoColors['category-del'] },
++  { token: 'category-attr', label: 'Attractive', hex: tixeoColors['category-attr'] },
+   { token: 'category-ind', label: 'Indifferent', hex: tixeoColors['category-ind'] },
+-  { token: 'category-cont', label: 'Contradictory', hex: tixeoColors['category-cont'] },
+-  { token: 'category-doub', label: 'Doubtful', hex: tixeoColors['category-doub'] },
++  { token: 'category-rev', label: 'Reverse', hex: tixeoColors['category-rev'] },
++  { token: 'category-que', label: 'Questionable', hex: tixeoColors['category-que'] },
+ ]
+ 
+ interface SpacingToken {
+@@ -391,9 +391,9 @@ const tableHeaders: TableHeader[] = [
+ ]
+ 
+ const tableItems: FeatureRow[] = [
+-  { name: 'Auto-save', category: 'Must-have', responses: 12 },
++  { name: 'Auto-save', category: 'Must-be', responses: 12 },
+   { name: 'Custom themes', category: 'Performance', responses: 8 },
+-  { name: 'AI suggestions', category: 'Delighter', responses: 4 },
++  { name: 'AI suggestions', category: 'Attractive', responses: 4 },
+   { name: 'CSV export', category: 'Indifferent', responses: 2 },
+ ]
+ 
+@@ -404,7 +404,7 @@ const snackbar = reactive({ show: false, color: 'success', text: '' })
+ // segments are visible at the 12 px default variant. Pinned here so the
+ // Playwright visual-regression baseline diffs against a known shape.
+ const analysisDemoDistribution: Record<Category, number> = {
+-  M: 7, L: 4, E: 3, I: 2, C: 1, D: 1,
++  M: 7, O: 4, A: 3, I: 2, R: 1, Q: 1,
+ }
+ const analysisDemoTotal = 18
+ 
+diff --git a/kano-frontend/src/theme/tixeo.ts b/kano-frontend/src/theme/tixeo.ts
+index eb2b680..9058916 100644
+--- a/kano-frontend/src/theme/tixeo.ts
++++ b/kano-frontend/src/theme/tixeo.ts
+@@ -47,23 +47,21 @@ export const tixeoColors = {
+ 
+   // Kano categories — must each meet 4.5:1 against `surface` (white) for
+   // the small-text labels that ride next to the swatch. Token suffixes
+-  // mirror the backend `Category` enum (M, L, E, I, C, D — see
+-  // `kano-backend/src/kano/services/kano_matrix.py`): `must`/`perf`/`del`/
+-  // `ind`/`cont`/`doub`. Earlier drafts used `rev`/`que` (Reverse/
+-  // Questionable) carried over from the UX spec's draft vocabulary; that
+-  // diverged from the backend's `Contradictory`/`Doubtful` and was corrected
+-  // alongside the story 1-5 (5,1)→D fix so both layers share one vocabulary.
++  // mirror the backend `Category` enum (M, O, A, I, R, Q — see
++  // `kano-backend/src/kano/services/kano_matrix.py`): `must`/`perf`/`attr`/
++  // `ind`/`rev`/`que`. The standard Kano move from the bespoke six-category
++  // model kept the existing AA-compliant hex palette and remapped tokens by
++  // concept (Delighter's purple is now Attractive, Contradictory's brown is
++  // now Reverse, Doubtful's goldenrod is now Questionable).
+   'category-must': '#1E3A8A',
+   'category-perf': '#0D9488',
+-  'category-del': '#7C3AED',
++  'category-attr': '#7C3AED',
+   'category-ind': '#6B7280',
+-  'category-cont': '#B45309',
+-  // Doubtful was a warm stone gray (#78716C) that read as a near-twin of the
+-  // cool gray `category-ind` (#6B7280) — the two swatches were almost
+-  // indistinguishable side-by-side. Moved off gray to a dark goldenrod so
+-  // Doubtful is unmistakable from Indifferent. Darkened to ~5:1 on `surface`
+-  // (a lighter gold sat at 2.7:1 and failed the AA floor in theme-contrast).
+-  'category-doub': '#8F6912',
++  'category-rev': '#B45309',
++  // Questionable keeps the dark goldenrod (~5:1 on `surface`) that was chosen
++  // to stay unmistakable from the cool-gray `category-ind` (#6B7280) — a
++  // lighter gold sat at 2.7:1 and failed the AA floor in theme-contrast.
++  'category-que': '#8F6912',
+ } as const
+ 
+ export type TixeoColorToken = keyof typeof tixeoColors
+@@ -100,10 +98,10 @@ export const contrastPairings = {
+   largeOrUi: [
+     { fg: 'category-must', bg: 'surface' },
+     { fg: 'category-perf', bg: 'surface' },
+-    { fg: 'category-del', bg: 'surface' },
++    { fg: 'category-attr', bg: 'surface' },
+     { fg: 'category-ind', bg: 'surface' },
+-    { fg: 'category-cont', bg: 'surface' },
+-    { fg: 'category-doub', bg: 'surface' },
++    { fg: 'category-rev', bg: 'surface' },
++    { fg: 'category-que', bg: 'surface' },
+     { fg: 'on-primary', bg: 'primary' },
+   ],
+ } as const
+diff --git a/kano-frontend/tests/unit/analysis-page.spec.ts b/kano-frontend/tests/unit/analysis-page.spec.ts
+index 1779d46..258163b 100644
+--- a/kano-frontend/tests/unit/analysis-page.spec.ts
++++ b/kano-frontend/tests/unit/analysis-page.spec.ts
+@@ -220,8 +220,8 @@ beforeEach(() => {
+   })
+ })
+ 
+-function dist(overrides: Partial<Record<'M' | 'L' | 'E' | 'I' | 'C' | 'D', number>> = {}) {
+-  return { M: 0, L: 0, E: 0, I: 0, C: 0, D: 0, ...overrides }
++function dist(overrides: Partial<Record<'M' | 'O' | 'A' | 'I' | 'R' | 'Q', number>> = {}) {
++  return { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0, ...overrides }
+ }
+ 
+ function populated(total = 10): PollAnalysis {
+@@ -234,7 +234,7 @@ function populated(total = 10): PollAnalysis {
+         feature_key: 'feat-a',
+         name: 'Feature A',
+         description: null,
+-        distribution: dist({ M: 7, L: 3 }),
++        distribution: dist({ M: 7, O: 3 }),
+         dominant_categories: ['M'],
+         dominant_percentage: 70,
+       },
+diff --git a/kano-frontend/tests/unit/analysis-table.spec.ts b/kano-frontend/tests/unit/analysis-table.spec.ts
+index 622d4c6..053ba33 100644
+--- a/kano-frontend/tests/unit/analysis-table.spec.ts
++++ b/kano-frontend/tests/unit/analysis-table.spec.ts
+@@ -139,7 +139,7 @@ const globalStubs = {
+ }
+ 
+ function dist(overrides: Partial<Record<Category, number>>): Record<Category, number> {
+-  return { M: 0, L: 0, E: 0, I: 0, C: 0, D: 0, ...overrides }
++  return { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0, ...overrides }
+ }
+ 
+ function analysis(features: PollAnalysis['features']): PollAnalysis {
+@@ -161,7 +161,7 @@ describe('AnalysisTable — composition', () => {
+             feature_key: 'feat-a',
+             name: 'Feature A',
+             description: 'First feature',
+-            distribution: dist({ M: 7, L: 3 }),
++            distribution: dist({ M: 7, O: 3 }),
+             dominant_categories: ['M'],
+             dominant_percentage: 70,
+           },
+@@ -169,8 +169,8 @@ describe('AnalysisTable — composition', () => {
+             feature_key: 'feat-b',
+             name: 'Feature B',
+             description: null,
+-            distribution: dist({ L: 5, E: 5 }),
+-            dominant_categories: ['L', 'E'],
++            distribution: dist({ O: 5, A: 5 }),
++            dominant_categories: ['O', 'A'],
+             dominant_percentage: 50,
+           },
+         ]),
+@@ -193,7 +193,7 @@ describe('AnalysisTable — composition', () => {
+             feature_key: 'feat-a',
+             name: 'A',
+             description: null,
+-            distribution: dist({ M: 7, L: 3 }),
++            distribution: dist({ M: 7, O: 3 }),
+             dominant_categories: ['M'],
+             dominant_percentage: 70,
+           },
+@@ -219,8 +219,8 @@ describe('AnalysisTable — composition', () => {
+             feature_key: 'feat-tie',
+             name: 'Tie',
+             description: null,
+-            distribution: dist({ L: 5, E: 5 }),
+-            dominant_categories: ['L', 'E'],
++            distribution: dist({ O: 5, A: 5 }),
++            dominant_categories: ['O', 'A'],
+             dominant_percentage: 50,
+           },
+         ]),
+@@ -231,8 +231,8 @@ describe('AnalysisTable — composition', () => {
+     expect(pct.text()).toBe('50% each')
+     const badges = wrapper.findAll('[data-cat-badge]')
+     expect(badges).toHaveLength(2)
+-    expect(badges[0].attributes('data-cat-badge')).toBe('L')
+-    expect(badges[1].attributes('data-cat-badge')).toBe('E')
++    expect(badges[0].attributes('data-cat-badge')).toBe('O')
++    expect(badges[1].attributes('data-cat-badge')).toBe('A')
+     expect(wrapper.findAll('.badge-sep')).toHaveLength(1)
+   })
+ 
+@@ -245,8 +245,8 @@ describe('AnalysisTable — composition', () => {
+             feature_key: 'feat-three',
+             name: 'Three',
+             description: null,
+-            distribution: dist({ M: 1, L: 1, E: 1 }),
+-            dominant_categories: ['M', 'L', 'E'],
++            distribution: dist({ M: 1, O: 1, A: 1 }),
++            dominant_categories: ['M', 'O', 'A'],
+             dominant_percentage: 33.3,
+           },
+         ]),
+@@ -267,7 +267,7 @@ describe('AnalysisTable — composition', () => {
+             feature_key: 'feat-frac',
+             name: 'F',
+             description: null,
+-            distribution: dist({ M: 2, L: 1 }),
++            distribution: dist({ M: 2, O: 1 }),
+             dominant_categories: ['M'],
+             dominant_percentage: 66.7,
+           },
+@@ -293,7 +293,7 @@ describe('AnalysisTable — composition', () => {
+               feature_key: 'feat-a',
+               name: 'A',
+               description: null,
+-              distribution: dist({ M: 4, L: 3, E: 3 }),
++              distribution: dist({ M: 4, O: 3, A: 3 }),
+               dominant_categories: ['M'],
+               dominant_percentage: 40,
+             },
+@@ -340,8 +340,8 @@ describe('AnalysisTable — composition', () => {
+             feature_key: 'feat-tie',
+             name: 'Tie',
+             description: null,
+-            distribution: dist({ M: 5, L: 5 }),
+-            dominant_categories: ['M', 'L'],
++            distribution: dist({ M: 5, O: 5 }),
++            dominant_categories: ['M', 'O'],
+             dominant_percentage: 50,
+           },
+         ]),
+@@ -375,8 +375,8 @@ describe('AnalysisTable — composition', () => {
+             feature_key: 'feat-b',
+             name: 'B',
+             description: null,
+-            distribution: dist({ L: 5 }),
+-            dominant_categories: ['L'],
++            distribution: dist({ O: 5 }),
++            dominant_categories: ['O'],
+             dominant_percentage: 100,
+           },
+         ]),
+diff --git a/kano-frontend/tests/unit/cat-badge.spec.ts b/kano-frontend/tests/unit/cat-badge.spec.ts
+index be312a3..ea7eec2 100644
+--- a/kano-frontend/tests/unit/cat-badge.spec.ts
++++ b/kano-frontend/tests/unit/cat-badge.spec.ts
+@@ -45,11 +45,11 @@ const tooltipStubs = { 'v-tooltip': VTooltipStub }
+ 
+ const VARIANTS = [
+   { code: 'M', swatch: 'swatch-must' },
+-  { code: 'L', swatch: 'swatch-perf' },
+-  { code: 'E', swatch: 'swatch-del' },
++  { code: 'O', swatch: 'swatch-perf' },
++  { code: 'A', swatch: 'swatch-attr' },
+   { code: 'I', swatch: 'swatch-ind' },
+-  { code: 'C', swatch: 'swatch-cont' },
+-  { code: 'D', swatch: 'swatch-doub' },
++  { code: 'R', swatch: 'swatch-rev' },
++  { code: 'Q', swatch: 'swatch-que' },
+ ] as const satisfies ReadonlyArray<{ code: Category; swatch: string }>
+ 
+ describe('CatBadge — six valid variants', () => {
+@@ -147,7 +147,7 @@ describe('CatBadge — with-help tooltip (Story 5-7)', () => {
+   })
+ 
+   test('each category code resolves to its own help-key tooltip text', () => {
+-    const codes: Category[] = ['M', 'L', 'E', 'I', 'C', 'D']
++    const codes: Category[] = ['M', 'O', 'A', 'I', 'R', 'Q']
+     for (const code of codes) {
+       const wrapper = mount(CatBadge, {
+         props: { category: code, withHelp: true },
+diff --git a/kano-frontend/tests/unit/kano-category-pie.spec.ts b/kano-frontend/tests/unit/kano-category-pie.spec.ts
+index 7e060eb..794e1c8 100644
+--- a/kano-frontend/tests/unit/kano-category-pie.spec.ts
++++ b/kano-frontend/tests/unit/kano-category-pie.spec.ts
+@@ -6,7 +6,7 @@
+  * - Slices key on each feature's dominant category, sized by category weight
+  * - A tied feature splits fractionally (1/N) across its tied categories so
+  *   the slices sum to exactly 100%
+- * - Fixed M → L → E → I → C → D slice + legend order regardless of input
++ * - Fixed M → O → A → I → R → Q slice + legend order regardless of input
+  * - Features with an empty `dominant_categories` list contribute nothing
+  * - A lone present category (100%) renders a full `<circle>`, not an arc path
+  * - Total weight ≤ 0 renders nothing
+@@ -43,7 +43,7 @@ const VTooltipStub = defineComponent({
+ const globalStubs = { 'v-tooltip': VTooltipStub }
+ 
+ function dist(): Record<Category, number> {
+-  return { M: 0, L: 0, E: 0, I: 0, C: 0, D: 0 }
++  return { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0 }
+ }
+ 
+ function mkFeature(
+@@ -66,7 +66,7 @@ function analysis(features: FeatureAnalysis[], total = 10): PollAnalysis {
+ 
+ function legendLabel(cat: Category, pct: string): string {
+   return en['analysis.pie.sliceLabel']
+-    .replace('{name}', en[`pm.category.${({ M: 'must', L: 'perf', E: 'del', I: 'ind', C: 'cont', D: 'doub' } as const)[cat]}`])
++    .replace('{name}', en[`pm.category.${({ M: 'must', O: 'perf', A: 'attr', I: 'ind', R: 'rev', Q: 'que' } as const)[cat]}`])
+     .replace('{pct}', pct)
+ }
+ 
+@@ -79,72 +79,72 @@ function mountPie(features: FeatureAnalysis[]) {
+ 
+ describe('KanoCategoryPie — slice composition', () => {
+   test('slices are sized by dominant-category counts', () => {
+-    // M=2, L=1, E=1 → total 4 → M 50%, L 25%, E 25%.
++    // M=2, O=1, A=1 → total 4 → M 50%, O 25%, A 25%.
+     const wrapper = mountPie([
+       mkFeature('a', ['M']),
+       mkFeature('b', ['M']),
+-      mkFeature('c', ['L']),
+-      mkFeature('d', ['E']),
++      mkFeature('c', ['O']),
++      mkFeature('d', ['A']),
+     ])
+ 
+     const cats = wrapper.findAll('path').map((p) => p.attributes('data-category'))
+-    expect(cats).toEqual(['M', 'L', 'E'])
++    expect(cats).toEqual(['M', 'O', 'A'])
+ 
+     const legend = wrapper.findAll('.pie-legend .legend-text').map((n) => n.text())
+     expect(legend).toEqual([
+       legendLabel('M', '50'),
+-      legendLabel('L', '25'),
+-      legendLabel('E', '25'),
++      legendLabel('O', '25'),
++      legendLabel('A', '25'),
+     ])
+   })
+ 
+-  test('slice + legend order is fixed M→L→E→I→C→D regardless of input order', () => {
++  test('slice + legend order is fixed M→O→A→I→R→Q regardless of input order', () => {
+     const wrapper = mountPie([
+-      mkFeature('d', ['D']),
+-      mkFeature('c', ['C']),
++      mkFeature('d', ['Q']),
++      mkFeature('c', ['R']),
+       mkFeature('i', ['I']),
+-      mkFeature('e', ['E']),
+-      mkFeature('l', ['L']),
++      mkFeature('e', ['A']),
++      mkFeature('l', ['O']),
+       mkFeature('m', ['M']),
+     ])
+ 
+     const order = wrapper
+       .findAll('.pie-legend li')
+       .map((li) => li.attributes('data-category'))
+-    expect(order).toEqual(['M', 'L', 'E', 'I', 'C', 'D'])
++    expect(order).toEqual(['M', 'O', 'A', 'I', 'R', 'Q'])
+   })
+ 
+   test('per-slice tooltip text matches the legend label', () => {
+-    const wrapper = mountPie([mkFeature('a', ['M']), mkFeature('b', ['L'])])
++    const wrapper = mountPie([mkFeature('a', ['M']), mkFeature('b', ['O'])])
+     const tips = wrapper.findAll('[data-tooltip-text]').map((g) => g.attributes('data-tooltip-text'))
+-    expect(tips).toEqual([legendLabel('M', '50'), legendLabel('L', '50')])
++    expect(tips).toEqual([legendLabel('M', '50'), legendLabel('O', '50')])
+   })
+ })
+ 
+ describe('KanoCategoryPie — tie handling (fractional split)', () => {
+   test('a tied feature splits 1/N across its tied categories', () => {
+-    // One feature tied M+L, one feature M-only → M=1.5, L=0.5 → 75% / 25%.
+-    const wrapper = mountPie([mkFeature('tie', ['M', 'L']), mkFeature('m', ['M'])])
++    // One feature tied M+O, one feature M-only → M=1.5, O=0.5 → 75% / 25%.
++    const wrapper = mountPie([mkFeature('tie', ['M', 'O']), mkFeature('m', ['M'])])
+ 
+     const legend = wrapper.findAll('.pie-legend .legend-text').map((n) => n.text())
+-    expect(legend).toEqual([legendLabel('M', '75'), legendLabel('L', '25')])
++    expect(legend).toEqual([legendLabel('M', '75'), legendLabel('O', '25')])
+   })
+ 
+   test('a lone tied feature splits to 50/50 and sums to 100%', () => {
+-    const wrapper = mountPie([mkFeature('tie', ['M', 'L'])])
++    const wrapper = mountPie([mkFeature('tie', ['M', 'O'])])
+     const legend = wrapper.findAll('.pie-legend .legend-text').map((n) => n.text())
+-    expect(legend).toEqual([legendLabel('M', '50'), legendLabel('L', '50')])
++    expect(legend).toEqual([legendLabel('M', '50'), legendLabel('O', '50')])
+   })
+ 
+   test('even three-way split uses largest-remainder so the displayed total is 100%', () => {
+     // Three equal shares each round to 33.3 → naive display reads 99.9%.
+     // Largest-remainder hands the leftover 0.1 to the first slice → 33.4.
+-    const wrapper = mountPie([mkFeature('a', ['M']), mkFeature('b', ['L']), mkFeature('c', ['E'])])
++    const wrapper = mountPie([mkFeature('a', ['M']), mkFeature('b', ['O']), mkFeature('c', ['A'])])
+     const legend = wrapper.findAll('.pie-legend .legend-text').map((n) => n.text())
+     expect(legend).toEqual([
+       legendLabel('M', '33.4'),
+-      legendLabel('L', '33.3'),
+-      legendLabel('E', '33.3'),
++      legendLabel('O', '33.3'),
++      legendLabel('A', '33.3'),
+     ])
+ 
+     // The printed percentages sum to exactly 100.0.
+@@ -160,7 +160,7 @@ describe('KanoCategoryPie — arc geometry', () => {
+   test('two equal slices emit the expected arc `d` paths (50/50)', () => {
+     // Sweep starts at 12 o'clock and runs clockwise on r=49 centred at
+     // (50,50): slice 1 spans top→bottom down the right, slice 2 bottom→top.
+-    const wrapper = mountPie([mkFeature('a', ['M']), mkFeature('b', ['L'])])
++    const wrapper = mountPie([mkFeature('a', ['M']), mkFeature('b', ['O'])])
+     const paths = wrapper.findAll('path')
+     expect(paths[0].attributes('d')).toBe('M 50 50 L 50 1 A 49 49 0 0 1 50 99 Z')
+     expect(paths[1].attributes('d')).toBe('M 50 50 L 50 99 A 49 49 0 0 1 50 1 Z')
+@@ -168,18 +168,18 @@ describe('KanoCategoryPie — arc geometry', () => {
+ 
+   test('a slice larger than 50% sets the large-arc flag', () => {
+     // M = 3/4 → its arc spans 270°, so the large-arc flag must be 1; the
+-    // minority L slice (90°) keeps flag 0.
++    // minority O slice (90°) keeps flag 0.
+     const wrapper = mountPie([
+       mkFeature('a', ['M']),
+       mkFeature('b', ['M']),
+       mkFeature('c', ['M']),
+-      mkFeature('d', ['L']),
++      mkFeature('d', ['O']),
+     ])
+     const paths = wrapper.findAll('path')
+     // `A rx ry xrot largeArc sweep x y` — the 5th token after `A` is largeArc.
+     const largeArcFlag = (d: string) => d.split('A ')[1].trim().split(/\s+/)[3]
+     expect(largeArcFlag(paths[0].attributes('d')!)).toBe('1') // M, 270°
+-    expect(largeArcFlag(paths[1].attributes('d')!)).toBe('0') // L, 90°
++    expect(largeArcFlag(paths[1].attributes('d')!)).toBe('0') // O, 90°
+   })
+ })
+ 
+@@ -223,7 +223,7 @@ describe('KanoCategoryPie — accessibility / copy', () => {
+ 
+   test('no raw category code leaks into the legend text (copy-sourced labels)', () => {
+     const wrapper = mountPie([mkFeature('a', ['M'])])
+-    // The visible label is the human copy ("Must-have: 100%"), never "M".
++    // The visible label is the human copy ("Must-be: 100%"), never "M".
+     expect(wrapper.find('.legend-text').text()).not.toBe('M: 100%')
+     expect(wrapper.find('.legend-text').text()).toContain(en['pm.category.must'])
+   })
+diff --git a/kano-frontend/tests/unit/kano-category-reference.spec.ts b/kano-frontend/tests/unit/kano-category-reference.spec.ts
+index 262d915..14c6300 100644
+--- a/kano-frontend/tests/unit/kano-category-reference.spec.ts
++++ b/kano-frontend/tests/unit/kano-category-reference.spec.ts
+@@ -3,7 +3,7 @@
+  * KanoCategoryReference — the standing Kano glossary `<aside>` to the right
+  * of the "By category" section. Asserts:
+  *
+- * - All six categories render in the canonical M → L → E → I → C → D order,
++ * - All six categories render in the canonical M → O → A → I → R → Q order,
+  *   regardless of which categories any poll's data falls into (it's a
+  *   glossary, not a data view — the component takes no props).
+  * - Each entry's name + description are sourced from the copy deck
+@@ -21,7 +21,7 @@ import { CATEGORY_CODES, COPY_KEY, DESC_KEY, SWATCH_CLASS } from '@/components/k
+ import en from '@/copy/en'
+ 
+ describe('KanoCategoryReference', () => {
+-  test('renders all six categories in the canonical M → L → E → I → C → D order', () => {
++  test('renders all six categories in the canonical M → O → A → I → R → Q order', () => {
+     const wrapper = mount(KanoCategoryReference)
+ 
+     const items = wrapper.findAll('.reference-item')
+diff --git a/kano-frontend/tests/unit/kano-stacked-bar-table.spec.ts b/kano-frontend/tests/unit/kano-stacked-bar-table.spec.ts
+index 6fb3931..8cf47e6 100644
+--- a/kano-frontend/tests/unit/kano-stacked-bar-table.spec.ts
++++ b/kano-frontend/tests/unit/kano-stacked-bar-table.spec.ts
+@@ -1,7 +1,7 @@
+ // @vitest-environment jsdom
+ /**
+  * KanoStackedBarTable (Story 5-4) — accessible-fallback companion to
+- * `<KanoStackedBar>`. Always six rows in fixed M→L→E→I→C→D order
++ * `<KanoStackedBar>`. Always six rows in fixed M→O→A→I→R→Q order
+  * regardless of which categories are zero (a screen reader announces
+  * "row 4 of 6, Indifferent, 0, 0.0%" — the zero is informative).
+  *
+@@ -19,19 +19,19 @@ import type { Category } from '@/api/types'
+ import KanoStackedBarTable from '@/components/KanoStackedBarTable.vue'
+ import en from '@/copy/en'
+ 
+-const FIXED_ORDER: readonly Category[] = ['M', 'L', 'E', 'I', 'C', 'D'] as const
++const FIXED_ORDER: readonly Category[] = ['M', 'O', 'A', 'I', 'R', 'Q'] as const
+ 
+ const CATEGORY_LABEL: Record<Category, string> = {
+   M: en['pm.category.must'],
+-  L: en['pm.category.perf'],
+-  E: en['pm.category.del'],
++  O: en['pm.category.perf'],
++  A: en['pm.category.attr'],
+   I: en['pm.category.ind'],
+-  C: en['pm.category.cont'],
+-  D: en['pm.category.doub'],
++  R: en['pm.category.rev'],
++  Q: en['pm.category.que'],
+ }
+ 
+ function dist(overrides: Partial<Record<Category, number>>): Record<Category, number> {
+-  const base = { M: 0, L: 0, E: 0, I: 0, C: 0, D: 0 }
++  const base = { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0 }
+   return { ...base, ...overrides }
+ }
+ 
+@@ -44,10 +44,10 @@ describe('KanoStackedBarTable — row composition', () => {
+     expect(wrapper.findAll('tbody tr')).toHaveLength(6)
+   })
+ 
+-  test('row order is fixed M→L→E→I→C→D regardless of prop key order', () => {
++  test('row order is fixed M→O→A→I→R→Q regardless of prop key order', () => {
+     const wrapper = mount(KanoStackedBarTable, {
+       props: {
+-        distribution: { D: 1, C: 2, I: 3, E: 4, L: 5, M: 6 },
++        distribution: { Q: 1, R: 2, I: 3, A: 4, O: 5, M: 6 },
+         total: 21,
+         id: 'stb-test',
+       },
+@@ -60,7 +60,7 @@ describe('KanoStackedBarTable — row composition', () => {
+   test('category labels come from the copy deck', () => {
+     const wrapper = mount(KanoStackedBarTable, {
+       props: {
+-        distribution: dist({ M: 1, L: 1, E: 1, I: 1, C: 1, D: 1 }),
++        distribution: dist({ M: 1, O: 1, A: 1, I: 1, R: 1, Q: 1 }),
+         total: 6,
+         id: 'stb-test',
+       },
+@@ -108,17 +108,17 @@ describe('KanoStackedBarTable — sr-only / visible toggle', () => {
+ describe('KanoStackedBarTable — percentage rendering', () => {
+   test('1/3 of total renders as 33.3% per row', () => {
+     const wrapper = mount(KanoStackedBarTable, {
+-      props: { distribution: dist({ M: 1, L: 1, E: 1 }), total: 3, id: 'stb-test' },
++      props: { distribution: dist({ M: 1, O: 1, A: 1 }), total: 3, id: 'stb-test' },
+     })
+ 
+     const cells = wrapper.findAll('tbody tr td:nth-child(3)').map((td) => td.text())
+-    // M / L / E each show 33.3%; I / C / D each show 0.0%.
++    // M / O / A each show 33.3%; I / R / Q each show 0.0%.
+     expect(cells).toEqual(['33.3%', '33.3%', '33.3%', '0.0%', '0.0%', '0.0%'])
+   })
+ 
+   test('count cell mirrors the distribution prop verbatim', () => {
+     const wrapper = mount(KanoStackedBarTable, {
+-      props: { distribution: dist({ M: 7, L: 3 }), total: 10, id: 'stb-test' },
++      props: { distribution: dist({ M: 7, O: 3 }), total: 10, id: 'stb-test' },
+     })
+ 
+     const counts = wrapper.findAll('tbody tr td:nth-child(2)').map((td) => td.text())
+diff --git a/kano-frontend/tests/unit/kano-stacked-bar.spec.ts b/kano-frontend/tests/unit/kano-stacked-bar.spec.ts
+index 2292074..9e4d3ea 100644
+--- a/kano-frontend/tests/unit/kano-stacked-bar.spec.ts
++++ b/kano-frontend/tests/unit/kano-stacked-bar.spec.ts
+@@ -1,7 +1,7 @@
+ // @vitest-environment jsdom
+ /**
+  * KanoStackedBar (Story 5-4) — proportional SVG segments in fixed
+- * M→L→E→I→C→D order, percent-based viewBox, v-tooltip per segment,
++ * M→O→A→I→R→Q order, percent-based viewBox, v-tooltip per segment,
+  * `role="img"` + `aria-labelledby` wired to the companion table, dev-mode
+  * warning when mounted with `total=0`.
+  *
+@@ -34,18 +34,18 @@ const VTooltipStub = defineComponent({
+ 
+ const globalStubs = { 'v-tooltip': VTooltipStub }
+ 
+-const FIXED_ORDER: readonly Category[] = ['M', 'L', 'E', 'I', 'C', 'D'] as const
++const FIXED_ORDER: readonly Category[] = ['M', 'O', 'A', 'I', 'R', 'Q'] as const
+ 
+ function dist(overrides: Partial<Record<Category, number>>): Record<Category, number> {
+-  const base = { M: 0, L: 0, E: 0, I: 0, C: 0, D: 0 }
++  const base = { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0 }
+   return { ...base, ...overrides }
+ }
+ 
+ describe('KanoStackedBar — segment composition', () => {
+-  test('renders only non-zero segments in fixed M→L→E→I→C→D order', () => {
++  test('renders only non-zero segments in fixed M→O→A→I→R→Q order', () => {
+     const wrapper = mount(KanoStackedBar, {
+       props: {
+-        distribution: dist({ M: 3, L: 2 }),
++        distribution: dist({ M: 3, O: 2 }),
+         total: 5,
+         ariaLabelledBy: 'stb-test',
+       },
+@@ -55,13 +55,13 @@ describe('KanoStackedBar — segment composition', () => {
+     const rects = wrapper.findAll('rect')
+     expect(rects).toHaveLength(2)
+     expect(rects[0].attributes('data-category')).toBe('M')
+-    expect(rects[1].attributes('data-category')).toBe('L')
++    expect(rects[1].attributes('data-category')).toBe('O')
+   })
+ 
+   test('segment widths and x-offsets are proportional to count/total', () => {
+     const wrapper = mount(KanoStackedBar, {
+       props: {
+-        distribution: dist({ M: 3, L: 2 }),
++        distribution: dist({ M: 3, O: 2 }),
+         total: 5,
+         ariaLabelledBy: 'stb-test',
+       },
+@@ -76,10 +76,10 @@ describe('KanoStackedBar — segment composition', () => {
+   })
+ 
+   test('iteration order ignores prop object-key insertion order', () => {
+-    // Pass keys in reverse order (D first) — output must still be M→L→E→I→C→D.
++    // Pass keys in reverse order (Q first) — output must still be M→O→A→I→R→Q.
+     const wrapper = mount(KanoStackedBar, {
+       props: {
+-        distribution: { D: 1, C: 1, I: 1, E: 1, L: 1, M: 1 },
++        distribution: { Q: 1, R: 1, I: 1, A: 1, O: 1, M: 1 },
+         total: 6,
+         ariaLabelledBy: 'stb-test',
+       },
+@@ -110,7 +110,7 @@ describe('KanoStackedBar — accessibility wiring', () => {
+   test('every rendered segment has tabindex="0"', () => {
+     const wrapper = mount(KanoStackedBar, {
+       props: {
+-        distribution: dist({ M: 1, L: 1, E: 1, I: 1, C: 1, D: 1 }),
++        distribution: dist({ M: 1, O: 1, A: 1, I: 1, R: 1, Q: 1 }),
+         total: 6,
+         ariaLabelledBy: 'stb-test',
+       },
+@@ -127,7 +127,7 @@ describe('KanoStackedBar — tooltip text', () => {
+   test('tooltip uses the copy-deck template with name/count/pct interpolation', () => {
+     const wrapper = mount(KanoStackedBar, {
+       props: {
+-        distribution: dist({ M: 7, L: 3 }),
++        distribution: dist({ M: 7, O: 3 }),
+         total: 10,
+         ariaLabelledBy: 'stb-test',
+       },
+@@ -136,7 +136,7 @@ describe('KanoStackedBar — tooltip text', () => {
+ 
+     const groups = wrapper.findAll('g[data-tooltip-text]')
+     expect(groups).toHaveLength(2)
+-    expect(groups[0].attributes('data-tooltip-text')).toBe('Must-have: 7 responses (70.0%)')
++    expect(groups[0].attributes('data-tooltip-text')).toBe('Must-be: 7 responses (70.0%)')
+     expect(groups[1].attributes('data-tooltip-text')).toBe('Performance: 3 responses (30.0%)')
+     expect(groups[0].attributes('data-tooltip-location')).toBe('top')
+   })
+diff --git a/kano-frontend/tests/unit/per-category-panels.spec.ts b/kano-frontend/tests/unit/per-category-panels.spec.ts
+index 8923141..1b2add6 100644
+--- a/kano-frontend/tests/unit/per-category-panels.spec.ts
++++ b/kano-frontend/tests/unit/per-category-panels.spec.ts
+@@ -3,7 +3,7 @@
+  * PerCategoryPanels (Story 5-6) — secondary cross-index below the analysis
+  * table. Asserts:
+  *
+- * - Fixed M → L → E → I → C → D section order regardless of input order
++ * - Fixed M → O → A → I → R → Q section order regardless of input order
+  * - Categories with zero dominant features are omitted entirely (AC #2)
+  * - Tied features appear in EACH tied panel — no dedup (FR35 / AC #5)
+  * - Each panel header is an `<h3>` containing a `<CatBadge>` (AC #3)
+@@ -69,7 +69,7 @@ const globalStubs = {
+ function dist(
+   overrides: Partial<Record<Category, number>> = {},
+ ): Record<Category, number> {
+-  return { M: 0, L: 0, E: 0, I: 0, C: 0, D: 0, ...overrides }
++  return { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0, ...overrides }
+ }
+ 
+ function mkFeature(
+@@ -104,10 +104,10 @@ describe('PerCategoryPanels — composition', () => {
+       props: {
+         analysis: analysis([
+           mkFeature('a', 'Feature A', ['M'], 70),
+-          mkFeature('b', 'Feature B', ['L'], 60),
++          mkFeature('b', 'Feature B', ['O'], 60),
+           mkFeature('c', 'Feature C', ['M'], 50),
+-          mkFeature('e', 'Feature E', ['E'], 100),
+-          // No features dominate I / C / D — those panels must be absent.
++          mkFeature('e', 'Feature E', ['A'], 100),
++          // No features dominate I / R / Q — those panels must be absent.
+         ]),
+       },
+     })
+@@ -115,26 +115,26 @@ describe('PerCategoryPanels — composition', () => {
+     const panels = wrapper.findAll('section.category-panel')
+     expect(panels).toHaveLength(3)
+     expect(panels[0].classes()).toContain('panel-m')
+-    expect(panels[1].classes()).toContain('panel-l')
+-    expect(panels[2].classes()).toContain('panel-e')
++    expect(panels[1].classes()).toContain('panel-o')
++    expect(panels[2].classes()).toContain('panel-a')
+ 
+-    // No empty Indifferent / Contradictory / Doubtful panels.
++    // No empty Indifferent / Reverse / Questionable panels.
+     expect(wrapper.find('.panel-i').exists()).toBe(false)
+-    expect(wrapper.find('.panel-c').exists()).toBe(false)
+-    expect(wrapper.find('.panel-d').exists()).toBe(false)
++    expect(wrapper.find('.panel-r').exists()).toBe(false)
++    expect(wrapper.find('.panel-q').exists()).toBe(false)
+   })
+ 
+-  test('section order is fixed M → L → E → I → C → D regardless of input order', () => {
++  test('section order is fixed M → O → A → I → R → Q regardless of input order', () => {
+     const wrapper = mount(PerCategoryPanels, {
+       global: { stubs: globalStubs },
+       props: {
+         // Input order intentionally reversed from canonical.
+         analysis: analysis([
+-          mkFeature('d', 'D feat', ['D'], 80),
+-          mkFeature('c', 'C feat', ['C'], 80),
++          mkFeature('d', 'Q feat', ['Q'], 80),
++          mkFeature('c', 'R feat', ['R'], 80),
+           mkFeature('i', 'I feat', ['I'], 80),
+-          mkFeature('e', 'E feat', ['E'], 80),
+-          mkFeature('l', 'L feat', ['L'], 80),
++          mkFeature('e', 'A feat', ['A'], 80),
++          mkFeature('l', 'O feat', ['O'], 80),
+           mkFeature('m', 'M feat', ['M'], 80),
+         ]),
+       },
+@@ -147,11 +147,11 @@ describe('PerCategoryPanels — composition', () => {
+       )
+     expect(panelClasses).toEqual([
+       'panel-m',
+-      'panel-l',
+-      'panel-e',
++      'panel-o',
++      'panel-a',
+       'panel-i',
+-      'panel-c',
+-      'panel-d',
++      'panel-r',
++      'panel-q',
+     ])
+   })
+ 
+@@ -161,17 +161,17 @@ describe('PerCategoryPanels — composition', () => {
+       props: {
+         analysis: analysis([
+           mkFeature('a', 'Feature A', ['M'], 70),
+-          mkFeature('tie', 'Tied X', ['M', 'L'], 50),
++          mkFeature('tie', 'Tied X', ['M', 'O'], 50),
+         ]),
+       },
+     })
+ 
+     const mustPanel = wrapper.find('.panel-m')
+-    const perfPanel = wrapper.find('.panel-l')
++    const perfPanel = wrapper.find('.panel-o')
+     expect(mustPanel.text()).toContain('Tied X')
+     expect(perfPanel.text()).toContain('Tied X')
+ 
+-    // Must-have panel: 2 entries (A + Tied X); Performance panel: 1 (Tied X).
++    // Must-be panel: 2 entries (A + Tied X); Performance panel: 1 (Tied X).
+     expect(mustPanel.findAll('li')).toHaveLength(2)
+     expect(perfPanel.findAll('li')).toHaveLength(1)
+   })
+@@ -204,13 +204,13 @@ describe('PerCategoryPanels — composition', () => {
+       props: {
+         analysis: analysis([
+           mkFeature('a', 'A', ['M'], 70),
+-          mkFeature('b', 'B', ['L'], 60),
++          mkFeature('b', 'B', ['O'], 60),
+         ]),
+       },
+     })
+ 
+     const mustLink = wrapper.find('.panel-m a')
+-    const perfLink = wrapper.find('.panel-l a')
++    const perfLink = wrapper.find('.panel-o a')
+     expect(mustLink.attributes('href')).toBe('#feature-a')
+     expect(perfLink.attributes('href')).toBe('#feature-b')
+   })
+@@ -241,12 +241,12 @@ describe('PerCategoryPanels — composition', () => {
+     const wrapper = mount(PerCategoryPanels, {
+       global: { stubs: globalStubs },
+       props: {
+-        analysis: analysis([mkFeature('tie', 'Tie', ['M', 'L'], 50)]),
++        analysis: analysis([mkFeature('tie', 'Tie', ['M', 'O'], 50)]),
+       },
+     })
+ 
+     expect(wrapper.find('.panel-m .entry-pct').text()).toBe('50%')
+-    expect(wrapper.find('.panel-l .entry-pct').text()).toBe('50%')
++    expect(wrapper.find('.panel-o .entry-pct').text()).toBe('50%')
+   })
+ 
+   test('non-finite percentage falls back to em-dash', () => {
+@@ -283,7 +283,7 @@ describe('PerCategoryPanels — composition', () => {
+     const wrapper = mount(PerCategoryPanels, {
+       global: { stubs: globalStubs },
+       props: {
+-        analysis: analysis([mkFeature('tied', 'Tied Feature', ['M', 'L'], 50)]),
++        analysis: analysis([mkFeature('tied', 'Tied Feature', ['M', 'O'], 50)]),
+       },
+     })
+ 
+@@ -294,7 +294,7 @@ describe('PerCategoryPanels — composition', () => {
+     // The same tied feature renders in BOTH panels — both anchors carry the
+     // tied variant.
+     expect(wrapper.find('.panel-m a').attributes('aria-label')).toBe(expected)
+-    expect(wrapper.find('.panel-l a').attributes('aria-label')).toBe(expected)
++    expect(wrapper.find('.panel-o a').attributes('aria-label')).toBe(expected)
+   })
+ 
+   test('unsafe feature_key (CSS / URL-fragment hostile) is dropped + dev warning fires', () => {
+@@ -328,7 +328,7 @@ describe('PerCategoryPanels — composition', () => {
+       props: {
+         analysis: analysis([
+           mkFeature('a', 'A', ['M'], 70),
+-          mkFeature('b', 'B', ['L'], 60),
++          mkFeature('b', 'B', ['O'], 60),
+         ]),
+       },
+     })
+@@ -352,7 +352,7 @@ describe('PerCategoryPanels — composition', () => {
+       props: {
+         analysis: analysis([
+           mkFeature('a', 'A', ['M'], 70),
+-          mkFeature('b', 'B', ['L'], 60),
++          mkFeature('b', 'B', ['O'], 60),
+         ]),
+       },
+     })
+diff --git a/kano-frontend/tests/unit/useCopy.spec.ts b/kano-frontend/tests/unit/useCopy.spec.ts
+index 09e87b5..0715e13 100644
+--- a/kano-frontend/tests/unit/useCopy.spec.ts
++++ b/kano-frontend/tests/unit/useCopy.spec.ts
+@@ -10,7 +10,7 @@ describe('useCopy — lookup & fallback', () => {
+   test('returns the registered string for a known key', () => {
+     const copy = useCopy()
+     expect(copy('common.version')).toBe('Version')
+-    expect(copy('pm.category.must')).toBe('Must-have')
++    expect(copy('pm.category.must')).toBe('Must-be')
+   })
+ 
+   test('returns the key itself for a missing key (visible fallback)', () => {
+
+diff --git a/kano-backend/migrations/versions/0002_kano_category_standard_amoirq.py b/kano-backend/migrations/versions/0002_kano_category_standard_amoirq.py
+new file (untracked)
+--- /dev/null
++++ b/kano-backend/migrations/versions/0002_kano_category_standard_amoirq.py
++"""Swap responses.category domain to the standard Kano model (A/M/O/I/R/Q).
++
++The product moved from a bespoke 6-category matrix (M/L/E/I/C/D —
++Mandatory/Linear/Exciter/Indifferent/Contradictory/Doubtful) to the standard
++Kano evaluation table (A=Attractive, M=Must-be, O=Performance, I=Indifferent,
++R=Reverse, Q=Questionable). The matrix *conditions* changed too, so a stored
++category is not a pure relabel of the old code — it would have to be recomputed
++from (fq_answer, dq_answer). Per the refactor decision this is a **clean
++slate**: existing response rows (and the submissions that own them) are wiped
++rather than migrated. Projects / features / polls are untouched.
++
++Raw SQL is used for the constraint swap so the literal name matches the one
++migration 0001 created via ``op.f("ck_responses_category_enum")`` regardless of
++the metadata naming-convention.
++
++Revision ID: 0002
++Revises: 0001
++Create Date: 2026-06-02
++"""
++
++from __future__ import annotations
++
++from alembic import op
++
++# revision identifiers, used by Alembic.
++revision: str = "0002"
++down_revision: str | None = "0001"
++branch_labels = None
++depends_on = None
++
++_CK = "ck_responses_category_enum"
++_NEW = "category IN ('A', 'M', 'O', 'I', 'R', 'Q')"
++_OLD = "category IN ('M', 'L', 'E', 'I', 'C', 'D')"
++
++
++def upgrade() -> None:
++    # Clean slate: drop response data computed under the old matrix, plus the
++    # submissions that own those responses, before tightening the domain.
++    op.execute("DELETE FROM responses")
++    op.execute("DELETE FROM submissions")
++    op.execute(f"ALTER TABLE responses DROP CONSTRAINT {_CK}")
++    op.execute(f"ALTER TABLE responses ADD CONSTRAINT {_CK} CHECK ({_NEW})")
++
++
++def downgrade() -> None:
++    # Symmetric clean slate: rows written under the new A/M/O/I/R/Q domain carry
++    # codes (O/A/R/Q) that the reinstated old constraint would reject, so the
++    # ADD CONSTRAINT validation would fail against live data. Wipe responses +
++    # their parent submissions before narrowing the domain back. Data is not
++    # restored in either direction — this is a schema-only reversal.
++    op.execute("DELETE FROM responses")
++    op.execute("DELETE FROM submissions")
++    op.execute(f"ALTER TABLE responses DROP CONSTRAINT {_CK}")
++    op.execute(f"ALTER TABLE responses ADD CONSTRAINT {_CK} CHECK ({_OLD})")

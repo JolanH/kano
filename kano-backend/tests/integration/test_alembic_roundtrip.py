@@ -1,9 +1,11 @@
-"""AC #6: ``alembic upgrade head && alembic downgrade -1 && alembic upgrade head``
+"""AC #6: ``alembic upgrade head && alembic downgrade base && alembic upgrade head``
 must complete without error against a clean Postgres 17 database.
 
-This is the CI-gated proof that migration ``0001_initial_schema`` is reversible
-and idempotent — the safety net for the most irreversible artifact in the
-project.
+This is the CI-gated proof that the migration chain (``0001_initial_schema`` →
+``0002_kano_category_standard_amoirq``) is reversible and idempotent — the
+safety net for the most irreversible artifact in the project. The full
+``downgrade base`` exercises every migration's ``downgrade()`` in turn, so the
+0002 category-domain swap is reversed before 0001 drops the tables.
 """
 
 from __future__ import annotations
@@ -50,12 +52,12 @@ def test_alembic_upgrade_head(alembic_config: Config, db_url: str) -> None:
 
 
 def test_alembic_roundtrip_completes(alembic_config: Config, db_url: str) -> None:
-    """upgrade head → downgrade -1 → upgrade head completes without error."""
+    """upgrade head → downgrade base → upgrade head completes without error."""
 
     command.upgrade(alembic_config, "head")
-    command.downgrade(alembic_config, "-1")
+    command.downgrade(alembic_config, "base")
 
-    # After downgrading the only migration, no domain tables remain.
+    # After downgrading the whole chain to base, no domain tables remain.
     engine = create_engine(db_url)
     try:
         inspector = inspect(engine)

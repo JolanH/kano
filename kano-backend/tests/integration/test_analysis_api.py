@@ -143,7 +143,7 @@ class TestGetAnalysisHappyPath:
         db_engine: Engine,
     ) -> None:
         # Seed: 3 features × 5 submissions with known (fq, dq) cells →
-        # known categories: (3, 5) → MANDATORY; (1, 5) → LINEAR; (1, 3) → EXCITER.
+        # known categories: (3, 5) → MUSTBE; (1, 5) → PERFORMANCE; (1, 3) → ATTRACTIVE.
         project_id = _seed_project(db_engine)
         fid_a, fkey_a = _seed_feature(
             db_engine, project_id=project_id, name="Auto-save", description="desc-A"
@@ -161,9 +161,9 @@ class TestGetAnalysisHappyPath:
                 db_engine,
                 poll_id=poll_id,
                 responses=[
-                    (fid_a, 3, 5),  # MANDATORY
-                    (fid_b, 1, 5),  # LINEAR
-                    (fid_c, 1, 3),  # EXCITER
+                    (fid_a, 3, 5),  # MUSTBE
+                    (fid_b, 1, 5),  # PERFORMANCE
+                    (fid_c, 1, 3),  # ATTRACTIVE
                 ],
             )
 
@@ -192,37 +192,37 @@ class TestGetAnalysisHappyPath:
                 "dominant_percentage",
             }
             # AC #2 — distribution always carries all six category keys.
-            assert set(feature["distribution"].keys()) == {"M", "L", "E", "I", "C", "D"}
+            assert set(feature["distribution"].keys()) == {"A", "M", "O", "I", "R", "Q"}
             # dominant_categories is a list, dominant_percentage is a number.
             assert isinstance(feature["dominant_categories"], list)
             assert isinstance(feature["dominant_percentage"], int | float)
 
         by_key = {UUID(f["feature_key"]): f for f in body["features"]}
 
-        # Feature A: 5 × MANDATORY.
+        # Feature A: 5 × MUSTBE.
         assert by_key[fkey_a]["name"] == "Auto-save"
         assert by_key[fkey_a]["description"] == "desc-A"
         assert by_key[fkey_a]["distribution"] == {
             "M": 5,
-            "L": 0,
-            "E": 0,
+            "O": 0,
+            "A": 0,
             "I": 0,
-            "C": 0,
-            "D": 0,
+            "R": 0,
+            "Q": 0,
         }
         assert by_key[fkey_a]["dominant_categories"] == ["M"]
         assert by_key[fkey_a]["dominant_percentage"] == 100.0
 
-        # Feature B: 5 × LINEAR (description may serialize as None).
+        # Feature B: 5 × PERFORMANCE (description may serialize as None).
         assert by_key[fkey_b]["name"] == "Dark mode"
         assert by_key[fkey_b]["description"] is None
-        assert by_key[fkey_b]["distribution"]["L"] == 5
-        assert by_key[fkey_b]["dominant_categories"] == ["L"]
+        assert by_key[fkey_b]["distribution"]["O"] == 5
+        assert by_key[fkey_b]["dominant_categories"] == ["O"]
         assert by_key[fkey_b]["dominant_percentage"] == 100.0
 
-        # Feature C: 5 × EXCITER.
-        assert by_key[fkey_c]["distribution"]["E"] == 5
-        assert by_key[fkey_c]["dominant_categories"] == ["E"]
+        # Feature C: 5 × ATTRACTIVE.
+        assert by_key[fkey_c]["distribution"]["A"] == 5
+        assert by_key[fkey_c]["dominant_categories"] == ["A"]
         assert by_key[fkey_c]["dominant_percentage"] == 100.0
 
 
@@ -254,11 +254,11 @@ class TestGetAnalysisZeroSubmissions:
             # this verbatim and renders the empty-state segment.
             assert feature["distribution"] == {
                 "M": 0,
-                "L": 0,
-                "E": 0,
+                "O": 0,
+                "A": 0,
                 "I": 0,
-                "C": 0,
-                "D": 0,
+                "R": 0,
+                "Q": 0,
             }
             assert feature["dominant_categories"] == []
             assert feature["dominant_percentage"] == 0.0
@@ -273,13 +273,13 @@ class TestGetAnalysisTieHandling:
         client_migrated: FlaskClient,
         db_engine: Engine,
     ) -> None:
-        # 4 submissions: 2 × M, 2 × L on one feature. FR35 surfaces both
-        # winners; sort is by Category.value so the order is ["L", "M"].
+        # 4 submissions: 2 × M, 2 × O on one feature. FR35 surfaces both
+        # winners, sorted in canonical scan order so the order is ["M", "O"].
         project_id = _seed_project(db_engine)
         fid, _ = _seed_feature(db_engine, project_id=project_id, name="Solo")
         poll_id = _seed_poll(db_engine, project_id=project_id)
 
-        # (3, 5) → MANDATORY; (1, 5) → LINEAR.
+        # (3, 5) → MUSTBE; (1, 5) → PERFORMANCE.
         for _ in range(2):
             _seed_submission(db_engine, poll_id=poll_id, responses=[(fid, 3, 5)])
         for _ in range(2):
@@ -290,8 +290,8 @@ class TestGetAnalysisTieHandling:
 
         assert body["total_submissions"] == 4
         feature = body["features"][0]
-        # Canonical Kano scan order (M → L → E → I → C → D): M precedes L.
-        assert feature["dominant_categories"] == ["M", "L"]
+        # Canonical Kano scan order (M → O → A → I → R → Q): M precedes O.
+        assert feature["dominant_categories"] == ["M", "O"]
         assert feature["dominant_percentage"] == 50.0
 
 
@@ -338,7 +338,7 @@ class TestGetAnalysisExpiredPoll:
             expires_at=datetime.now(tz=UTC) - timedelta(days=1),
         )
 
-        # (3, 5) → MANDATORY × 3.
+        # (3, 5) → MUSTBE × 3.
         for _ in range(3):
             _seed_submission(db_engine, poll_id=poll_id, responses=[(fid, 3, 5)])
 
@@ -474,8 +474,8 @@ class TestGetAnalysisSnapshotFrozen:
                 db_engine,
                 poll_id=poll_id,
                 responses=[
-                    (fid_a_e1, 3, 5),  # MANDATORY
-                    (fid_b_e1, 1, 5),  # LINEAR
+                    (fid_a_e1, 3, 5),  # MUSTBE
+                    (fid_b_e1, 1, 5),  # PERFORMANCE
                 ],
             )
 

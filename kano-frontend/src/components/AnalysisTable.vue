@@ -154,7 +154,7 @@ function dominantLabel(row: AnalysisRow): string {
                 <!--
                   Story 5-7 — `:with-help="true"` opts the badge into the
                   first-use category tooltip (FR39). The dominant cell is the
-                  primary surface where Paola needs the "what does Must-have
+                  primary surface where Paola needs the "what does Must-be
                   mean" explainer; theme-audit and other surfaces leave the
                   prop at its default `false`.
                 -->

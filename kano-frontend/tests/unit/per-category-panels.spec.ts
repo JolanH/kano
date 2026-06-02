@@ -3,7 +3,7 @@
  * PerCategoryPanels (Story 5-6) — secondary cross-index below the analysis
  * table. Asserts:
  *
- * - Fixed M → L → E → I → C → D section order regardless of input order
+ * - Fixed M → O → A → I → R → Q section order regardless of input order
  * - Categories with zero dominant features are omitted entirely (AC #2)
  * - Tied features appear in EACH tied panel — no dedup (FR35 / AC #5)
  * - Each panel header is an `<h3>` containing a `<CatBadge>` (AC #3)
@@ -69,7 +69,7 @@ const globalStubs = {
 function dist(
   overrides: Partial<Record<Category, number>> = {},
 ): Record<Category, number> {
-  return { M: 0, L: 0, E: 0, I: 0, C: 0, D: 0, ...overrides }
+  return { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0, ...overrides }
 }
 
 function mkFeature(
@@ -104,10 +104,10 @@ describe('PerCategoryPanels — composition', () => {
       props: {
         analysis: analysis([
           mkFeature('a', 'Feature A', ['M'], 70),
-          mkFeature('b', 'Feature B', ['L'], 60),
+          mkFeature('b', 'Feature B', ['O'], 60),
           mkFeature('c', 'Feature C', ['M'], 50),
-          mkFeature('e', 'Feature E', ['E'], 100),
-          // No features dominate I / C / D — those panels must be absent.
+          mkFeature('e', 'Feature E', ['A'], 100),
+          // No features dominate I / R / Q — those panels must be absent.
         ]),
       },
     })
@@ -115,26 +115,26 @@ describe('PerCategoryPanels — composition', () => {
     const panels = wrapper.findAll('section.category-panel')
     expect(panels).toHaveLength(3)
     expect(panels[0].classes()).toContain('panel-m')
-    expect(panels[1].classes()).toContain('panel-l')
-    expect(panels[2].classes()).toContain('panel-e')
+    expect(panels[1].classes()).toContain('panel-o')
+    expect(panels[2].classes()).toContain('panel-a')
 
-    // No empty Indifferent / Contradictory / Doubtful panels.
+    // No empty Indifferent / Reverse / Questionable panels.
     expect(wrapper.find('.panel-i').exists()).toBe(false)
-    expect(wrapper.find('.panel-c').exists()).toBe(false)
-    expect(wrapper.find('.panel-d').exists()).toBe(false)
+    expect(wrapper.find('.panel-r').exists()).toBe(false)
+    expect(wrapper.find('.panel-q').exists()).toBe(false)
   })
 
-  test('section order is fixed M → L → E → I → C → D regardless of input order', () => {
+  test('section order is fixed M → O → A → I → R → Q regardless of input order', () => {
     const wrapper = mount(PerCategoryPanels, {
       global: { stubs: globalStubs },
       props: {
         // Input order intentionally reversed from canonical.
         analysis: analysis([
-          mkFeature('d', 'D feat', ['D'], 80),
-          mkFeature('c', 'C feat', ['C'], 80),
+          mkFeature('d', 'Q feat', ['Q'], 80),
+          mkFeature('c', 'R feat', ['R'], 80),
           mkFeature('i', 'I feat', ['I'], 80),
-          mkFeature('e', 'E feat', ['E'], 80),
-          mkFeature('l', 'L feat', ['L'], 80),
+          mkFeature('e', 'A feat', ['A'], 80),
+          mkFeature('l', 'O feat', ['O'], 80),
           mkFeature('m', 'M feat', ['M'], 80),
         ]),
       },
@@ -147,11 +147,11 @@ describe('PerCategoryPanels — composition', () => {
       )
     expect(panelClasses).toEqual([
       'panel-m',
-      'panel-l',
-      'panel-e',
+      'panel-o',
+      'panel-a',
       'panel-i',
-      'panel-c',
-      'panel-d',
+      'panel-r',
+      'panel-q',
     ])
   })
 
@@ -161,17 +161,17 @@ describe('PerCategoryPanels — composition', () => {
       props: {
         analysis: analysis([
           mkFeature('a', 'Feature A', ['M'], 70),
-          mkFeature('tie', 'Tied X', ['M', 'L'], 50),
+          mkFeature('tie', 'Tied X', ['M', 'O'], 50),
         ]),
       },
     })
 
     const mustPanel = wrapper.find('.panel-m')
-    const perfPanel = wrapper.find('.panel-l')
+    const perfPanel = wrapper.find('.panel-o')
     expect(mustPanel.text()).toContain('Tied X')
     expect(perfPanel.text()).toContain('Tied X')
 
-    // Must-have panel: 2 entries (A + Tied X); Performance panel: 1 (Tied X).
+    // Must-be panel: 2 entries (A + Tied X); Performance panel: 1 (Tied X).
     expect(mustPanel.findAll('li')).toHaveLength(2)
     expect(perfPanel.findAll('li')).toHaveLength(1)
   })
@@ -204,13 +204,13 @@ describe('PerCategoryPanels — composition', () => {
       props: {
         analysis: analysis([
           mkFeature('a', 'A', ['M'], 70),
-          mkFeature('b', 'B', ['L'], 60),
+          mkFeature('b', 'B', ['O'], 60),
         ]),
       },
     })
 
     const mustLink = wrapper.find('.panel-m a')
-    const perfLink = wrapper.find('.panel-l a')
+    const perfLink = wrapper.find('.panel-o a')
     expect(mustLink.attributes('href')).toBe('#feature-a')
     expect(perfLink.attributes('href')).toBe('#feature-b')
   })
@@ -241,12 +241,12 @@ describe('PerCategoryPanels — composition', () => {
     const wrapper = mount(PerCategoryPanels, {
       global: { stubs: globalStubs },
       props: {
-        analysis: analysis([mkFeature('tie', 'Tie', ['M', 'L'], 50)]),
+        analysis: analysis([mkFeature('tie', 'Tie', ['M', 'O'], 50)]),
       },
     })
 
     expect(wrapper.find('.panel-m .entry-pct').text()).toBe('50%')
-    expect(wrapper.find('.panel-l .entry-pct').text()).toBe('50%')
+    expect(wrapper.find('.panel-o .entry-pct').text()).toBe('50%')
   })
 
   test('non-finite percentage falls back to em-dash', () => {
@@ -283,7 +283,7 @@ describe('PerCategoryPanels — composition', () => {
     const wrapper = mount(PerCategoryPanels, {
       global: { stubs: globalStubs },
       props: {
-        analysis: analysis([mkFeature('tied', 'Tied Feature', ['M', 'L'], 50)]),
+        analysis: analysis([mkFeature('tied', 'Tied Feature', ['M', 'O'], 50)]),
       },
     })
 
@@ -294,7 +294,7 @@ describe('PerCategoryPanels — composition', () => {
     // The same tied feature renders in BOTH panels — both anchors carry the
     // tied variant.
     expect(wrapper.find('.panel-m a').attributes('aria-label')).toBe(expected)
-    expect(wrapper.find('.panel-l a').attributes('aria-label')).toBe(expected)
+    expect(wrapper.find('.panel-o a').attributes('aria-label')).toBe(expected)
   })
 
   test('unsafe feature_key (CSS / URL-fragment hostile) is dropped + dev warning fires', () => {
@@ -328,7 +328,7 @@ describe('PerCategoryPanels — composition', () => {
       props: {
         analysis: analysis([
           mkFeature('a', 'A', ['M'], 70),
-          mkFeature('b', 'B', ['L'], 60),
+          mkFeature('b', 'B', ['O'], 60),
         ]),
       },
     })
@@ -352,7 +352,7 @@ describe('PerCategoryPanels — composition', () => {
       props: {
         analysis: analysis([
           mkFeature('a', 'A', ['M'], 70),
-          mkFeature('b', 'B', ['L'], 60),
+          mkFeature('b', 'B', ['O'], 60),
         ]),
       },
     })

@@ -45,9 +45,9 @@ class TestShapeRowsOrderingInvariant:
 
         rows: list[Any] = [
             _row(fid_a, fkey_a, "A", "M", 3),
-            _row(fid_a, fkey_a, "A", "L", 2),
+            _row(fid_a, fkey_a, "A", "O", 2),
             _row(fid_b, fkey_b, "B", "M", 1),
-            _row(fid_b, fkey_b, "B", "E", 4),
+            _row(fid_b, fkey_b, "B", "A", 4),
         ]
 
         features, total = _shape_rows(rows)
@@ -55,9 +55,9 @@ class TestShapeRowsOrderingInvariant:
         assert len(features) == 2
         by_key = {f.feature_key: f for f in features}
         assert by_key[fkey_a].distribution["M"] == 3  # type: ignore[index]
-        assert by_key[fkey_a].distribution["L"] == 2  # type: ignore[index]
+        assert by_key[fkey_a].distribution["O"] == 2  # type: ignore[index]
         assert by_key[fkey_b].distribution["M"] == 1  # type: ignore[index]
-        assert by_key[fkey_b].distribution["E"] == 4  # type: ignore[index]
+        assert by_key[fkey_b].distribution["A"] == 4  # type: ignore[index]
         assert total == 5  # max-per-feature: B has 5, A has 5; both tie.
 
     def test_interleaved_rows_break_grouping_pin_the_invariant(self) -> None:
@@ -72,8 +72,8 @@ class TestShapeRowsOrderingInvariant:
         rows: list[Any] = [
             _row(fid_a, fkey_a, "A", "M", 3),
             _row(fid_b, fkey_b, "B", "M", 1),
-            _row(fid_a, fkey_a, "A", "L", 2),
-            _row(fid_b, fkey_b, "B", "E", 4),
+            _row(fid_a, fkey_a, "A", "O", 2),
+            _row(fid_b, fkey_b, "B", "A", 4),
         ]
 
         features, _ = _shape_rows(rows)
@@ -104,11 +104,11 @@ class TestShapeRowsOrderingInvariant:
         assert len(features) == 1
         assert features[0].distribution == {
             "M": 0,  # type: ignore[dict-item]
-            "L": 0,  # type: ignore[dict-item]
-            "E": 0,  # type: ignore[dict-item]
+            "O": 0,  # type: ignore[dict-item]
+            "A": 0,  # type: ignore[dict-item]
             "I": 0,  # type: ignore[dict-item]
-            "C": 0,  # type: ignore[dict-item]
-            "D": 0,  # type: ignore[dict-item]
+            "R": 0,  # type: ignore[dict-item]
+            "Q": 0,  # type: ignore[dict-item]
         }
         assert features[0].dominant_categories == []
         assert features[0].dominant_percentage == 0.0
@@ -121,14 +121,14 @@ class TestShapeRowsOrderingInvariant:
         fid, fkey = uuid4(), uuid4()
         rows: list[Any] = [
             _row(fid, fkey, "Z", "M", 3),
-            _row(fid, fkey, "Z", "BOGUS", 99),  # not in M/L/E/I/C/D
-            _row(fid, fkey, "Z", "L", 2),
+            _row(fid, fkey, "Z", "BOGUS", 99),  # not in A/M/O/I/R/Q
+            _row(fid, fkey, "Z", "O", 2),
         ]
 
         features, total = _shape_rows(rows, poll_id=uuid4())
 
         assert len(features) == 1
-        # BOGUS row dropped; M and L counted normally.
+        # BOGUS row dropped; M and O counted normally.
         assert features[0].distribution["M"] == 3  # type: ignore[index]
-        assert features[0].distribution["L"] == 2  # type: ignore[index]
+        assert features[0].distribution["O"] == 2  # type: ignore[index]
         assert total == 5

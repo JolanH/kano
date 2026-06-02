@@ -34,18 +34,18 @@ from kano.services.kano_matrix import Category
 
 logger = structlog.get_logger(__name__)
 
-# Canonical Kano scan order (M → L → E → I → C → D) — pinned in UX spec line
-# 1277 and used by every Epic 5 surface (frontend CATEGORY_CODES, stacked-bar
-# segments, table rows). The wire shape's `dominant_categories` list sorts
-# against this order so a 2-way M/L tie always reads "M, L" everywhere on
-# the analysis page, not "L, M" in the JSON and "M, L" on the chips.
+# Canonical Kano scan order (M → O → A → I → R → Q) — used by every Epic 5
+# surface (frontend CATEGORY_CODES, stacked-bar segments, table rows). The
+# wire shape's `dominant_categories` list sorts against this order so a 2-way
+# M/O tie always reads "M, O" everywhere on the analysis page, not "O, M" in
+# the JSON and "M, O" on the chips.
 _CANONICAL_ORDER: tuple[Category, ...] = (
-    Category.MANDATORY,
-    Category.LINEAR,
-    Category.EXCITER,
+    Category.MUSTBE,
+    Category.PERFORMANCE,
+    Category.ATTRACTIVE,
     Category.INDIFFERENT,
-    Category.CONTRADICTORY,
-    Category.DOUBTFUL,
+    Category.REVERSE,
+    Category.QUESTIONABLE,
 )
 
 
@@ -246,9 +246,9 @@ def _dominant(
 
     Tie handling (FR35): when 2+ categories share the max count, **all**
     are returned. The list is sorted against ``_CANONICAL_ORDER``
-    (M → L → E → I → C → D) so the wire output matches the scan order
-    every other Epic 5 surface uses — a 2-way M/L tie reads "M, L" in the
-    JSON and "M, L" on the chips, not "L, M" in the JSON and "M, L" on the
+    (M → O → A → I → R → Q) so the wire output matches the scan order
+    every other Epic 5 surface uses — a 2-way M/O tie reads "M, O" in the
+    JSON and "M, O" on the chips, not "O, M" in the JSON and "M, O" on the
     chips.
 
     Zero-response features (``total == 0``) return ``([], 0.0)`` — the

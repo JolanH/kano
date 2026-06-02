@@ -1,8 +1,9 @@
 """Response ORM model — one (Functional, Dysfunctional) Likert pair per feature.
 
-The ``category`` column is the precomputed Kano cell (M / L / E / I / C / D)
-derived from the (fq_answer, dq_answer) pair via the matrix in Story 1.5;
-storing it here keeps analysis queries to a single GROUP BY (Story 5.1).
+The ``category`` column is the precomputed Kano cell (A / M / O / I / R / Q)
+derived from the (fq_answer, dq_answer) pair via the standard Kano matrix in
+``kano.services.kano_matrix``; storing it here keeps analysis queries to a
+single GROUP BY (Story 5.1).
 """
 
 from __future__ import annotations
@@ -30,12 +31,12 @@ class Category(str, Enum):
     enum in :mod:`kano.services.kano_matrix` so they cannot drift.
     """
 
-    MANDATORY = "M"
-    LINEAR = "L"
-    EXCITER = "E"
+    MUSTBE = "M"
+    PERFORMANCE = "O"
+    ATTRACTIVE = "A"
     INDIFFERENT = "I"
-    CONTRADICTORY = "C"
-    DOUBTFUL = "D"
+    REVERSE = "R"
+    QUESTIONABLE = "Q"
 
 
 class Response(Base):
@@ -58,7 +59,7 @@ class Response(Base):
         CheckConstraint("fq_answer BETWEEN 1 AND 5", name="fq_answer_range"),
         CheckConstraint("dq_answer BETWEEN 1 AND 5", name="dq_answer_range"),
         CheckConstraint(
-            "category IN ('M', 'L', 'E', 'I', 'C', 'D')",
+            "category IN ('A', 'M', 'O', 'I', 'R', 'Q')",
             name="category_enum",
         ),
     )

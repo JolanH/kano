@@ -220,8 +220,8 @@ beforeEach(() => {
   })
 })
 
-function dist(overrides: Partial<Record<'M' | 'L' | 'E' | 'I' | 'C' | 'D', number>> = {}) {
-  return { M: 0, L: 0, E: 0, I: 0, C: 0, D: 0, ...overrides }
+function dist(overrides: Partial<Record<'M' | 'O' | 'A' | 'I' | 'R' | 'Q', number>> = {}) {
+  return { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0, ...overrides }
 }
 
 function populated(total = 10): PollAnalysis {
@@ -234,7 +234,7 @@ function populated(total = 10): PollAnalysis {
         feature_key: 'feat-a',
         name: 'Feature A',
         description: null,
-        distribution: dist({ M: 7, L: 3 }),
+        distribution: dist({ M: 7, O: 3 }),
         dominant_categories: ['M'],
         dominant_percentage: 70,
       },

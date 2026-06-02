@@ -175,15 +175,15 @@ class TestRecordFullSubmissionHappyPath:
         # Three cells spanning distinct Kano categories — proves the service
         # is calling kano_matrix and not hard-coding a value.
         project_id = _seed_project(db_engine)
-        _, key_m = _seed_feature(db_engine, project_id=project_id, name="Must-have")
-        _, key_l = _seed_feature(db_engine, project_id=project_id, name="Linear")
-        _, key_e = _seed_feature(db_engine, project_id=project_id, name="Exciter")
+        _, key_m = _seed_feature(db_engine, project_id=project_id, name="Must-be")
+        _, key_l = _seed_feature(db_engine, project_id=project_id, name="Performance")
+        _, key_e = _seed_feature(db_engine, project_id=project_id, name="Attractive")
         poll_id = _seed_poll(db_engine, project_id=project_id)
 
         pairs = [
-            (key_m, 3, 5, Category.MANDATORY),
-            (key_l, 1, 5, Category.LINEAR),
-            (key_e, 1, 3, Category.EXCITER),
+            (key_m, 3, 5, Category.MUSTBE),
+            (key_l, 1, 5, Category.PERFORMANCE),
+            (key_e, 1, 3, Category.ATTRACTIVE),
         ]
         body = PollSubmission(
             answers=[
@@ -211,11 +211,11 @@ class TestRecordFullSubmissionHappyPath:
     @pytest.mark.parametrize(
         ("fq", "dq", "expected"),
         [
-            (3, 5, Category.MANDATORY),
-            (1, 5, Category.LINEAR),
-            (1, 3, Category.EXCITER),
-            (5, 5, Category.DOUBTFUL),
-            (5, 3, Category.CONTRADICTORY),
+            (3, 5, Category.MUSTBE),
+            (1, 5, Category.PERFORMANCE),
+            (1, 3, Category.ATTRACTIVE),
+            (5, 5, Category.QUESTIONABLE),
+            (5, 3, Category.REVERSE),
             (3, 3, Category.INDIFFERENT),
         ],
     )

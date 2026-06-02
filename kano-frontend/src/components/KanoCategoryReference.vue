@@ -120,8 +120,8 @@ const HEADING_ID = 'kano-category-reference-heading'
 
 .swatch-must { background-color: rgb(var(--v-theme-category-must)); }
 .swatch-perf { background-color: rgb(var(--v-theme-category-perf)); }
-.swatch-del  { background-color: rgb(var(--v-theme-category-del)); }
+.swatch-attr { background-color: rgb(var(--v-theme-category-attr)); }
 .swatch-ind  { background-color: rgb(var(--v-theme-category-ind)); }
-.swatch-cont { background-color: rgb(var(--v-theme-category-cont)); }
-.swatch-doub { background-color: rgb(var(--v-theme-category-doub)); }
+.swatch-rev  { background-color: rgb(var(--v-theme-category-rev)); }
+.swatch-que  { background-color: rgb(var(--v-theme-category-que)); }
 </style>

@@ -217,7 +217,7 @@ class TestSingleGroupByQueryGate:
         fid_b, _ = _seed_feature(db_engine, project_id=project_id, name="B")
         fid_c, _ = _seed_feature(db_engine, project_id=project_id, name="C")
         poll_id = _seed_poll(db_engine, project_id=project_id)
-        # 5 submissions, each with 3 responses (M / L / E across the 3 features)
+        # 5 submissions, each with 3 responses (M / O / A across the 3 features)
         for _ in range(5):
             _seed_submission_with_responses(
                 db_engine,
@@ -264,12 +264,12 @@ class TestShapeMatrix:
         assert len(result.features) == 3
         for feature in result.features:
             assert feature.distribution == {
-                Category.MANDATORY: 0,
-                Category.LINEAR: 0,
-                Category.EXCITER: 0,
+                Category.MUSTBE: 0,
+                Category.PERFORMANCE: 0,
+                Category.ATTRACTIVE: 0,
                 Category.INDIFFERENT: 0,
-                Category.CONTRADICTORY: 0,
-                Category.DOUBTFUL: 0,
+                Category.REVERSE: 0,
+                Category.QUESTIONABLE: 0,
             }
             assert feature.dominant_categories == []
             assert feature.dominant_percentage == 0.0
@@ -279,13 +279,13 @@ class TestShapeMatrix:
         app_with_migrated_db: Flask,
         db_engine: Engine,
     ) -> None:
-        # 1 feature, 10 submissions: 7 MANDATORY, 2 LINEAR, 1 DOUBTFUL.
-        # Map (fq, dq) cells to those categories: 3,5 → M; 1,5 → L; 5,5 → D.
+        # 1 feature, 10 submissions: 7 MUSTBE, 2 PERFORMANCE, 1 QUESTIONABLE.
+        # Map (fq, dq) cells to those categories: 3,5 → M; 1,5 → O; 5,5 → Q.
         project_id = _seed_project(db_engine)
         fid, fkey = _seed_feature(db_engine, project_id=project_id, name="Solo")
         poll_id = _seed_poll(db_engine, project_id=project_id)
 
-        # (fq, dq) cells: (3, 5) → MANDATORY; (1, 5) → LINEAR; (5, 5) → DOUBTFUL.
+        # (fq, dq) cells: (3, 5) → M; (1, 5) → O; (5, 5) → Q.
         cells: list[tuple[int, int]] = [(3, 5)] * 7 + [(1, 5)] * 2 + [(5, 5)] * 1
         for fq, dq in cells:
             _seed_submission_with_responses(
@@ -302,14 +302,14 @@ class TestShapeMatrix:
         feature = result.features[0]
         assert feature.feature_key == fkey
         assert feature.distribution == {
-            Category.MANDATORY: 7,
-            Category.LINEAR: 2,
-            Category.EXCITER: 0,
+            Category.MUSTBE: 7,
+            Category.PERFORMANCE: 2,
+            Category.ATTRACTIVE: 0,
             Category.INDIFFERENT: 0,
-            Category.CONTRADICTORY: 0,
-            Category.DOUBTFUL: 1,
+            Category.REVERSE: 0,
+            Category.QUESTIONABLE: 1,
         }
-        assert feature.dominant_categories == [Category.MANDATORY]
+        assert feature.dominant_categories == [Category.MUSTBE]
         assert feature.dominant_percentage == 70.0
 
     def test_two_way_tie(
@@ -317,12 +317,12 @@ class TestShapeMatrix:
         app_with_migrated_db: Flask,
         db_engine: Engine,
     ) -> None:
-        # 5 submissions: 2 M, 2 L, 1 E
+        # 5 submissions: 2 M, 2 O, 1 A
         project_id = _seed_project(db_engine)
         fid, _ = _seed_feature(db_engine, project_id=project_id, name="Solo")
         poll_id = _seed_poll(db_engine, project_id=project_id)
 
-        # (3, 5) → MANDATORY; (1, 5) → LINEAR; (1, 3) → EXCITER. Tie at M / L.
+        # (3, 5) → M; (1, 5) → O; (1, 3) → A. Tie at M / O.
         cells: list[tuple[int, int]] = [(3, 5)] * 2 + [(1, 5)] * 2 + [(1, 3)] * 1
         for fq, dq in cells:
             _seed_submission_with_responses(
@@ -336,9 +336,9 @@ class TestShapeMatrix:
 
         assert result.total_submissions == 5
         feature = result.features[0]
-        # Sorted in canonical Kano scan order (M → L → E → I → C → D):
-        # the M-L tie reads "M, L" everywhere on the analysis page.
-        assert feature.dominant_categories == [Category.MANDATORY, Category.LINEAR]
+        # Sorted in canonical Kano scan order (M → O → A → I → R → Q):
+        # the M-O tie reads "M, O" everywhere on the analysis page.
+        assert feature.dominant_categories == [Category.MUSTBE, Category.PERFORMANCE]
         assert feature.dominant_percentage == 40.0
 
     def test_three_way_tie(
@@ -346,12 +346,12 @@ class TestShapeMatrix:
         app_with_migrated_db: Flask,
         db_engine: Engine,
     ) -> None:
-        # 3 submissions: 1 M, 1 L, 1 E → tie at 33.3%
+        # 3 submissions: 1 M, 1 O, 1 A → tie at 33.3%
         project_id = _seed_project(db_engine)
         fid, _ = _seed_feature(db_engine, project_id=project_id, name="Solo")
         poll_id = _seed_poll(db_engine, project_id=project_id)
 
-        # (3, 5) → MANDATORY; (1, 5) → LINEAR; (1, 3) → EXCITER. 3-way tie.
+        # (3, 5) → M; (1, 5) → O; (1, 3) → A. 3-way tie.
         for fq, dq in [(3, 5), (1, 5), (1, 3)]:
             _seed_submission_with_responses(
                 db_engine,
@@ -364,11 +364,11 @@ class TestShapeMatrix:
 
         assert result.total_submissions == 3
         feature = result.features[0]
-        # Sorted in canonical Kano scan order: M → L → E.
+        # Sorted in canonical Kano scan order: M → O → A.
         assert feature.dominant_categories == [
-            Category.MANDATORY,
-            Category.LINEAR,
-            Category.EXCITER,
+            Category.MUSTBE,
+            Category.PERFORMANCE,
+            Category.ATTRACTIVE,
         ]
         assert feature.dominant_percentage == 33.3
 
@@ -396,12 +396,12 @@ class TestShapeMatrix:
         assert result.total_submissions == 5
         feature = result.features[0]
         assert feature.distribution == {
-            Category.MANDATORY: 0,
-            Category.LINEAR: 0,
-            Category.EXCITER: 0,
+            Category.MUSTBE: 0,
+            Category.PERFORMANCE: 0,
+            Category.ATTRACTIVE: 0,
             Category.INDIFFERENT: 5,
-            Category.CONTRADICTORY: 0,
-            Category.DOUBTFUL: 0,
+            Category.REVERSE: 0,
+            Category.QUESTIONABLE: 0,
         }
         assert feature.dominant_categories == [Category.INDIFFERENT]
         assert feature.dominant_percentage == 100.0
@@ -426,7 +426,7 @@ class TestShapeMatrix:
         poll_id = _seed_poll(db_engine, project_id=project_id)
 
         # 2 submissions, but only feature A and B get responses (C is skipped).
-        # (3, 5) → MANDATORY for A; (1, 5) → LINEAR for B.
+        # (3, 5) → MUSTBE for A; (1, 5) → PERFORMANCE for B.
         for _ in range(2):
             _seed_submission_with_responses(
                 db_engine,
@@ -446,19 +446,19 @@ class TestShapeMatrix:
         assert fkey_c in by_key
 
         # A: 2 M
-        assert by_key[fkey_a].distribution[Category.MANDATORY] == 2
-        assert by_key[fkey_a].dominant_categories == [Category.MANDATORY]
-        # B: 2 L
-        assert by_key[fkey_b].distribution[Category.LINEAR] == 2
-        assert by_key[fkey_b].dominant_categories == [Category.LINEAR]
+        assert by_key[fkey_a].distribution[Category.MUSTBE] == 2
+        assert by_key[fkey_a].dominant_categories == [Category.MUSTBE]
+        # B: 2 O
+        assert by_key[fkey_b].distribution[Category.PERFORMANCE] == 2
+        assert by_key[fkey_b].dominant_categories == [Category.PERFORMANCE]
         # C: all zeros, empty dominants
         assert by_key[fkey_c].distribution == {
-            Category.MANDATORY: 0,
-            Category.LINEAR: 0,
-            Category.EXCITER: 0,
+            Category.MUSTBE: 0,
+            Category.PERFORMANCE: 0,
+            Category.ATTRACTIVE: 0,
             Category.INDIFFERENT: 0,
-            Category.CONTRADICTORY: 0,
-            Category.DOUBTFUL: 0,
+            Category.REVERSE: 0,
+            Category.QUESTIONABLE: 0,
         }
         assert by_key[fkey_c].dominant_categories == []
         assert by_key[fkey_c].dominant_percentage == 0.0
@@ -499,7 +499,7 @@ class TestPollLifecycle:
             expires_at=datetime.now(tz=UTC) - timedelta(days=1),
         )
 
-        # (3, 5) → MANDATORY.
+        # (3, 5) → MUSTBE.
         for _ in range(3):
             _seed_submission_with_responses(
                 db_engine,
@@ -512,7 +512,7 @@ class TestPollLifecycle:
 
         assert result.total_submissions == 3
         assert len(result.features) == 1
-        assert result.features[0].distribution[Category.MANDATORY] == 3
+        assert result.features[0].distribution[Category.MUSTBE] == 3
 
 
 class TestSnapshotFrozenAfterEpochBump:
@@ -531,7 +531,7 @@ class TestSnapshotFrozenAfterEpochBump:
         fid_b_e1, fkey_b_e1 = _seed_feature(db_engine, project_id=project_id, epoch=1, name="B")
         poll_id = _seed_poll(db_engine, project_id=project_id, epoch=1)
 
-        # (3, 5) → MANDATORY for A; (1, 5) → LINEAR for B.
+        # (3, 5) → MUSTBE for A; (1, 5) → PERFORMANCE for B.
         for _ in range(3):
             _seed_submission_with_responses(
                 db_engine,

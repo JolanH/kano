@@ -54,7 +54,7 @@ const populatedAnalysis = {
       feature_key: 'feat-a',
       name: 'Feature A',
       description: 'First feature',
-      distribution: { M: 14, L: 4, E: 2, I: 0, C: 0, D: 0 },
+      distribution: { M: 14, O: 4, A: 2, I: 0, R: 0, Q: 0 },
       dominant_categories: ['M'],
       dominant_percentage: 70,
     },
@@ -62,31 +62,31 @@ const populatedAnalysis = {
       feature_key: 'feat-tie',
       name: 'Tied Feature',
       description: 'Two-way tie',
-      distribution: { M: 10, L: 10, E: 0, I: 0, C: 0, D: 0 },
-      dominant_categories: ['M', 'L'],
+      distribution: { M: 10, O: 10, A: 0, I: 0, R: 0, Q: 0 },
+      dominant_categories: ['M', 'O'],
       dominant_percentage: 50,
     },
     {
       feature_key: 'feat-three',
       name: 'Three-way',
       description: null,
-      distribution: { M: 6, L: 7, E: 7, I: 0, C: 0, D: 0 },
-      dominant_categories: ['L', 'E'],
+      distribution: { M: 6, O: 7, A: 7, I: 0, R: 0, Q: 0 },
+      dominant_categories: ['O', 'A'],
       dominant_percentage: 35,
     },
     {
       feature_key: 'feat-allsame',
       name: 'Even Split',
       description: 'No clear dominant — four-way tie',
-      distribution: { M: 4, L: 4, E: 4, I: 4, C: 2, D: 2 },
-      dominant_categories: ['M', 'L', 'E', 'I'],
+      distribution: { M: 4, O: 4, A: 4, I: 4, R: 2, Q: 2 },
+      dominant_categories: ['M', 'O', 'A', 'I'],
       dominant_percentage: 20,
     },
     {
       feature_key: 'feat-modest',
       name: 'Modest Dominant',
       description: 'Single dominant at a lower magnitude',
-      distribution: { M: 9, L: 6, E: 3, I: 1, C: 1, D: 0 },
+      distribution: { M: 9, O: 6, A: 3, I: 1, R: 1, Q: 0 },
       dominant_categories: ['M'],
       dominant_percentage: 45,
     },
@@ -178,14 +178,14 @@ test.describe('Story 5-5 — analysis page (populated)', () => {
     await expect(table).toBeVisible()
     await expect(table.locator('[data-testid^="analysis-row-"]')).toHaveCount(5)
 
-    // Single-dominant row (70% Must-have). Asserts the single-badge case.
+    // Single-dominant row (70% Must-be). Asserts the single-badge case.
     await expect(page.getByTestId('analysis-row-feat-a')).toBeVisible()
     const aRow = page.locator('tr', { has: page.getByTestId('analysis-row-feat-a') })
     await expect(aRow.getByTestId('analysis-dominant-pct')).toHaveText('70%')
     await expect(page.getByTestId('analysis-n-feat-a')).toHaveText('20')
     await expect(aRow.locator('.badges .cat-badge')).toHaveCount(1)
 
-    // Two-way tie row (50% each across M+L). Asserts the 2-badge tie case.
+    // Two-way tie row (50% each across M+O). Asserts the 2-badge tie case.
     const tieRow = page.locator('tr', { has: page.getByTestId('analysis-row-feat-tie') })
     await expect(tieRow.getByTestId('analysis-dominant-pct')).toHaveText('50% each')
     await expect(tieRow.locator('.badges .cat-badge')).toHaveCount(2)
@@ -195,7 +195,7 @@ test.describe('Story 5-5 — analysis page (populated)', () => {
     await expect(threeRow.getByTestId('analysis-dominant-pct')).toHaveText('35% each')
     await expect(threeRow.locator('.badges .cat-badge')).toHaveCount(2)
 
-    // All-same / 4-way tie row (20% each across M+L+E+I). Asserts the
+    // All-same / 4-way tie row (20% each across M+O+A+I). Asserts the
     // multi-badge tie case at the largest cardinality covered by v1.
     const allSameRow = page.locator('tr', { has: page.getByTestId('analysis-row-feat-allsame') })
     await expect(allSameRow.getByTestId('analysis-dominant-pct')).toHaveText('20% each')
@@ -254,7 +254,7 @@ test.describe('Story 5-5 — analysis page (404)', () => {
 })
 
 test.describe('Story 5-6 — PerCategoryPanels secondary cross-index', () => {
-  test('renders one panel per dominant category in fixed M→L→E→I→C→D order', async ({
+  test('renders one panel per dominant category in fixed M→O→A→I→R→Q order', async ({
     page,
   }) => {
     await mockCsrf(page)
@@ -264,17 +264,17 @@ test.describe('Story 5-6 — PerCategoryPanels secondary cross-index', () => {
 
     await expect(page.getByTestId('per-category-panels')).toBeVisible()
 
-    // populatedAnalysis dominants: feat-a (M), feat-tie (M,L),
-    // feat-three (L,E), feat-allsame (M,L,E,I), feat-modest (M).
-    // Expected panels: M, L, E, I — in that order. No C / D panels.
+    // populatedAnalysis dominants: feat-a (M), feat-tie (M,O),
+    // feat-three (O,A), feat-allsame (M,O,A,I), feat-modest (M).
+    // Expected panels: M, O, A, I — in that order. No R / Q panels.
     const sections = page.locator('section.category-panel')
     await expect(sections).toHaveCount(4)
     await expect(sections.nth(0)).toHaveClass(/panel-m/)
-    await expect(sections.nth(1)).toHaveClass(/panel-l/)
-    await expect(sections.nth(2)).toHaveClass(/panel-e/)
+    await expect(sections.nth(1)).toHaveClass(/panel-o/)
+    await expect(sections.nth(2)).toHaveClass(/panel-a/)
     await expect(sections.nth(3)).toHaveClass(/panel-i/)
-    await expect(page.locator('.panel-c')).toHaveCount(0)
-    await expect(page.locator('.panel-d')).toHaveCount(0)
+    await expect(page.locator('.panel-r')).toHaveCount(0)
+    await expect(page.locator('.panel-q')).toHaveCount(0)
   })
 
   test('tied feature appears in EACH of its dominant panels (FR35)', async ({
@@ -285,16 +285,16 @@ test.describe('Story 5-6 — PerCategoryPanels secondary cross-index', () => {
     await seedAnalysis(page, POLL_ID, populatedAnalysis)
     await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
 
-    // feat-tie is dominant in M and L — must show up in both panels.
+    // feat-tie is dominant in M and O — must show up in both panels.
     await expect(
       page.getByTestId('per-category-entry-M-feat-tie'),
     ).toBeVisible()
     await expect(
-      page.getByTestId('per-category-entry-L-feat-tie'),
+      page.getByTestId('per-category-entry-O-feat-tie'),
     ).toBeVisible()
 
-    // feat-allsame is tied across M+L+E+I — exactly one entry per panel.
-    for (const cat of ['M', 'L', 'E', 'I'] as const) {
+    // feat-allsame is tied across M+O+A+I — exactly one entry per panel.
+    for (const cat of ['M', 'O', 'A', 'I'] as const) {
       await expect(
         page.getByTestId(`per-category-entry-${cat}-feat-allsame`),
       ).toBeVisible()
@@ -357,8 +357,8 @@ test.describe('Story 5-7 — category help tooltips on first use', () => {
     await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
     await expect(page.getByTestId('analysis-table')).toBeVisible()
 
-    // Hover the first Must-have badge in the Dominant column.
-    const mustBadge = page.locator('.cat-badge-help').filter({ hasText: 'Must-have' }).first()
+    // Hover the first Must-be badge in the Dominant column.
+    const mustBadge = page.locator('.cat-badge-help').filter({ hasText: 'Must-be' }).first()
     await mustBadge.hover()
     await expect(page.getByRole('tooltip')).toContainText(/Users expect this feature/i)
   })
@@ -463,7 +463,7 @@ test.describe('Story 5-8 — axe-core at scale (20 features × 500 submissions)'
     expect(await axeRun(page)).toEqual([])
   })
 
-  test('fixture shape sanity: 20 rows, feat-02 is tied M+L (FR35 reference row)', async ({
+  test('fixture shape sanity: 20 rows, feat-02 is tied M+O (FR35 reference row)', async ({
     page,
   }) => {
     // Pin the fixture shape one last time at the spec layer so the perf /
@@ -473,7 +473,7 @@ test.describe('Story 5-8 — axe-core at scale (20 features × 500 submissions)'
     expect(fixture.features).toHaveLength(20)
     expect(fixture.total_submissions).toBe(500)
     expect(fixture.features[1].feature_key).toBe('feat-02')
-    expect(fixture.features[1].dominant_categories).toEqual(['M', 'L'])
+    expect(fixture.features[1].dominant_categories).toEqual(['M', 'O'])
 
     const seed = await seedAnalysisFixture(page)
     await gotoAnalysisAndWait(page, seed)

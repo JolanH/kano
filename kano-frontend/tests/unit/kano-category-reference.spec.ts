@@ -3,7 +3,7 @@
  * KanoCategoryReference — the standing Kano glossary `<aside>` to the right
  * of the "By category" section. Asserts:
  *
- * - All six categories render in the canonical M → L → E → I → C → D order,
+ * - All six categories render in the canonical M → O → A → I → R → Q order,
  *   regardless of which categories any poll's data falls into (it's a
  *   glossary, not a data view — the component takes no props).
  * - Each entry's name + description are sourced from the copy deck
@@ -21,7 +21,7 @@ import { CATEGORY_CODES, COPY_KEY, DESC_KEY, SWATCH_CLASS } from '@/components/k
 import en from '@/copy/en'
 
 describe('KanoCategoryReference', () => {
-  test('renders all six categories in the canonical M → L → E → I → C → D order', () => {
+  test('renders all six categories in the canonical M → O → A → I → R → Q order', () => {
     const wrapper = mount(KanoCategoryReference)
 
     const items = wrapper.findAll('.reference-item')

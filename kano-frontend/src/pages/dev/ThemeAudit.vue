@@ -44,7 +44,7 @@
     <!-- ============================ Typography ============================ -->
     <section class="mb-10">
       <h2 class="text-h3 mb-4">{{ copy('dev.themeAudit.typography') }}</h2>
-      <div class="text-display mb-2">Display 32 — Must-have 71%</div>
+      <div class="text-display mb-2">Display 32 — Must-be 71%</div>
       <div class="text-h1 mb-2">H1 24 — Page title</div>
       <div class="text-h2 mb-2">H2 20 — Section heading</div>
       <div class="text-h3 mb-2">H3 16 — Card title</div>
@@ -108,7 +108,7 @@
       <v-textarea label="Feature description" rows="3" />
       <v-select
         label="Category"
-        :items="['Must-have', 'Performance', 'Delighter']"
+        :items="['Must-be', 'Performance', 'Attractive']"
       />
       <!--
         Likert demo uses the real `respondent.likert.*` values from the copy
@@ -230,7 +230,7 @@
       <v-list lines="two">
         <v-list-item
           title="First feature"
-          subtitle="Must-have · 8 of 12 responses"
+          subtitle="Must-be · 8 of 12 responses"
         >
           <template #title>
             <v-list-item-title>First feature</v-list-item-title>
@@ -242,7 +242,7 @@
         />
         <v-list-item
           title="Third feature"
-          subtitle="Delighter · 3 of 12 responses"
+          subtitle="Attractive · 3 of 12 responses"
         />
       </v-list>
     </section>
@@ -349,12 +349,12 @@ const colorSwatches: ColorSwatch[] = [
   { token: 'warning', label: 'Warning', hex: tixeoColors.warning },
   { token: 'error', label: 'Error', hex: tixeoColors.error },
   { token: 'info', label: 'Info', hex: tixeoColors.info },
-  { token: 'category-must', label: 'Must-have', hex: tixeoColors['category-must'] },
+  { token: 'category-must', label: 'Must-be', hex: tixeoColors['category-must'] },
   { token: 'category-perf', label: 'Performance', hex: tixeoColors['category-perf'] },
-  { token: 'category-del', label: 'Delighter', hex: tixeoColors['category-del'] },
+  { token: 'category-attr', label: 'Attractive', hex: tixeoColors['category-attr'] },
   { token: 'category-ind', label: 'Indifferent', hex: tixeoColors['category-ind'] },
-  { token: 'category-cont', label: 'Contradictory', hex: tixeoColors['category-cont'] },
-  { token: 'category-doub', label: 'Doubtful', hex: tixeoColors['category-doub'] },
+  { token: 'category-rev', label: 'Reverse', hex: tixeoColors['category-rev'] },
+  { token: 'category-que', label: 'Questionable', hex: tixeoColors['category-que'] },
 ]
 
 interface SpacingToken {
@@ -391,9 +391,9 @@ const tableHeaders: TableHeader[] = [
 ]
 
 const tableItems: FeatureRow[] = [
-  { name: 'Auto-save', category: 'Must-have', responses: 12 },
+  { name: 'Auto-save', category: 'Must-be', responses: 12 },
   { name: 'Custom themes', category: 'Performance', responses: 8 },
-  { name: 'AI suggestions', category: 'Delighter', responses: 4 },
+  { name: 'AI suggestions', category: 'Attractive', responses: 4 },
   { name: 'CSV export', category: 'Indifferent', responses: 2 },
 ]
 
@@ -404,7 +404,7 @@ const snackbar = reactive({ show: false, color: 'success', text: '' })
 // segments are visible at the 12 px default variant. Pinned here so the
 // Playwright visual-regression baseline diffs against a known shape.
 const analysisDemoDistribution: Record<Category, number> = {
-  M: 7, L: 4, E: 3, I: 2, C: 1, D: 1,
+  M: 7, O: 4, A: 3, I: 2, R: 1, Q: 1,
 }
 const analysisDemoTotal = 18
 

@@ -47,23 +47,21 @@ export const tixeoColors = {
 
   // Kano categories — must each meet 4.5:1 against `surface` (white) for
   // the small-text labels that ride next to the swatch. Token suffixes
-  // mirror the backend `Category` enum (M, L, E, I, C, D — see
-  // `kano-backend/src/kano/services/kano_matrix.py`): `must`/`perf`/`del`/
-  // `ind`/`cont`/`doub`. Earlier drafts used `rev`/`que` (Reverse/
-  // Questionable) carried over from the UX spec's draft vocabulary; that
-  // diverged from the backend's `Contradictory`/`Doubtful` and was corrected
-  // alongside the story 1-5 (5,1)→D fix so both layers share one vocabulary.
+  // mirror the backend `Category` enum (M, O, A, I, R, Q — see
+  // `kano-backend/src/kano/services/kano_matrix.py`): `must`/`perf`/`attr`/
+  // `ind`/`rev`/`que`. The standard Kano move from the bespoke six-category
+  // model kept the existing AA-compliant hex palette and remapped tokens by
+  // concept: the purple #7C3AED now backs Attractive, the brown #B45309 now
+  // backs Reverse, and the goldenrod #8F6912 now backs Questionable.
   'category-must': '#1E3A8A',
   'category-perf': '#0D9488',
-  'category-del': '#7C3AED',
+  'category-attr': '#7C3AED',
   'category-ind': '#6B7280',
-  'category-cont': '#B45309',
-  // Doubtful was a warm stone gray (#78716C) that read as a near-twin of the
-  // cool gray `category-ind` (#6B7280) — the two swatches were almost
-  // indistinguishable side-by-side. Moved off gray to a dark goldenrod so
-  // Doubtful is unmistakable from Indifferent. Darkened to ~5:1 on `surface`
-  // (a lighter gold sat at 2.7:1 and failed the AA floor in theme-contrast).
-  'category-doub': '#8F6912',
+  'category-rev': '#B45309',
+  // Questionable keeps the dark goldenrod (~5:1 on `surface`) that was chosen
+  // to stay unmistakable from the cool-gray `category-ind` (#6B7280) — a
+  // lighter gold sat at 2.7:1 and failed the AA floor in theme-contrast.
+  'category-que': '#8F6912',
 } as const
 
 export type TixeoColorToken = keyof typeof tixeoColors
@@ -100,10 +98,10 @@ export const contrastPairings = {
   largeOrUi: [
     { fg: 'category-must', bg: 'surface' },
     { fg: 'category-perf', bg: 'surface' },
-    { fg: 'category-del', bg: 'surface' },
+    { fg: 'category-attr', bg: 'surface' },
     { fg: 'category-ind', bg: 'surface' },
-    { fg: 'category-cont', bg: 'surface' },
-    { fg: 'category-doub', bg: 'surface' },
+    { fg: 'category-rev', bg: 'surface' },
+    { fg: 'category-que', bg: 'surface' },
     { fg: 'on-primary', bg: 'primary' },
   ],
 } as const

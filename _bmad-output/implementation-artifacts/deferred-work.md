@@ -100,3 +100,11 @@ Items deferred during code reviews that should be revisited at the indicated sto
 
 - **`onNewRowPaste` multi-line loop runs uncoordinated with `commitNew`** — `kano-frontend/src/components/FeatureListEditor.vue`. The paste-create loop sets neither `newRowInFlight` nor `newRowAwaitingBump`, so a `commitNew` triggered mid-paste (via the new submit button, the name-Enter, or the description blur) can fire a concurrent/duplicate create alongside the pasted batch. Pre-existing (the description blur-commit already exposed this); the new submit button adds one more trigger. Low likelihood (requires clicking submit/blurring during an in-flight paste). Fix by having `onNewRowPaste` set/clear `newRowInFlight` around its loop and check it in `commitNew`.
 - **`onNewRowPaste` 409 path leaves `draftNew` un-cleared** — same file. On the all-success path the loop clears `draftNew.name`/`description`; on the 409/replay path it `return`s without clearing, so any residual typed name/description persists and the (now-enabled) submit button invites a stray extra create once the bump resolves. Pre-existing; fold the fix in with the coordination item above.
+
+## copy-deck.md missing key: pm.features.editor.submit.aria (surfaced 2026-06-02)
+
+Surfaced incidentally during the Kano-matrix refactor review (not caused by it). The
+`useCopy.spec.ts` "every key registered in en.ts is documented in copy-deck.md" gate
+fails on `pm.features.editor.submit.aria`, which was added to `en.ts` in baseline commit
+`21f5e66` (feature-editor submit glyph) but never documented in `docs/copy-deck.md`.
+Fix: add a row for that key under the feature-editor section of `docs/copy-deck.md`.

@@ -10,7 +10,7 @@ describe('useCopy — lookup & fallback', () => {
   test('returns the registered string for a known key', () => {
     const copy = useCopy()
     expect(copy('common.version')).toBe('Version')
-    expect(copy('pm.category.must')).toBe('Must-have')
+    expect(copy('pm.category.must')).toBe('Must-be')
   })
 
   test('returns the key itself for a missing key (visible fallback)', () => {

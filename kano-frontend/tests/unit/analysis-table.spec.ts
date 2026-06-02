@@ -139,7 +139,7 @@ const globalStubs = {
 }
 
 function dist(overrides: Partial<Record<Category, number>>): Record<Category, number> {
-  return { M: 0, L: 0, E: 0, I: 0, C: 0, D: 0, ...overrides }
+  return { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0, ...overrides }
 }
 
 function analysis(features: PollAnalysis['features']): PollAnalysis {
@@ -161,7 +161,7 @@ describe('AnalysisTable — composition', () => {
             feature_key: 'feat-a',
             name: 'Feature A',
             description: 'First feature',
-            distribution: dist({ M: 7, L: 3 }),
+            distribution: dist({ M: 7, O: 3 }),
             dominant_categories: ['M'],
             dominant_percentage: 70,
           },
@@ -169,8 +169,8 @@ describe('AnalysisTable — composition', () => {
             feature_key: 'feat-b',
             name: 'Feature B',
             description: null,
-            distribution: dist({ L: 5, E: 5 }),
-            dominant_categories: ['L', 'E'],
+            distribution: dist({ O: 5, A: 5 }),
+            dominant_categories: ['O', 'A'],
             dominant_percentage: 50,
           },
         ]),
@@ -193,7 +193,7 @@ describe('AnalysisTable — composition', () => {
             feature_key: 'feat-a',
             name: 'A',
             description: null,
-            distribution: dist({ M: 7, L: 3 }),
+            distribution: dist({ M: 7, O: 3 }),
             dominant_categories: ['M'],
             dominant_percentage: 70,
           },
@@ -219,8 +219,8 @@ describe('AnalysisTable — composition', () => {
             feature_key: 'feat-tie',
             name: 'Tie',
             description: null,
-            distribution: dist({ L: 5, E: 5 }),
-            dominant_categories: ['L', 'E'],
+            distribution: dist({ O: 5, A: 5 }),
+            dominant_categories: ['O', 'A'],
             dominant_percentage: 50,
           },
         ]),
@@ -231,8 +231,8 @@ describe('AnalysisTable — composition', () => {
     expect(pct.text()).toBe('50% each')
     const badges = wrapper.findAll('[data-cat-badge]')
     expect(badges).toHaveLength(2)
-    expect(badges[0].attributes('data-cat-badge')).toBe('L')
-    expect(badges[1].attributes('data-cat-badge')).toBe('E')
+    expect(badges[0].attributes('data-cat-badge')).toBe('O')
+    expect(badges[1].attributes('data-cat-badge')).toBe('A')
     expect(wrapper.findAll('.badge-sep')).toHaveLength(1)
   })
 
@@ -245,8 +245,8 @@ describe('AnalysisTable — composition', () => {
             feature_key: 'feat-three',
             name: 'Three',
             description: null,
-            distribution: dist({ M: 1, L: 1, E: 1 }),
-            dominant_categories: ['M', 'L', 'E'],
+            distribution: dist({ M: 1, O: 1, A: 1 }),
+            dominant_categories: ['M', 'O', 'A'],
             dominant_percentage: 33.3,
           },
         ]),
@@ -267,7 +267,7 @@ describe('AnalysisTable — composition', () => {
             feature_key: 'feat-frac',
             name: 'F',
             description: null,
-            distribution: dist({ M: 2, L: 1 }),
+            distribution: dist({ M: 2, O: 1 }),
             dominant_categories: ['M'],
             dominant_percentage: 66.7,
           },
@@ -293,7 +293,7 @@ describe('AnalysisTable — composition', () => {
               feature_key: 'feat-a',
               name: 'A',
               description: null,
-              distribution: dist({ M: 4, L: 3, E: 3 }),
+              distribution: dist({ M: 4, O: 3, A: 3 }),
               dominant_categories: ['M'],
               dominant_percentage: 40,
             },
@@ -340,8 +340,8 @@ describe('AnalysisTable — composition', () => {
             feature_key: 'feat-tie',
             name: 'Tie',
             description: null,
-            distribution: dist({ M: 5, L: 5 }),
-            dominant_categories: ['M', 'L'],
+            distribution: dist({ M: 5, O: 5 }),
+            dominant_categories: ['M', 'O'],
             dominant_percentage: 50,
           },
         ]),
@@ -375,8 +375,8 @@ describe('AnalysisTable — composition', () => {
             feature_key: 'feat-b',
             name: 'B',
             description: null,
-            distribution: dist({ L: 5 }),
-            dominant_categories: ['L'],
+            distribution: dist({ O: 5 }),
+            dominant_categories: ['O'],
             dominant_percentage: 100,
           },
         ]),

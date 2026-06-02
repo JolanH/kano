@@ -5,22 +5,31 @@ or ``sqlalchemy``. Depends only on the stdlib ``enum`` module. Importing this
 module must not pull in any persistence or web framework — that property is
 exercised by ``tests/unit/test_kano_matrix.py::test_module_is_pure``.
 
-The 25-cell matrix is transcribed from ``initial-specification.md`` (root of
-the repo) — the authoritative source. The spec now lists nine rules that
-exhaustively cover all 25 cells; the ``(fq=5, dq=1)`` cell resolves to
-``DOUBTFUL``, joining ``(1, 1)`` and ``(5, 5)`` as the three "extreme"
-answer pairs. ``C`` in this matrix means *the respondent's two answers
-contradict each other* (e.g. ``(2, 1)``: "nice to have it" and "love not
-having it"); ``(5, 1)`` does not fit that meaning — it is a coherent,
-strongly negative requirement (would map to "Reverse" in extended Kano),
-which this product does not model. Bucketing ``(5, 1)`` as ``D`` keeps the
-six-category contract intact while honestly flagging the answer pair as
-extreme / not directly actionable rather than mislabelling it as
-self-contradictory.
+The 25-cell matrix is the **standard Kano evaluation table**. Rows are the
+respondent's *functional* answer (feature present), columns the *dysfunctional*
+answer (feature absent); both run Like → Expect → Don't-care → Live-with-it →
+Dislike, encoded as the 1..5 Likert integers ``fq`` / ``dq``. Each cell maps to
+one of the six classic categories:
+
+    A — Attractive    (delighter: present pleases, absent is fine)
+    M — Must-be       (expected baseline: absent dissatisfies)
+    O — Performance   (one-dimensional: satisfaction scales with fulfilment)
+    I — Indifferent   (presence/absence does not move the respondent)
+    R — Reverse       (respondent actively prefers the feature absent)
+    Q — Questionable  (implausible / contradictory answer pair)
+
+Human-reviewable grid (rows = fq 1..5, cols = dq 1..5):
+
+          dq1  dq2  dq3  dq4  dq5
+    fq1    Q    A    A    A    O
+    fq2    R    Q    I    I    M
+    fq3    R    I    I    I    M
+    fq4    R    I    I    Q    M
+    fq5    R    R    R    R    Q
 
 The single-character ``.value`` of each enum member matches the ``CHAR(1)``
-DB domain on ``responses.category`` (Story 1.2), so persisting a category is
-``response.category = compute_category(fq, dq).value``.
+DB domain on ``responses.category`` (Story 1.2, migration 0002), so persisting
+a category is ``response.category = compute_category(fq, dq).value``.
 """
 
 from __future__ import annotations
@@ -29,35 +38,40 @@ from enum import Enum
 
 
 class Category(str, Enum):
-    """Kano category. ``.value`` is the DB-side single-letter domain code."""
+    """Kano category. ``.value`` is the DB-side single-letter domain code.
 
-    MANDATORY = "M"
-    LINEAR = "L"
-    EXCITER = "E"
+    Declared in the canonical scan order (M → O → A → I → R → Q) so that
+    iterating ``Category`` yields that order everywhere the distribution is
+    assembled or rendered.
+    """
+
+    MUSTBE = "M"
+    PERFORMANCE = "O"
+    ATTRACTIVE = "A"
     INDIFFERENT = "I"
-    CONTRADICTORY = "C"
-    DOUBTFUL = "D"
+    REVERSE = "R"
+    QUESTIONABLE = "Q"
 
 
-_M = Category.MANDATORY
-_L = Category.LINEAR
-_E = Category.EXCITER
+_M = Category.MUSTBE
+_O = Category.PERFORMANCE
+_A = Category.ATTRACTIVE
 _I = Category.INDIFFERENT
-_C = Category.CONTRADICTORY
-_D = Category.DOUBTFUL
+_R = Category.REVERSE
+_Q = Category.QUESTIONABLE
 
 
 _MATRIX: dict[tuple[int, int], Category] = {
-    # FQ = 1 (functional answer: "I love it")
-    (1, 1): _D, (1, 2): _E, (1, 3): _E, (1, 4): _E, (1, 5): _L,
-    # FQ = 2 (functional answer: "It is nice but expected")
-    (2, 1): _C, (2, 2): _I, (2, 3): _I, (2, 4): _I, (2, 5): _M,
-    # FQ = 3 (functional answer: "I am neutral")
-    (3, 1): _C, (3, 2): _I, (3, 3): _I, (3, 4): _I, (3, 5): _M,
-    # FQ = 4 (functional answer: "I dislike it but I can manage")
-    (4, 1): _C, (4, 2): _I, (4, 3): _I, (4, 4): _I, (4, 5): _M,
-    # FQ = 5 (functional answer: "I hate it")
-    (5, 1): _D, (5, 2): _C, (5, 3): _C, (5, 4): _C, (5, 5): _D,
+    # FQ = 1 (functional answer: "I like it")
+    (1, 1): _Q, (1, 2): _A, (1, 3): _A, (1, 4): _A, (1, 5): _O,
+    # FQ = 2 (functional answer: "I expect it")
+    (2, 1): _R, (2, 2): _Q, (2, 3): _I, (2, 4): _I, (2, 5): _M,
+    # FQ = 3 (functional answer: "I am neutral / don't care")
+    (3, 1): _R, (3, 2): _I, (3, 3): _I, (3, 4): _I, (3, 5): _M,
+    # FQ = 4 (functional answer: "I can live with it")
+    (4, 1): _R, (4, 2): _I, (4, 3): _I, (4, 4): _Q, (4, 5): _M,
+    # FQ = 5 (functional answer: "I dislike it")
+    (5, 1): _R, (5, 2): _R, (5, 3): _R, (5, 4): _R, (5, 5): _Q,
 }  # fmt: skip
 
 

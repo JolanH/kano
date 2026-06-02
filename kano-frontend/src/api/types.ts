@@ -128,7 +128,7 @@ export function classifyApiError(problem: ProblemDetails, status: number): KanoA
  * cross the wire; the human-readable names live in `src/copy/en.ts` under
  * `pm.category.*` and are resolved at render time by `<CatBadge>`.
  */
-export type Category = 'M' | 'L' | 'E' | 'I' | 'C' | 'D'
+export type Category = 'A' | 'M' | 'O' | 'I' | 'R' | 'Q'
 
 export interface ProjectSummary {
   id: string

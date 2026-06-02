@@ -15,11 +15,11 @@ import type { Category } from '@/api/types'
 
 export const FILL_CLASS: Record<Category, string> = {
   M: 'fill-must',
-  L: 'fill-perf',
-  E: 'fill-del',
+  O: 'fill-perf',
+  A: 'fill-attr',
   I: 'fill-ind',
-  C: 'fill-cont',
-  D: 'fill-doub',
+  R: 'fill-rev',
+  Q: 'fill-que',
 }
 
 export interface Props {
@@ -223,16 +223,16 @@ if (import.meta.env.DEV) {
 
 .fill-must { fill: rgb(var(--v-theme-category-must)); }
 .fill-perf { fill: rgb(var(--v-theme-category-perf)); }
-.fill-del  { fill: rgb(var(--v-theme-category-del)); }
+.fill-attr { fill: rgb(var(--v-theme-category-attr)); }
 .fill-ind  { fill: rgb(var(--v-theme-category-ind)); }
-.fill-cont { fill: rgb(var(--v-theme-category-cont)); }
-.fill-doub { fill: rgb(var(--v-theme-category-doub)); }
+.fill-rev  { fill: rgb(var(--v-theme-category-rev)); }
+.fill-que  { fill: rgb(var(--v-theme-category-que)); }
 
 /*
  * Focus ring — 2 px Tixeo primary outline + 1 px offset (per AC #3 and
  * UX spec line 581). The single-color outline meets 3:1 contrast against
  * most of the Kano palette but lands closer to 2:1 against the
- * Contradictory amber-700 segment. If the Story 5-8 manual a11y sweep
+ * Reverse amber-700 segment. If the Story 5-8 manual a11y sweep
  * flags this, escalate to a composed pattern (orange outline + 1 px
  * inner white ring via `box-shadow`); the Dev Notes pin the recipe.
  */

@@ -34,35 +34,31 @@ export const en = {
   'pm.layout.sidebar.resources': 'Resources',
   'pm.layout.appBar.title': 'Kano',
 
-  // PM category labels (mirror the six theme tokens in src/theme/tixeo.ts)
-  // Display labels are the friendlier industry-standard Kano terms for the
-  // first three categories (Must-have ↔ MANDATORY, Performance ↔ LINEAR,
-  // Delighter ↔ EXCITER) — these map 1:1. The bottom two use the spec's own
-  // names (Contradictory, Doubtful) rather than the extended-Kano vocabulary
-  // (Reverse, Questionable) that drafts inadvertently used — those terms
-  // mean *different things* in Kano theory and conflict with the backend
-  // semantics (e.g. C means "respondent answers contradict each other,"
-  // not "user wants the inverse feature"). See story 1-5 (5,1)→D fix.
-  'pm.category.must': 'Must-have',
+  // PM category labels (mirror the six theme tokens in src/theme/tixeo.ts).
+  // Standard Kano evaluation-table vocabulary: A=Attractive, M=Must-be,
+  // O=Performance, I=Indifferent, R=Reverse, Q=Questionable. Suffixes track
+  // the backend `Category` enum values and the `pm.category.*` key map in
+  // `kano-categories.ts` (must/perf/attr/ind/rev/que).
+  'pm.category.must': 'Must-be',
   'pm.category.perf': 'Performance',
-  'pm.category.del': 'Delighter',
+  'pm.category.attr': 'Attractive',
   'pm.category.ind': 'Indifferent',
-  'pm.category.cont': 'Contradictory',
-  'pm.category.doub': 'Doubtful',
+  'pm.category.rev': 'Reverse',
+  'pm.category.que': 'Questionable',
 
   // PM category help tooltips (Story 5-7) — short ≤ 2-line definitions
   // surfaced by `<CatBadge :with-help="true">` on the analysis page (FR39
   // first-use help). Suffix vocabulary tracks the backend `Category` enum
-  // (Contradictory / Doubtful) to match `pm.category.cont` / `pm.category.doub`
-  // above; see Story 1-5 (5,1)→D reconciliation. Wording is non-load-bearing
+  // (Attractive / Reverse / Questionable) to match `pm.category.attr` /
+  // `pm.category.rev` / `pm.category.que` above. Wording is non-load-bearing
   // (every category is also labeled visibly via CatBadge); a copy-deck
   // refinement during low-fidelity review does not require a code change.
   'pm.category.help.must': 'Users expect this feature. Its absence causes frustration.',
   'pm.category.help.perf': 'Satisfaction scales with quality. More is better.',
-  'pm.category.help.del': "Aspirational. Users don't expect it, but love it when present.",
+  'pm.category.help.attr': "Aspirational. Users don't expect it, but love it when present.",
   'pm.category.help.ind': "Users don't care whether this feature exists or not.",
-  'pm.category.help.cont': "Responses contradicted each other. The category is unstable until more data arrives.",
-  'pm.category.help.doub': 'Responses were inconsistent. More data is needed before drawing a conclusion.',
+  'pm.category.help.rev': 'Users actively prefer this feature absent. Presence reduces satisfaction.',
+  'pm.category.help.que': 'Contradictory answers — usually a misread question. Treat the result with caution.',
 
   // Respondent Likert option labels (FR22 — plain-language replacements for
   // the Kano-methodology jargon). The wording is Story 4-5 / epics line
@@ -384,23 +380,22 @@ export const en = {
   // of the poll's data) with a fuller, Kano-textbook-grounded description.
   // Deliberately a SEPARATE namespace from the terse `pm.category.help.*`
   // CatBadge first-use tooltips (Story 5-7): different surface, different
-  // length budget. `cont`/`doub` track THIS product's matrix semantics
-  // (C = the respondent's paired answers contradict each other → inconclusive;
-  // D = an extreme / questionable answer pattern), not the textbook "Reverse"
-  // reading the product does not model (see kano_matrix.py).
+  // length budget. Standard Kano evaluation-table vocabulary — `rev`/`que`
+  // are Reverse (the user prefers the feature absent) and Questionable (a
+  // contradictory answer pair); see kano_matrix.py.
   'analysis.categoryRef.heading': 'What the categories mean',
   'analysis.categoryRef.desc.must':
     'A basic expectation. Its absence causes strong dissatisfaction, yet its presence is taken for granted — the price of entry.',
   'analysis.categoryRef.desc.perf':
     'The more, the better. Satisfaction rises and falls in direct proportion to how well this is delivered.',
-  'analysis.categoryRef.desc.del':
+  'analysis.categoryRef.desc.attr':
     "An unexpected extra. Users don't ask for it, but its presence sparks delight and sets the product apart.",
   'analysis.categoryRef.desc.ind':
     'Users are unmoved either way — its presence or absence makes little difference to how satisfied they feel.',
-  'analysis.categoryRef.desc.cont':
-    "Respondents' paired answers worked against each other, so no stable preference emerged. Treat as inconclusive.",
-  'analysis.categoryRef.desc.doub':
-    'An extreme or unlikely answer pattern. The signal is questionable until more responses arrive.',
+  'analysis.categoryRef.desc.rev':
+    'Users actively prefer this feature absent — building it would work against satisfaction, not for it.',
+  'analysis.categoryRef.desc.que':
+    'A contradictory answer pair, usually a misread question. The signal is unreliable; treat it with caution.',
 } as const
 
 export type CopyKey = keyof typeof en

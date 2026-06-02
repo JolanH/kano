@@ -4,9 +4,10 @@ These are two independent representations of the same six-letter domain:
 
 * ``kano.services.kano_matrix.Category`` — Python-side enum returned by
   ``compute_category()``; ``.value`` is what gets persisted to ``responses.category``.
-* ``migrations/versions/0001_initial_schema.py`` — SQL
-  ``CHECK (category IN (...))`` constraint that rejects unknown letters at the
-  database level.
+* ``migrations/versions/0002_kano_category_standard_amoirq.py`` — the head
+  migration that establishes the current ``CHECK (category IN (...))`` domain
+  (``A/M/O/I/R/Q``). Migration 0001 holds the superseded ``M/L/E/I/C/D`` domain
+  and is intentionally not consulted here — it is history, not the live schema.
 
 Adding a member to one without the other ships a runtime CHECK violation on
 the first INSERT. This test is the cheap, table-free guard that ties them
@@ -21,11 +22,16 @@ from pathlib import Path
 from kano.services.kano_matrix import Category
 
 _MIGRATION_PATH = (
-    Path(__file__).resolve().parents[2] / "migrations" / "versions" / "0001_initial_schema.py"
+    Path(__file__).resolve().parents[2]
+    / "migrations"
+    / "versions"
+    / "0002_kano_category_standard_amoirq.py"
 )
 
 # Matches the CHECK body for the ``category`` column. Single-quoted single
-# letters separated by commas, e.g. ``'M', 'L', 'E', 'I', 'C', 'D'``.
+# letters separated by commas, e.g. ``'A', 'M', 'O', 'I', 'R', 'Q'``. The
+# first match in 0002 is the new (upgrade) domain ``_NEW``, which is declared
+# before the ``_OLD`` downgrade-target domain.
 _CATEGORY_CHECK_BODY = re.compile(r"category\s+IN\s+\(\s*((?:'[A-Z]'\s*(?:,\s*)?)+)\)")
 _LETTER = re.compile(r"'([A-Z])'")
 
