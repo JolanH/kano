@@ -247,6 +247,10 @@ Card surface where the PM copies the poll URL and previews the QR code.
 | `pm.projects.detail.generatePoll.noFeatures` | Add at least one feature before generating a poll | Inline warning shown on 422 `poll-requires-features` |
 | `pm.projects.detail.generatePoll.backToProject` | Back to project | Back link on the share view |
 | `pm.projects.detail.generatePoll.error` | We couldn't generate the poll. Please try again. | Generic-error alert on unexpected create-poll failures |
+| `pm.projects.detail.pollLink.goButton` | Go to poll URL | Primary CTA + `aria-label`; get-or-creates the poll then opens its public URL in a new tab |
+| `pm.projects.detail.pollLink.copyButton` | Copy poll URL to clipboard | Secondary CTA + `aria-label`; get-or-creates the poll then copies its public URL |
+| `pm.projects.detail.pollLink.copied` | Poll URL copied to clipboard | Snackbar on successful copy |
+| `pm.projects.detail.pollLink.copyFailed` | We couldn't copy the URL automatically. Please try again. | Snackbar when the clipboard write fails |
 
 ## PM polls list (Story 3-7) — the home screen
 

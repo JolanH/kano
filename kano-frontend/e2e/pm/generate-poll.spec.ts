@@ -1,12 +1,13 @@
 /**
- * Story 3-6 happy path — "Generate poll URL" terminal action.
+ * Poll-link actions on project detail — "Go to poll URL" + "Copy poll URL".
  *
- * Runs against `npm run dev` (Playwright launches Vite). The backend is
- * mocked at the fetch boundary: empty project → click feature → click
- * Generate → land on share view with URL + QR visible.
+ * Supersedes the Story 3-6 "Generate poll URL" terminal action: the poll is
+ * now deterministic per (project, epoch), so creation is idempotent and the
+ * two buttons get-or-create it, then open the public URL in a new tab or copy
+ * it to the clipboard.
  *
- * Same mocking strategy as `a11y-paola.spec.ts`: keeps the spec fast and
- * deterministic; backend correctness is the pytest integration suite's
+ * Runs against `npm run dev` (Playwright launches Vite). The backend is mocked
+ * at the fetch boundary; backend correctness is the pytest integration suite's
  * job (test_polls_api.py).
  */
 
@@ -52,7 +53,7 @@ const samplePoll = {
   is_expired: false,
 }
 
-async function seedAllRoutes(page: Page) {
+async function seedAllRoutes(page: Page, pollsList: unknown[] = []) {
   await page.route('**/api/v1/csrf-token', (route) =>
     route.fulfill({
       contentType: 'application/json',
@@ -69,6 +70,7 @@ async function seedAllRoutes(page: Page) {
     `**/api/v1/projects/${PROJECT_ID}/polls`,
     (route) => {
       if (route.request().method() === 'POST') {
+        // Idempotent get-or-create: a 200 (existing) is equally valid; 201 here.
         return route.fulfill({
           status: 201,
           headers: { Location: `/api/v1/polls/${POLL_ID}` },
@@ -78,34 +80,46 @@ async function seedAllRoutes(page: Page) {
       }
       return route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify([]),
+        body: JSON.stringify(pollsList),
       })
     },
   )
 }
 
-test.describe('Story 3-6 — Generate poll URL flow', () => {
-  test('happy path: project with feature → Generate → share view', async ({ page }) => {
+test.describe('Poll-link actions — Go to poll URL + Copy poll URL', () => {
+  test('Go to poll URL opens the public poll page in a new tab', async ({ page }) => {
     await seedAllRoutes(page)
     await page.goto(`/app/projects/${PROJECT_ID}`)
     await expect(page.getByTestId('project-detail')).toBeVisible()
-    const button = page.getByTestId('generate-poll-button')
+
+    const button = page.getByTestId('go-to-poll-url-button')
     await expect(button).toBeVisible()
     await expect(button).toBeEnabled()
+
+    const popupPromise = page.waitForEvent('popup')
     await button.click()
-    await expect(page).toHaveURL(
-      new RegExp(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/share$`),
-    )
-    await expect(page.getByTestId('poll-share-panel')).toBeVisible()
-    const urlField = page.getByTestId('poll-share-url').locator('input')
-    const url = await urlField.inputValue()
-    expect(url).toMatch(/^https?:\/\/[^/]+\/poll\/[0-9a-f-]{36}$/)
-    expect(url.endsWith(`/poll/${POLL_ID}`)).toBe(true)
-    // QR image renders (it's aria-hidden so query by data-testid not role).
-    await expect(page.getByTestId('poll-share-qr')).toBeVisible()
+    const popup = await popupPromise
+    await popup.waitForURL(new RegExp(`/poll/${POLL_ID}$`))
+    expect(popup.url()).toMatch(/^https?:\/\/[^/]+\/poll\/[0-9a-f-]{36}$/)
+    expect(popup.url().endsWith(`/poll/${POLL_ID}`)).toBe(true)
   })
 
-  test('disabled when project has no active features', async ({ page }) => {
+  test('Copy poll URL writes the public URL to the clipboard', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    await seedAllRoutes(page)
+    await page.goto(`/app/projects/${PROJECT_ID}`)
+    await expect(page.getByTestId('project-detail')).toBeVisible()
+
+    await page.getByTestId('copy-poll-url-button').click()
+
+    // Success snackbar confirms the copy.
+    await expect(page.getByText('Poll URL copied to clipboard')).toBeVisible()
+    const clip = await page.evaluate(() => navigator.clipboard.readText())
+    expect(clip).toMatch(/^https?:\/\/[^/]+\/poll\/[0-9a-f-]{36}$/)
+    expect(clip.endsWith(`/poll/${POLL_ID}`)).toBe(true)
+  })
+
+  test('both buttons disabled when project has no active features', async ({ page }) => {
     await page.route('**/api/v1/csrf-token', (route) =>
       route.fulfill({
         contentType: 'application/json',
@@ -120,14 +134,16 @@ test.describe('Story 3-6 — Generate poll URL flow', () => {
     )
     await page.goto(`/app/projects/${PROJECT_ID}`)
     await expect(page.getByTestId('project-detail')).toBeVisible()
-    await expect(page.getByTestId('generate-poll-button')).toBeDisabled()
+    await expect(page.getByTestId('go-to-poll-url-button')).toBeDisabled()
+    await expect(page.getByTestId('copy-poll-url-button')).toBeDisabled()
   })
 
-  test('share view has zero axe violations', async ({ page }) => {
-    await seedAllRoutes(page)
+  test('project detail with poll-link buttons has zero axe violations', async ({ page }) => {
+    // Seed an existing poll so the buttons are enabled and no disabled-state
+    // tooltips render — axe-checks the page in its normal, actionable state.
+    await seedAllRoutes(page, [{ ...samplePoll, project_name: 'Generate Test', project_version: '1.0' }])
     await page.goto(`/app/projects/${PROJECT_ID}`)
-    await page.getByTestId('generate-poll-button').click()
-    await expect(page.getByTestId('poll-share-panel')).toBeVisible()
+    await expect(page.getByTestId('go-to-poll-url-button')).toBeVisible()
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa'])
       .analyze()

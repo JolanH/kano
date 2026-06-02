@@ -30,15 +30,18 @@ polls_bp = Blueprint("polls", __name__, url_prefix="/api/v1")
 
 @polls_bp.post("/projects/<uuid:project_id>/polls")
 def create_poll(project_id: UUID) -> tuple[Response, int, dict[str, str]]:
-    """``POST /api/v1/projects/:id/polls`` — pin a poll to the project's current epoch.
+    """``POST /api/v1/projects/:id/polls`` — get-or-create the project's current-epoch poll.
 
-    Empty body. ``PollSummary`` response. ``Location`` header points at
-    ``/api/v1/polls/:id`` (the public read endpoint added in Story 3.4).
+    Empty body. The poll id is deterministic per ``(project, epoch)``, so this
+    is idempotent: ``201 Created`` when a fresh poll is minted, ``200 OK`` when
+    the existing one is returned. ``PollSummary`` response either way;
+    ``Location`` header points at ``/api/v1/polls/:id`` (Story 3.4 public read).
     """
 
-    poll = poll_service.create_poll(project_id)
+    poll, created = poll_service.create_poll(project_id)
     payload = PollSummary.model_validate(poll).model_dump(mode="json")
-    return jsonify(payload), 201, {"Location": f"/api/v1/polls/{poll.id}"}
+    status = 201 if created else 200
+    return jsonify(payload), status, {"Location": f"/api/v1/polls/{poll.id}"}
 
 
 @polls_bp.get("/projects/<uuid:project_id>/polls")

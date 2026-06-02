@@ -52,7 +52,7 @@
           <span class="mdi mdi-delete-outline pm-row-icon" aria-hidden="true" />
         </button>
       </div>
-    </div>
+  </div>
 
     <div role="row" class="pm-feature-row pm-feature-row--new" data-testid="feature-new-row">
       <div role="gridcell" class="pm-feature-cell pm-feature-cell--name">

@@ -75,7 +75,11 @@ export const usePollsStore = defineStore('polls', {
         project_name: projectContext?.name ?? '',
         project_version: projectContext?.version ?? '',
       }
-      this.items = [optimistic, ...this.items]
+      // Poll creation is now idempotent (one poll per project+epoch), so the
+      // "Go to poll URL" / "Copy poll URL" buttons call this repeatedly with
+      // the same poll id. Dedupe by id — drop any prior row for this poll and
+      // re-insert at the front — so the home list never grows duplicates.
+      this.items = [optimistic, ...this.items.filter((p) => p.id !== data.id)]
       return data
     },
 

@@ -134,18 +134,35 @@
       {{ copy('pm.projects.detail.generatePoll.error') }}
     </v-alert>
 
-    <div v-if="!isViewingPast" class="d-flex align-center ga-3 mb-4">
+    <div v-if="!isViewingPast" class="d-flex align-center ga-3 mb-4 flex-wrap">
       <div>
         <v-btn
           color="primary"
           size="large"
-          prepend-icon="mdi-link-plus"
+          prepend-icon="mdi-open-in-new"
           :disabled="activeFeatureCount === 0 || generating"
           :loading="generating"
-          :aria-label="copy('pm.projects.detail.generatePoll.button')"
-          data-testid="generate-poll-button"
-          :text="copy('pm.projects.detail.generatePoll.button')"
-          @click="onGenerate"
+          :aria-label="copy('pm.projects.detail.pollLink.goButton')"
+          data-testid="go-to-poll-url-button"
+          :text="copy('pm.projects.detail.pollLink.goButton')"
+          @click="onGoToPoll"
+        />
+        <v-tooltip
+          v-if="activeFeatureCount === 0"
+          activator="parent"
+          :text="copy('pm.projects.detail.generatePoll.disabledTooltip')"
+        />
+      </div>
+      <div>
+        <v-btn
+          variant="outlined"
+          size="large"
+          prepend-icon="mdi-content-copy"
+          :disabled="activeFeatureCount === 0 || generating"
+          :aria-label="copy('pm.projects.detail.pollLink.copyButton')"
+          data-testid="copy-poll-url-button"
+          :text="copy('pm.projects.detail.pollLink.copyButton')"
+          @click="onCopyPollUrl"
         />
         <v-tooltip
           v-if="activeFeatureCount === 0"
@@ -220,10 +237,12 @@
       @cancelled="onDialogCancelled"
     />
 
+    <!-- Shared transient-notification slot: epoch-bump confirmations and
+         poll-URL copy feedback both render here. -->
     <v-snackbar
       v-model="snackbarOpen"
       :timeout="4000"
-      data-testid="epoch-bump-snackbar"
+      data-testid="project-detail-snackbar"
     >
       {{ snackbarMessage }}
     </v-snackbar>
@@ -246,6 +265,7 @@ import FeatureListEditor, {
 } from '@/components/FeatureListEditor.vue'
 import { KanoApiError, NotFoundError, PollRequiresFeaturesError } from '@/api/types'
 import { useCopy } from '@/composables/useCopy'
+import { buildPollUrl } from '@/lib/pollUrl'
 import { usePollsStore } from '@/stores/polls'
 import { useProjectsStore } from '@/stores/projects'
 
@@ -281,20 +301,19 @@ function onViewAnalysis() {
   })
 }
 
-async function onGenerate() {
-  if (!store.current) return
+// Get-or-create the project's single deterministic poll and return its public
+// URL. Surfaces the same inline alerts the old generate flow used. Returns
+// null when the poll could not be obtained (caller aborts its action).
+async function ensurePollUrl(): Promise<string | null> {
+  if (!store.current) return null
   noFeaturesAlert.value = false
   generateError.value = false
-  generating.value = true
   try {
     const poll = await pollsStore.createPoll(store.current.id, {
       name: store.current.name,
       version: store.current.version,
     })
-    await router.push({
-      name: 'poll-share',
-      params: { id: store.current.id, pollId: poll.id },
-    })
+    return buildPollUrl(poll.id)
   } catch (err) {
     if (err instanceof PollRequiresFeaturesError) {
       noFeaturesAlert.value = true
@@ -303,6 +322,56 @@ async function onGenerate() {
       // Re-throw non-typed errors so the global handler can log them.
       if (!(err instanceof KanoApiError)) throw err
     }
+    return null
+  }
+}
+
+async function copyToClipboard(url: string) {
+  try {
+    const write =
+      typeof navigator !== 'undefined'
+        ? navigator.clipboard?.writeText?.bind(navigator.clipboard)
+        : undefined
+    if (!write) throw new Error('clipboard unavailable')
+    await write(url)
+    snackbarMessage.value = copy('pm.projects.detail.pollLink.copied')
+  } catch {
+    snackbarMessage.value = copy('pm.projects.detail.pollLink.copyFailed')
+  }
+  snackbarOpen.value = true
+}
+
+async function onGoToPoll() {
+  if (!store.current) return
+  // Open the tab synchronously inside this user-gesture tick so popup
+  // blockers don't kill it; navigate once the poll URL resolves. (Avoid the
+  // 'noopener' window feature here — it forces window.open to return null,
+  // which would lose the handle we need; sever the opener link manually.)
+  const win = window.open('about:blank', '_blank')
+  if (win) win.opener = null
+  generating.value = true
+  try {
+    const url = await ensurePollUrl()
+    if (!url) {
+      win?.close()
+      return
+    }
+    if (win) {
+      win.location.href = url
+    } else {
+      // Popup was blocked — fall back to copying so the PM still gets the link.
+      await copyToClipboard(url)
+    }
+  } finally {
+    generating.value = false
+  }
+}
+
+async function onCopyPollUrl() {
+  generating.value = true
+  try {
+    const url = await ensurePollUrl()
+    if (url) await copyToClipboard(url)
   } finally {
     generating.value = false
   }

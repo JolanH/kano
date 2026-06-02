@@ -20,6 +20,7 @@ from sqlalchemy import Engine, event, text
 
 from kano import create_app
 from kano.db import db as kano_db
+from kano.services.poll_service import POLL_TTL_DAYS, _deterministic_poll_id
 from tests.conftest import TestConfig
 
 
@@ -152,7 +153,8 @@ class TestCreatePoll:
             "is_expired",
         }
         poll_id = UUID(body["id"])
-        assert poll_id.version == 4
+        # Deterministic UUIDv5 derived from (project_id, epoch) — no longer v4.
+        assert poll_id.version == 5
         assert body["project_id"] == str(project_id)
         assert body["epoch"] == 1
         assert body["response_count"] == 0
@@ -177,6 +179,94 @@ class TestCreatePoll:
             ).one()
         assert row.project_id == project_id
         assert row.epoch == 1
+
+    def test_poll_id_is_deterministic_uuid5(
+        self,
+        client_migrated: FlaskClient,
+    ) -> None:
+        project_id = _create_project(client_migrated)
+        _add_active_feature(client_migrated, project_id, "Auto-save")
+
+        response = client_migrated.post(
+            f"/api/v1/projects/{project_id}/polls",
+            headers={"X-CSRF-Token": _csrf(client_migrated)},
+        )
+        assert response.status_code == 201, response.data
+        body = json.loads(response.data)
+        assert body["id"] == str(_deterministic_poll_id(project_id, body["epoch"]))
+
+    def test_create_poll_is_idempotent_returns_200_on_repeat(
+        self,
+        client_migrated: FlaskClient,
+        db_engine: Engine,
+    ) -> None:
+        project_id = _create_project(client_migrated)
+        _add_active_feature(client_migrated, project_id, "Auto-save")
+
+        r1 = client_migrated.post(
+            f"/api/v1/projects/{project_id}/polls",
+            headers={"X-CSRF-Token": _csrf(client_migrated)},
+        )
+        assert r1.status_code == 201, r1.data
+        id1 = json.loads(r1.data)["id"]
+
+        # Second call resolves to the same deterministic id → returns existing.
+        r2 = client_migrated.post(
+            f"/api/v1/projects/{project_id}/polls",
+            headers={"X-CSRF-Token": _csrf(client_migrated)},
+        )
+        assert r2.status_code == 200, r2.data
+        body2 = json.loads(r2.data)
+        assert body2["id"] == id1
+        assert r2.headers.get("Location") == f"/api/v1/polls/{id1}"
+
+        # Exactly one poll row persisted for the project.
+        with db_engine.connect() as conn:
+            count = conn.execute(
+                text("SELECT COUNT(*) FROM polls WHERE project_id = :pid"),
+                {"pid": project_id},
+            ).scalar_one()
+        assert count == 1
+
+    def test_create_poll_refreshes_expired_existing(
+        self,
+        client_migrated: FlaskClient,
+        db_engine: Engine,
+    ) -> None:
+        # Seed an already-expired poll under the *deterministic* id for the
+        # project's current epoch (1), then re-create: the same poll comes
+        # back with its TTL refreshed rather than a duplicate being minted.
+        project_id = _create_project(client_migrated)
+        _add_active_feature(client_migrated, project_id, "Auto-save")
+
+        poll_id = _deterministic_poll_id(project_id, 1)
+        now = datetime.now(tz=UTC)
+        with db_engine.begin() as conn:
+            conn.execute(
+                text(
+                    "INSERT INTO polls (id, project_id, epoch, created_at, expires_at) "
+                    "VALUES (:id, :pid, :epoch, :created, :expires)"
+                ),
+                {
+                    "id": poll_id,
+                    "pid": project_id,
+                    "epoch": 1,
+                    "created": now - timedelta(days=10),
+                    "expires": now - timedelta(days=3),
+                },
+            )
+
+        response = client_migrated.post(
+            f"/api/v1/projects/{project_id}/polls",
+            headers={"X-CSRF-Token": _csrf(client_migrated)},
+        )
+        assert response.status_code == 200, response.data
+        body = json.loads(response.data)
+        assert body["id"] == str(poll_id)
+        assert body["is_expired"] is False
+        expires = datetime.fromisoformat(body["expires_at"])
+        # Refreshed to ~now + TTL (well into the future).
+        assert expires > now + timedelta(days=POLL_TTL_DAYS - 1)
 
     def test_create_poll_zero_features_returns_422(
         self,
@@ -291,6 +381,17 @@ class TestCreatePoll:
             )
         assert project_epoch == 2
         assert poll_epoch == 1
+
+        # Creating a poll now (epoch 2) yields a *different* deterministic id —
+        # the epoch-1 poll is untouched, so one snapshot still maps to one poll.
+        r = client_migrated.post(
+            f"/api/v1/projects/{project_id}/polls",
+            headers={"X-CSRF-Token": _csrf(client_migrated)},
+        )
+        assert r.status_code == 201, r.data
+        epoch2_poll_id = UUID(json.loads(r.data)["id"])
+        assert epoch2_poll_id == _deterministic_poll_id(project_id, 2)
+        assert epoch2_poll_id != poll_id
 
 
 class TestListPollsForProject:

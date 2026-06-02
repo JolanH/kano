@@ -17,9 +17,10 @@ when its query selects ``COUNT(submissions.id)`` as ``response_count``.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from uuid import UUID, uuid4
+from uuid import UUID, uuid4, uuid5
 
 from sqlalchemy import Select, func, select
+from sqlalchemy.exc import IntegrityError
 
 from kano.db import db
 from kano.exceptions import (
@@ -40,6 +41,41 @@ from kano.services.kano_matrix import compute_category
 
 POLL_TTL_DAYS = 7
 
+# Fixed namespace for deterministic poll ids. The poll id is
+# ``uuid5(POLL_ID_NAMESPACE, f"{project_id}:{epoch}")`` so a given
+# ``(project, epoch)`` snapshot always resolves to the same UUID — the
+# primary key itself enforces "exactly one poll per snapshot" (no extra
+# UNIQUE needed). The ``SELECT ... FOR UPDATE`` on the project row serializes
+# concurrent creates for the same project; ``create_poll`` additionally
+# guards the insert against an ``IntegrityError`` so a duplicate-PK race can
+# never surface as a 500. This constant MUST stay stable forever: changing it
+# orphans every poll.
+POLL_ID_NAMESPACE = UUID("b54cefc2-de05-4fdd-8913-fa06a48abc30")
+
+
+def _deterministic_poll_id(project_id: UUID, epoch: int) -> UUID:
+    """Stable UUIDv5 for a ``(project_id, epoch)`` feature-set snapshot."""
+
+    return uuid5(POLL_ID_NAMESPACE, f"{project_id}:{epoch}")
+
+
+def _decorate_existing(poll: Poll, now: datetime) -> Poll:
+    """Refresh an expired poll's TTL and attach transient response fields.
+
+    Shared by ``create_poll``'s get-existing branch and its duplicate-insert
+    race guard so both return a ``Poll`` ready for ``PollSummary.model_validate``.
+    """
+
+    if poll.expires_at <= now:
+        poll.expires_at = now + timedelta(days=POLL_TTL_DAYS)
+        db.session.commit()
+        db.session.refresh(poll)
+    poll.response_count = db.session.execute(  # type: ignore[attr-defined]
+        select(func.count(Submission.id)).where(Submission.poll_id == poll.id)
+    ).scalar_one()
+    poll.is_expired = poll.expires_at <= now  # type: ignore[attr-defined]
+    return poll
+
 
 def _active_features_query(project_id: UUID, epoch: int) -> Select[tuple[Feature]]:
     """SELECT for features active on the (project_id, epoch) snapshot.
@@ -56,22 +92,32 @@ def _active_features_query(project_id: UUID, epoch: int) -> Select[tuple[Feature
     )
 
 
-def create_poll(project_id: UUID) -> Poll:
-    """Create a poll pinned to the project's ``current_epoch`` with a 7-day TTL.
+def create_poll(project_id: UUID) -> tuple[Poll, bool]:
+    """Get-or-create the single poll for the project's ``current_epoch``.
+
+    The poll id is deterministic — ``_deterministic_poll_id(project_id,
+    epoch)`` — so exactly one poll can exist per ``(project, epoch)`` snapshot
+    and re-invoking returns the existing row instead of minting a duplicate.
+
+    Returns ``(poll, created)``: ``created`` is ``True`` when a fresh row was
+    inserted, ``False`` when an existing poll was returned (so the API can
+    answer 201 vs 200). The ``Poll`` carries ``response_count`` and
+    ``is_expired`` as transient attributes for ``PollSummary.model_validate``.
+
+    An existing-but-expired poll has its ``expires_at`` refreshed to
+    ``now + POLL_TTL_DAYS`` so the one canonical poll stays usable rather than
+    leaving the ``(project, epoch)`` snapshot permanently un-pollable.
 
     Raises:
         EntityNotFound: project doesn't exist.
-        PollRequiresFeatures: project's current epoch has zero active features.
+        PollRequiresFeatures: a *new* poll is needed but the current epoch has
+            zero active features. (An already-existing poll is returned
+            without re-checking — its snapshot is immutable once pinned.)
 
-    Returns the persisted ``Poll`` with ``response_count`` and ``is_expired``
-    decorated as transient attributes so the caller can hand it straight to
-    ``PollSummary.model_validate`` without an extra service round-trip.
-
-    Concurrency: the project row is locked with ``SELECT ... FOR UPDATE`` so
-    a concurrent ``epoch_service.bump_epoch_on_feature_change`` cannot
-    interleave between the ``current_epoch`` read and the poll insert. The
-    feature-count check runs inside the same locked window — defends against
-    "all features soft-deleted between count and insert" too.
+    Concurrency: the project row is locked with ``SELECT ... FOR UPDATE`` so a
+    concurrent ``epoch_service.bump_epoch_on_feature_change`` cannot interleave
+    between the ``current_epoch`` read and the poll insert. The feature-count
+    check runs inside the same locked window.
     """
 
     project = db.session.execute(
@@ -81,6 +127,12 @@ def create_poll(project_id: UUID) -> Poll:
         raise EntityNotFound(f"Project {project_id} not found")
 
     epoch = project.current_epoch
+    poll_id = _deterministic_poll_id(project_id, epoch)
+    now = datetime.now(tz=UTC)
+
+    existing = db.session.get(Poll, poll_id)
+    if existing is not None:
+        return _decorate_existing(existing, now), False
 
     active_feature_count = db.session.execute(
         select(func.count()).select_from(_active_features_query(project_id, epoch).subquery())
@@ -88,16 +140,26 @@ def create_poll(project_id: UUID) -> Poll:
     if active_feature_count == 0:
         raise PollRequiresFeatures(project_id=project_id, epoch=epoch)
 
-    now = datetime.now(tz=UTC)
     poll = Poll(
-        id=uuid4(),
+        id=poll_id,
         project_id=project_id,
         epoch=epoch,
         created_at=now,
         expires_at=now + timedelta(days=POLL_TTL_DAYS),
     )
     db.session.add(poll)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        # A concurrent request inserted the same deterministic id between our
+        # get() and commit(). The project-row lock makes this near-impossible
+        # under PostgreSQL, but guard it so the loser still gets idempotent
+        # success (the existing row) rather than a 500.
+        db.session.rollback()
+        raced = db.session.get(Poll, poll_id)
+        if raced is None:
+            raise
+        return _decorate_existing(raced, now), False
     db.session.refresh(poll)
 
     # Transient attributes consumed by PollSummary.model_validate via
@@ -105,7 +167,7 @@ def create_poll(project_id: UUID) -> Poll:
     # and `expires_at` is 7 days from now → not expired.
     poll.response_count = 0  # type: ignore[attr-defined]
     poll.is_expired = False  # type: ignore[attr-defined]
-    return poll
+    return poll, True
 
 
 def list_polls_for_project(project_id: UUID) -> list[Poll]:

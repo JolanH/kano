@@ -82,6 +82,7 @@
 import { computed, onMounted, ref, useId } from 'vue'
 
 import { useCopy } from '@/composables/useCopy'
+import { buildPollUrl } from '@/lib/pollUrl'
 import type { PollSummary } from '@/api/types'
 
 const props = defineProps<{
@@ -91,17 +92,7 @@ const props = defineProps<{
 const copy = useCopy()
 const titleId = `poll-share-title-${useId()}`
 
-const shareUrl = computed(() => {
-  // Prefer the explicit VITE_PUBLIC_BASE_URL when set — covers split-origin
-  // deploys (PM SPA + respondent SPA on distinct hosts), staging links,
-  // and offline / SSR contexts where `window` is undefined. Fall back to
-  // `window.location.origin` so default same-origin v1 setups keep working.
-  const configured = (import.meta.env.VITE_PUBLIC_BASE_URL as string | undefined)?.trim()
-  const base = configured && configured.length > 0
-    ? configured.replace(/\/$/, '')
-    : (typeof window !== 'undefined' ? window.location.origin : '')
-  return `${base}/poll/${props.poll.id}`
-})
+const shareUrl = computed(() => buildPollUrl(props.poll.id))
 
 const qrDataUrl = ref<string | null>(null)
 

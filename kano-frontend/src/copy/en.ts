@@ -214,6 +214,14 @@ export const en = {
   'pm.projects.detail.generatePoll.error':
     "We couldn't generate the poll. Please try again.",
 
+  // Deterministic poll-link actions on project detail. One poll exists per
+  // (project, epoch); these two buttons get-or-create it, then open / copy.
+  'pm.projects.detail.pollLink.goButton': 'Go to poll URL',
+  'pm.projects.detail.pollLink.copyButton': 'Copy poll URL to clipboard',
+  'pm.projects.detail.pollLink.copied': 'Poll URL copied to clipboard',
+  'pm.projects.detail.pollLink.copyFailed':
+    "We couldn't copy the URL automatically. Please try again.",
+
   // PM polls list (Story 3-7) — the PM home screen.
   'pm.polls.title': 'Polls',
   'pm.polls.loading': 'Loading polls…',
