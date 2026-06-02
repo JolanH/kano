@@ -100,11 +100,11 @@ describe('KanoLikert', () => {
       .findAll('[data-testid^="kano-likert-option-"]')
       .map((el) => el.text())
     expect(labels).toEqual([
-      'Love it',
       'Like it',
+      'Expect it',
       'Neutral',
+      'Can tolerate it',
       'Dislike it',
-      'Hate it',
     ])
   })
 

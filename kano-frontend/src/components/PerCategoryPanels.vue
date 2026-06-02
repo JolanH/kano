@@ -30,6 +30,7 @@ import { computed, onBeforeUnmount } from 'vue'
 import CatBadge from '@/components/CatBadge.vue'
 import KanoCategoryPie from '@/components/KanoCategoryPie.vue'
 import KanoCategoryReference from '@/components/KanoCategoryReference.vue'
+import KanoMatrixReference from '@/components/KanoMatrixReference.vue'
 import { CATEGORY_CODES } from '@/components/kano-categories'
 import { useCopy } from '@/composables/useCopy'
 import type { Category, PollAnalysis } from '@/api/types'
@@ -251,7 +252,17 @@ function onAnchorClick(event: MouseEvent, featureKey: string): void {
           </ul>
         </section>
       </div>
-      <KanoCategoryReference />
+      <!--
+        Right-hand 70% column: the standing "categories meaning" glossary, with
+        the static Kano evaluation matrix stacked directly beneath it (the
+        requested "under the categories meaning panel" placement). Both share
+        the single 7fr grid track via this vertical-flex wrapper — no second
+        grid row, no column reflow.
+      -->
+      <div class="panels-reference-column">
+        <KanoCategoryReference />
+        <KanoMatrixReference />
+      </div>
     </div>
   </div>
 </template>
@@ -298,6 +309,19 @@ function onAnchorClick(event: MouseEvent, featureKey: string): void {
 
 .panels-main {
   min-width: 0;
+}
+
+.panels-reference-column {
+  /* Block container so both cards fill the 7fr track width. A flex column
+     would let each child's OWN `align-self: start` (meant as a vertical pin
+     back when each was a direct grid item) collapse it to content width on
+     the flex cross axis. The grid's `align-items: start` on `.panels-layout`
+     already pins the whole column to the top of the row. */
+  min-width: 0;
+}
+
+.panels-reference-column > * + * {
+  margin-top: 24px;
 }
 
 .category-panel {

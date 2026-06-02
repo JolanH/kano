@@ -68,20 +68,22 @@ Token suffix mirrors the backend `Category` enum (`MUSTBE` / `PERFORMANCE` /
 | Key | English | Context |
 |---|---|---|
 
-## Respondent Likert option labels (FR22 / Story 4-5)
+## Respondent Likert option labels (classic Kano scale)
 
-These five replace the Kano-methodology jargon ("functional/dysfunctional
-satisfaction on a 1-5 scale") with plain language. They drive `<KanoLikert>`
-(Story 4-5). Lowercase past the first option is intentional — Story 4-5
-Dev Notes locks the conversational register from epics line 1126.
+These five drive `<KanoLikert>` (Story 4-5). They use the classic Kano
+evaluation scale, kept verbatim in sync with the PM analysis matrix axes
+(`analysis.kanoMatrix.answer.*`) so a respondent's answer reads identically to
+the matrix cell that categorizes it. NOTE: this is a deliberate override of the
+original FR22 / UX-spec "no Kano jargon on the respondent surface" rule, made
+at the user's request for matrix↔poll label consistency.
 
 | Key | English | Likert position |
 |---|---|---|
-| `respondent.likert.1` | I'd love it | 1 |
-| `respondent.likert.2` | nice-to-have | 2 |
-| `respondent.likert.3` | neutral | 3 |
-| `respondent.likert.4` | can live without it | 4 |
-| `respondent.likert.5` | would dislike it | 5 |
+| `respondent.likert.1` | Like it | 1 |
+| `respondent.likert.2` | Expect it | 2 |
+| `respondent.likert.3` | Neutral | 3 |
+| `respondent.likert.4` | Can tolerate it | 4 |
+| `respondent.likert.5` | Dislike it | 5 |
 | `respondent.likert.question.functional` | How do you feel if {featureName} is available? | Functional-question template (interpolated per feature) |
 | `respondent.likert.question.dysfunctional` | How do you feel if {featureName} is not available? | Dysfunctional-question template (interpolated per feature) |
 | `respondent.likert.error.unanswered` | Please select an answer before continuing. | Inline error rendered in the `showError` variant |
@@ -186,6 +188,7 @@ These keys are deleted as part of the PRs that ship those real pages.
 | `pm.features.editor.newRow.placeholder.name` | Add a feature… | New-row name field placeholder |
 | `pm.features.editor.newRow.placeholder.description` | Description (optional) | New-row description field placeholder |
 | `pm.features.editor.delete.aria` | Delete feature | `aria-label` on the trash-icon button |
+| `pm.features.editor.submit.aria` | Add feature | `aria-label` on the new-row submit (add) button |
 | `pm.features.editor.error.create` | We couldn't create that feature. Please try again. | Error message on create failure |
 | `pm.features.editor.error.update` | We couldn't save that change. Please try again. | Error message on update failure |
 | `pm.features.editor.error.delete` | We couldn't delete that feature. Please try again. | Error message on delete failure |
@@ -392,3 +395,24 @@ length budget. `rev` / `que` descriptions follow the standard Kano table
 | `analysis.categoryRef.desc.ind` | Users are unmoved either way — its presence or absence makes little difference to how satisfied they feel. | Reference description — Indifferent |
 | `analysis.categoryRef.desc.rev` | Users actively prefer this feature absent — building it would work against satisfaction, not for it. | Reference description — Reverse |
 | `analysis.categoryRef.desc.que` | A contradictory answer pair, usually a misread question. The signal is unreliable; treat it with caution. | Reference description — Questionable |
+
+## Analysis page — Kano evaluation matrix (By category section)
+
+Static 5×5 Kano evaluation table (`KanoMatrixReference`) rendered as a card
+directly under the "categories meaning" reference. Rows are the functional
+answer (feature present), columns the dysfunctional answer (feature absent);
+both axes share the five classic Kano answer labels (`answer.*`). The 25 cells
+reuse the `pm.category.*` names — the matrix is a display mirror of
+`kano_matrix.py`, never a categorization path.
+
+| Key | English | Context |
+|---|---|---|
+| `analysis.kanoMatrix.heading` | How answers map to categories | Matrix card heading |
+| `analysis.kanoMatrix.functionalAxis` | Functional (feature is present) | Vertical axis label for the matrix rows |
+| `analysis.kanoMatrix.dysfunctionalAxis` | Dysfunctional (feature is absent) | Horizontal axis label for the matrix columns |
+| `analysis.kanoMatrix.answer.like` | Like it | Answer label, Likert 1 (both axes) |
+| `analysis.kanoMatrix.answer.expect` | Expect it | Answer label, Likert 2 (both axes) |
+| `analysis.kanoMatrix.answer.neutral` | Neutral | Answer label, Likert 3 (both axes) |
+| `analysis.kanoMatrix.answer.tolerate` | Can tolerate it | Answer label, Likert 4 (both axes) |
+| `analysis.kanoMatrix.answer.dislike` | Dislike it | Answer label, Likert 5 (both axes) |
+| `analysis.kanoMatrix.tableCaption` | Each cell shows the Kano category for a pair of answers: the row is how the respondent feels when the feature is present (functional), the column is how they feel when it is absent (dysfunctional). | `sr-only` `<caption>` disambiguating the two axes for screen readers |

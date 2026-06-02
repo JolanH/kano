@@ -63,6 +63,48 @@ export const DESC_KEY: Record<Category, CopyKey> = {
   Q: 'analysis.categoryRef.desc.que',
 }
 
+/**
+ * The 25-cell Kano evaluation matrix — a frontend **display mirror** of the
+ * backend source of truth `kano-backend/src/kano/services/kano_matrix.py`.
+ * Rows are the respondent's *functional* answer (feature present), columns the
+ * *dysfunctional* answer (feature absent); both run Like → Expect → Neutral →
+ * Can-tolerate → Dislike (Likert 1..5, the `MATRIX_ANSWER_KEYS` order). Each
+ * cell is the resulting Kano category.
+ *
+ * This is consumed ONLY by `<KanoMatrixReference>` as a static reference grid.
+ * It is NOT a categorization path: every persisted category is computed
+ * server-side by `compute_category`. Any change here MUST track kano_matrix.py
+ * cell-for-cell — `kano-matrix-reference.spec.ts` pins it so drift fails CI.
+ *
+ *               dq1   dq2   dq3   dq4   dq5
+ *     fq1 (like) Q     A     A     A     O
+ *     fq2 (exp)  R     Q     I     I     M
+ *     fq3 (neu)  R     I     I     I     M
+ *     fq4 (tol)  R     I     I     Q     M
+ *     fq5 (dis)  R     R     R     R     Q
+ */
+export const KANO_MATRIX: readonly (readonly Category[])[] = [
+  ['Q', 'A', 'A', 'A', 'O'],
+  ['R', 'Q', 'I', 'I', 'M'],
+  ['R', 'I', 'I', 'I', 'M'],
+  ['R', 'I', 'I', 'Q', 'M'],
+  ['R', 'R', 'R', 'R', 'Q'],
+] as const
+
+/**
+ * The five Kano answer labels in Likert 1..5 order, shared by BOTH axes of
+ * `<KanoMatrixReference>` (functional rows and dysfunctional columns). Classic
+ * Kano evaluation-table wording. Index `i` corresponds to `KANO_MATRIX` row /
+ * column `i`.
+ */
+export const MATRIX_ANSWER_KEYS: readonly CopyKey[] = [
+  'analysis.kanoMatrix.answer.like',
+  'analysis.kanoMatrix.answer.expect',
+  'analysis.kanoMatrix.answer.neutral',
+  'analysis.kanoMatrix.answer.tolerate',
+  'analysis.kanoMatrix.answer.dislike',
+]
+
 export const SWATCH_CLASS: Record<Category, string> = {
   M: 'swatch-must',
   O: 'swatch-perf',

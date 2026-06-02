@@ -60,10 +60,20 @@ const KanoCategoryReferenceStub = defineComponent({
   },
 })
 
+// Stub the static Kano matrix card — its grid rendering + backend parity are
+// covered by `kano-matrix-reference.spec.ts`. Here we only assert it mounts in
+// the reference column under the glossary aside.
+const KanoMatrixReferenceStub = defineComponent({
+  setup() {
+    return () => h('aside', { 'data-testid': 'kano-matrix-reference-stub' })
+  },
+})
+
 const globalStubs = {
   CatBadge: CatBadgeStub,
   KanoCategoryPie: KanoCategoryPieStub,
   KanoCategoryReference: KanoCategoryReferenceStub,
+  KanoMatrixReference: KanoMatrixReferenceStub,
 }
 
 function dist(
@@ -364,6 +374,29 @@ describe('PerCategoryPanels — composition', () => {
     // ...and the pie + jump-lists are untouched.
     expect(wrapper.find('[data-testid="kano-category-pie-stub"]').exists()).toBe(true)
     expect(wrapper.findAll('section.category-panel')).toHaveLength(2)
+  })
+
+  test('Kano matrix card mounts directly under the reference aside', () => {
+    const wrapper = mount(PerCategoryPanels, {
+      global: { stubs: globalStubs },
+      props: {
+        analysis: analysis([
+          mkFeature('a', 'A', ['M'], 70),
+          mkFeature('b', 'B', ['O'], 60),
+        ]),
+      },
+    })
+
+    const reference = wrapper.find('[data-testid="kano-category-reference-stub"]')
+    const matrix = wrapper.find('[data-testid="kano-matrix-reference-stub"]')
+    expect(reference.exists()).toBe(true)
+    expect(matrix.exists()).toBe(true)
+
+    // Both share the 70% reference column, with the matrix AFTER the glossary.
+    const column = wrapper.find('.panels-reference-column')
+    expect(column.exists()).toBe(true)
+    const relation = reference.element.compareDocumentPosition(matrix.element)
+    expect(relation & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   test('block heading sources copy-deck "analysis.panels.heading"', () => {

@@ -60,17 +60,19 @@ export const en = {
   'pm.category.help.rev': 'Users actively prefer this feature absent. Presence reduces satisfaction.',
   'pm.category.help.que': 'Contradictory answers — usually a misread question. Treat the result with caution.',
 
-  // Respondent Likert option labels (FR22 — plain-language replacements for
-  // the Kano-methodology jargon). The wording is Story 4-5 / epics line
-  // 1126: lowercase past the first option is intentional (UX register is
-  // conversational, not interrogative). The historical numeric keys are
-  // preserved so any inline `respondent.likert.${value}` consumer still
-  // resolves.
-  'respondent.likert.1': "Love it",
-  'respondent.likert.2': 'Like it',
+  // Respondent Likert option labels — the classic Kano evaluation scale
+  // (Like → Expect → Neutral → Can-tolerate → Dislike), kept verbatim in
+  // sync with the PM analysis matrix axes (`analysis.kanoMatrix.answer.*`) so
+  // a respondent's answer reads identically to the cell that categorizes it.
+  // NOTE: this is a deliberate override of FR22 / the UX-spec "no Kano jargon
+  // on the respondent surface" rule, made at the user's explicit request in
+  // favor of matrix↔poll label consistency. Values must match the matrix
+  // answer copy 1:1.
+  'respondent.likert.1': 'Like it',
+  'respondent.likert.2': 'Expect it',
   'respondent.likert.3': 'Neutral',
-  'respondent.likert.4': "Dislike it",
-  'respondent.likert.5': "Hate it",
+  'respondent.likert.4': 'Can tolerate it',
+  'respondent.likert.5': 'Dislike it',
   // KanoLikert (Story 4-5) — interpolated question templates + error copy.
   'respondent.likert.question.functional':
     'How would you feel if feature is available?',
@@ -396,6 +398,24 @@ export const en = {
     'Users actively prefer this feature absent — building it would work against satisfaction, not for it.',
   'analysis.categoryRef.desc.que':
     'A contradictory answer pair, usually a misread question. The signal is unreliable; treat it with caution.',
+
+  // KanoMatrixReference — static 5×5 Kano evaluation table rendered as a card
+  // directly under the "categories meaning" reference, reminding the PM how a
+  // pair of poll answers maps to a category. Rows are the functional answer
+  // (feature present), columns the dysfunctional answer (feature absent); both
+  // axes share the five classic Kano answer labels (`answer.*`). The 25 cell
+  // labels reuse the existing `pm.category.*` names — the matrix is a display
+  // mirror of kano_matrix.py, never a categorization path.
+  'analysis.kanoMatrix.heading': 'How answers map to categories',
+  'analysis.kanoMatrix.functionalAxis': 'Functional (feature is present)',
+  'analysis.kanoMatrix.dysfunctionalAxis': 'Dysfunctional (feature is absent)',
+  'analysis.kanoMatrix.answer.like': 'Like it',
+  'analysis.kanoMatrix.answer.expect': 'Expect it',
+  'analysis.kanoMatrix.answer.neutral': 'Neutral',
+  'analysis.kanoMatrix.answer.tolerate': 'Can tolerate it',
+  'analysis.kanoMatrix.answer.dislike': 'Dislike it',
+  'analysis.kanoMatrix.tableCaption':
+    'Each cell shows the Kano category for a pair of answers: the row is how the respondent feels when the feature is present (functional), the column is how they feel when it is absent (dysfunctional).',
 } as const
 
 export type CopyKey = keyof typeof en
