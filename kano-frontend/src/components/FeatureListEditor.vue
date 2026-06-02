@@ -49,7 +49,7 @@
           data-testid="feature-delete"
           @click="onDelete(feature)"
         >
-          <span class="pm-row-delete-icon" aria-hidden="true">×</span>
+          <span class="mdi mdi-delete-outline pm-row-icon" aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -83,7 +83,18 @@
           @blur="commitNew"
         />
       </div>
-      <div role="gridcell" class="pm-feature-cell pm-feature-cell--actions" />
+      <div role="gridcell" class="pm-feature-cell pm-feature-cell--actions">
+        <button
+          type="button"
+          class="pm-row-submit"
+          :aria-label="copy('pm.features.editor.submit.aria')"
+          data-testid="feature-new-submit"
+          :disabled="!draftNew.name.trim()"
+          @click="commitNew"
+        >
+          <span class="mdi mdi-check pm-row-icon" aria-hidden="true" />
+        </button>
+      </div>
     </div>
 
     <p
@@ -506,27 +517,42 @@ function handleMutationError(
   overflow-y: auto;
 }
 
-.pm-row-delete {
-  visibility: hidden;
+.pm-row-delete,
+.pm-row-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: none;
   padding: 4px;
   cursor: pointer;
   color: rgb(var(--v-theme-on-surface-variant));
-  font-size: 18px;
   line-height: 1;
 }
 
-.pm-row-delete-icon {
+.pm-row-submit {
+  color: rgb(var(--v-theme-primary));
+}
+
+.pm-row-submit:disabled {
+  color: rgb(var(--v-theme-on-surface-variant));
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pm-row-icon {
   display: inline-block;
   width: 18px;
   height: 18px;
+  font-size: 18px;
   line-height: 18px;
   text-align: center;
 }
 
-.pm-feature-row:hover .pm-row-delete,
-.pm-row-delete:focus-visible {
-  visibility: visible;
+.pm-row-delete:focus-visible,
+.pm-row-submit:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: -2px;
+  border-radius: 4px;
 }
 </style>

@@ -163,6 +163,7 @@ export const en = {
   'pm.features.editor.newRow.placeholder.name': 'Add a feature…',
   'pm.features.editor.newRow.placeholder.description': 'Description (optional)',
   'pm.features.editor.delete.aria': 'Delete feature',
+  'pm.features.editor.submit.aria': 'Add feature',
   'pm.features.editor.error.create': "We couldn't create that feature. Please try again.",
   'pm.features.editor.error.update': "We couldn't save that change. Please try again.",
   'pm.features.editor.error.delete': "We couldn't delete that feature. Please try again.",

@@ -134,6 +134,71 @@ describe('FeatureListEditor — ARIA grid + inline authoring', () => {
     expect(wrapper.emitted('feature-deleted')?.[0]?.[0]).toBe('k-del')
   })
 
+  test('new-row submit button commits a create and clears the inputs', async () => {
+    postMock.mockResolvedValue({
+      data: { ...feature({ feature_key: 'feat-new', name: 'Added' }) },
+      requestId: 'r',
+      status: 201,
+    })
+    const wrapper = mount(FeatureListEditor, {
+      props: { features: [], projectId: 'p-1' },
+      global: { stubs: globalStubs },
+    })
+
+    const nameInput = wrapper.find('[data-testid="feature-new-name"]')
+    await nameInput.setValue('Added')
+    await wrapper.find('[data-testid="feature-new-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(postMock).toHaveBeenCalledWith('/projects/p-1/features', {
+      name: 'Added',
+      description: null,
+    })
+    expect(wrapper.emitted('feature-created')?.[0]?.[0]).toMatchObject({ name: 'Added' })
+    expect((nameInput.element as HTMLInputElement).value).toBe('')
+  })
+
+  test('new-row submit button is disabled while the name is empty', async () => {
+    const wrapper = mount(FeatureListEditor, {
+      props: { features: [], projectId: 'p-1' },
+      global: { stubs: globalStubs },
+    })
+
+    const submit = wrapper.find('[data-testid="feature-new-submit"]')
+    expect((submit.element as HTMLButtonElement).disabled).toBe(true)
+
+    await wrapper.find('[data-testid="feature-new-name"]').setValue('Added')
+    expect((submit.element as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  test('clicking submit while the description is focused creates exactly one feature', async () => {
+    postMock.mockResolvedValue({
+      data: { ...feature({ feature_key: 'feat-new', name: 'Added', description: 'Desc' }) },
+      requestId: 'r',
+      status: 201,
+    })
+    const wrapper = mount(FeatureListEditor, {
+      props: { features: [], projectId: 'p-1' },
+      global: { stubs: globalStubs },
+    })
+
+    await wrapper.find('[data-testid="feature-new-name"]').setValue('Added')
+    const descInput = wrapper.find('[data-testid="feature-new-description"]')
+    await descInput.setValue('Desc')
+    // Real click on the button blurs the focused description (which also
+    // commits) before the button's own @click fires — the in-flight guard
+    // must collapse both triggers into a single create.
+    await descInput.trigger('blur')
+    await wrapper.find('[data-testid="feature-new-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(postMock).toHaveBeenCalledTimes(1)
+    expect(postMock).toHaveBeenCalledWith('/projects/p-1/features', {
+      name: 'Added',
+      description: 'Desc',
+    })
+  })
+
   test('paste multi-line text creates one feature per non-empty line', async () => {
     postMock.mockImplementation((_, body) =>
       Promise.resolve({
