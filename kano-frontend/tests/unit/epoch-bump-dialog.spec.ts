@@ -85,9 +85,9 @@ function setup(onConfirm: () => Promise<void>) {
 describe('EpochBumpDialog', () => {
   test('title and body interpolate the epoch numbers', () => {
     const wrapper = setup(async () => undefined)
-    expect(wrapper.text()).toContain('Create Version 3?')
-    expect(wrapper.text()).toContain('Version 2 will be preserved')
-    expect(wrapper.text()).toContain('New polls will use Version 3')
+    expect(wrapper.text()).toContain('Create Epoch 3?')
+    expect(wrapper.text()).toContain('Epoch 2 will be preserved')
+    expect(wrapper.text()).toContain('New polls will use Epoch 3')
   })
 
   test('Confirm calls onConfirm and emits confirmed + closes dialog', async () => {
@@ -115,7 +115,7 @@ describe('EpochBumpDialog', () => {
     expect(wrapper.emitted('confirmed')).toBeFalsy()
     // Dialog stays open — `update:modelValue` not emitted with false.
     expect(wrapper.emitted('update:modelValue')).toBeFalsy()
-    expect(wrapper.text()).toContain("We couldn't bump the version")
+    expect(wrapper.text()).toContain("We couldn't bump the epoch")
   })
 
   test('Cancel emits cancelled + closes', async () => {

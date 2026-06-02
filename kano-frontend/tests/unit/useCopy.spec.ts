@@ -9,7 +9,7 @@ import en from '@/copy/en'
 describe('useCopy — lookup & fallback', () => {
   test('returns the registered string for a known key', () => {
     const copy = useCopy()
-    expect(copy('common.version')).toBe('Version')
+    expect(copy('common.version')).toBe('Epoch')
     expect(copy('pm.category.must')).toBe('Must-be')
   })
 
@@ -22,7 +22,7 @@ describe('useCopy — lookup & fallback', () => {
 describe('useCopy — placeholder interpolation', () => {
   test('interpolates {name} placeholders from params', () => {
     const copy = useCopy()
-    expect(copy('pm.versionBump.dialog.title', { n: 3 })).toBe('Create Version 3?')
+    expect(copy('pm.versionBump.dialog.title', { n: 3 })).toBe('Create Epoch 3?')
     expect(copy('respondent.progress', { current: 4, total: 16 })).toBe('Question 4 of 16')
   })
 
@@ -31,7 +31,7 @@ describe('useCopy — placeholder interpolation', () => {
     // With the previous chained-replaceAll implementation, passing `n: '{n}'`
     // would substitute then re-substitute. The single-pass regex makes the
     // substitution one-shot — `{n}` in the value is left as literal text.
-    expect(copy('pm.versionBump.dialog.title', { n: '{n}' })).toBe('Create Version {n}?')
+    expect(copy('pm.versionBump.dialog.title', { n: '{n}' })).toBe('Create Epoch {n}?')
   })
 
   test('substitution is order-independent across multiple keys', () => {
@@ -45,7 +45,7 @@ describe('useCopy — placeholder interpolation', () => {
 
   test('passes through params with no matching placeholder unchanged', () => {
     const copy = useCopy()
-    expect(copy('common.version', { unrelated: 'x' })).toBe('Version')
+    expect(copy('common.version', { unrelated: 'x' })).toBe('Epoch')
   })
 
   test('throws on a null/undefined param value rather than rendering literal "null"', () => {
@@ -63,7 +63,7 @@ describe('useCopy — placeholder interpolation', () => {
     // placeholder visible (loud failure mode) rather than crash or interpolate
     // the literal string "undefined".
     const copy = useCopy()
-    expect(copy('pm.versionBump.dialog.title')).toBe('Create Version {n}?')
+    expect(copy('pm.versionBump.dialog.title')).toBe('Create Epoch {n}?')
   })
 })
 
@@ -81,15 +81,26 @@ describe('useCopy — registry invariants', () => {
     }
   })
 
-  test('user-facing copy never says "Epoch" — exhaustive sweep of all keys', () => {
-    // Whole-registry sweep (every Object.entries(en) row), not a hand-picked
-    // whitelist. Adding a new key that mentions "epoch" anywhere — title,
-    // body, button label, error message — fails this test.
-    const violations: string[] = []
-    for (const [key, value] of Object.entries(en)) {
-      if (/epoch/i.test(value)) violations.push(`${key} = "${value}"`)
+  test('epoch/version glossary: integer-counter keys say "Epoch", free-form release-label keys say "Version"', () => {
+    // Replaces the old "never say Epoch" sweep. The two user-facing terms are
+    // now deliberately distinct: the auto-incrementing integer `epoch` counter
+    // reads "Epoch"; the human-typed free-form `version` string reads
+    // "Version". Pin both directions so a future key can't silently mislabel
+    // one as the other.
+    expect(en['common.version']).toBe('Epoch')
+    expect(en['pm.projects.col.epoch']).toMatch(/epoch/i)
+    expect(en['pm.polls.columns.version']).toBe('Epoch')
+    expect(en['pm.versionBump.dialog.title']).toMatch(/epoch/i)
+    expect(en['pm.versionSelector.item.aria']).toMatch(/epoch/i)
+    // Free-form release-label keys must stay "Version", never "Epoch".
+    for (const key of [
+      'pm.projects.newProject.placeholder.version',
+      'pm.projects.col.version',
+      'pm.projectDetail.version.label',
+    ] as const) {
+      expect(en[key], `${key} should label the free-form version string`).toMatch(/version/i)
+      expect(en[key], `${key} must not say "epoch"`).not.toMatch(/epoch/i)
     }
-    expect(violations, 'user-facing keys contain "epoch":').toEqual([])
   })
 })
 

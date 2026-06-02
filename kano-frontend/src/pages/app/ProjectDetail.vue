@@ -16,7 +16,7 @@
     data-testid="project-detail"
   >
     <header class="mb-6">
-      <div class="d-flex align-center ga-3 mb-2">
+      <div class="d-flex align-center ga-3 mb-2 flex-wrap">
         <span
           v-if="!isEditing('name')"
           ref="nameDisplay"
@@ -44,6 +44,35 @@
           @keydown.esc="cancelEdit()"
           @blur="commitEdit('name')"
         />
+        <div class="d-flex align-center ga-1 text-on-surface-variant">
+          <span class="text-body-2">{{ copy('pm.projectDetail.version.label') }}:</span>
+          <span
+            v-if="!isEditing('version')"
+            class="text-body-1 pm-inline-edit"
+            tabindex="0"
+            :aria-label="copy('pm.projectDetail.version.aria')"
+            data-testid="project-version-display"
+            @click="beginEdit('version')"
+            @keydown.enter="beginEdit('version')"
+          >
+            {{ store.current.version }}
+          </span>
+          <v-text-field
+            v-else
+            ref="versionInput"
+            v-model="draft.version"
+            density="compact"
+            variant="outlined"
+            hide-details
+            :error-messages="errors.version"
+            :aria-label="copy('pm.projectDetail.version.aria')"
+            data-testid="project-version-input"
+            class="pm-inline-input"
+            @keydown.enter="commitEdit('version')"
+            @keydown.esc="cancelEdit()"
+            @blur="commitEdit('version')"
+          />
+        </div>
         <v-chip color="secondary" data-testid="project-epoch-badge">
           {{ copy('common.version') }} {{ store.current.current_epoch }}
         </v-chip>
@@ -79,35 +108,6 @@
           />
         </template>
       </v-alert>
-
-      <div class="d-flex align-center ga-2 text-on-surface-variant">
-        <span
-          v-if="!isEditing('version')"
-          class="text-body-1 pm-inline-edit"
-          tabindex="0"
-          :aria-label="copy('pm.projectDetail.version.aria')"
-          data-testid="project-version-display"
-          @click="beginEdit('version')"
-          @keydown.enter="beginEdit('version')"
-        >
-          {{ store.current.version }}
-        </span>
-        <v-text-field
-          v-else
-          ref="versionInput"
-          v-model="draft.version"
-          density="compact"
-          variant="outlined"
-          hide-details
-          :error-messages="errors.version"
-          :aria-label="copy('pm.projectDetail.version.aria')"
-          data-testid="project-version-input"
-          class="pm-inline-input"
-          @keydown.enter="commitEdit('version')"
-          @keydown.esc="cancelEdit()"
-          @blur="commitEdit('version')"
-        />
-      </div>
     </header>
 
     <v-alert

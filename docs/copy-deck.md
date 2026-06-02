@@ -30,7 +30,7 @@ fails CI.
 | `common.notFound.cta` | Back to projects | NotFound.vue primary CTA |
 | `common.snackbar.success` | Done. | Universal success toast |
 | `common.snackbar.error` | Something went wrong. Please try again. | Universal failure toast |
-| `common.version` | Version | The user-facing word for `epoch` everywhere |
+| `common.version` | Epoch | The user-facing word for the integer `epoch` counter everywhere |
 
 ## PM layout chrome
 
@@ -158,7 +158,7 @@ These keys are deleted as part of the PRs that ship those real pages.
 | `pm.projects.newProject.cancel` | Cancel | Inline new-project form: cancel button |
 | `pm.projects.col.name` | Name | Projects table column header |
 | `pm.projects.col.version` | Version | Projects table column header |
-| `pm.projects.col.epoch` | Current version | Projects table column header (user-facing for `current_epoch`) |
+| `pm.projects.col.epoch` | Current epoch | Projects table column header (user-facing for `current_epoch`) |
 | `pm.projects.col.featureCount` | Features | Projects table column header (reserved for later) |
 | `pm.projects.col.createdAt` | Created | Projects table column header |
 | `pm.projects.empty.title` | No projects yet | Empty-state title when zero projects exist |
@@ -170,6 +170,7 @@ These keys are deleted as part of the PRs that ship those real pages.
 | `pm.projectDetail.notFound.body` | This project doesn't exist (or no longer does). | Detail page 404 body |
 | `pm.projectDetail.notFound.cta` | Back to projects | Detail page 404 primary CTA |
 | `pm.projectDetail.name.aria` | Project name (click to edit) | Aria-label on inline-editable project name |
+| `pm.projectDetail.version.label` | Version | Visible prefix label before the inline version value in the header |
 | `pm.projectDetail.version.aria` | Project version label (click to edit) | Aria-label on inline-editable version |
 | `pm.projectDetail.features.title` | Features | Detail page features panel heading |
 | `pm.projectDetail.features.empty` | No features yet — Story 2-10 ships the inline editor. | Placeholder body when feature list is empty |
@@ -199,27 +200,27 @@ Internal name retains `Epoch` (matches backend); user-facing values say `Version
 
 | Key | English | Context |
 |---|---|---|
-| `pm.versionBump.dialog.title` | Create Version {n}? | Dialog title; `{n}` is the next version number |
-| `pm.versionBump.dialog.body.preserved` | Existing responses on Version {current} will be preserved. | First body paragraph |
-| `pm.versionBump.dialog.body.newPolls` | New polls will use Version {next}. | Second body paragraph |
-| `pm.versionBump.dialog.confirm` | Create Version {n} | Primary CTA |
+| `pm.versionBump.dialog.title` | Create Epoch {n}? | Dialog title; `{n}` is the next epoch number |
+| `pm.versionBump.dialog.body.preserved` | Existing responses on Epoch {current} will be preserved. | First body paragraph |
+| `pm.versionBump.dialog.body.newPolls` | New polls will use Epoch {next}. | Second body paragraph |
+| `pm.versionBump.dialog.confirm` | Create Epoch {n} | Primary CTA |
 | `pm.versionBump.dialog.cancel` | Cancel | Secondary CTA |
-| `pm.versionBump.dialog.error` | We couldn't bump the version. Please try again. | Error alert inside the dialog on confirm failure |
-| `pm.versionBump.dialog.processing` | Creating new version… | Loading text while confirm is in-flight |
-| `pm.versionBump.banner.inPlace` | Version {n} updated in place — no responses to preserve. | Soft banner after a Branch-A mutation |
+| `pm.versionBump.dialog.error` | We couldn't bump the epoch. Please try again. | Error alert inside the dialog on confirm failure |
+| `pm.versionBump.dialog.processing` | Creating new epoch… | Loading text while confirm is in-flight |
+| `pm.versionBump.banner.inPlace` | Epoch {n} updated in place — no responses to preserve. | Soft banner after a Branch-A mutation |
 | `pm.versionBump.banner.close` | Dismiss | `aria-label` on the banner close button |
-| `pm.versionBump.nowEditing` | Now editing Version {n} | Snackbar message after a successful version bump |
+| `pm.versionBump.nowEditing` | Now editing Epoch {n} | Snackbar message after a successful epoch bump |
 
 ## EpochSelector + past-epoch view (Story 2-12)
 
-Component file is `EpochSelector.vue` (internal name keeps "Epoch" parity with the backend); user-facing copy below stays Version-only.
+Component file is `EpochSelector.vue` (internal name keeps "Epoch" parity with the backend); user-facing copy below says "Epoch" — these strings all denote the integer epoch counter.
 
 | Key | English | Context |
 |---|---|---|
-| `pm.versionSelector.trigger.aria` | Switch version | `aria-label` on the dropdown trigger |
-| `pm.versionSelector.item.aria` | View Version {n} | `aria-label` for a version list-item |
-| `pm.versionSelector.item.current` | Current | Suffix tag next to the active version in the dropdown |
-| `pm.viewingPast.banner` | Viewing Version {n} (read-only). Return to Version {current} to edit. | Banner on `/app/projects/:id?epoch=N` when viewing a past version |
+| `pm.versionSelector.trigger.aria` | Switch epoch | `aria-label` on the dropdown trigger |
+| `pm.versionSelector.item.aria` | View Epoch {n} | `aria-label` for an epoch list-item |
+| `pm.versionSelector.item.current` | Current | Suffix tag next to the active epoch in the dropdown |
+| `pm.viewingPast.banner` | Viewing Epoch {n} (read-only). Return to Epoch {current} to edit. | Banner on `/app/projects/:id?epoch=N` when viewing a past epoch |
 | `pm.viewingPast.returnCta` | Return to current | Button on the past-epoch banner |
 
 ## PollSharePanel (Story 3-5)
@@ -259,7 +260,7 @@ Card surface where the PM copies the poll URL and previews the QR code.
 | `pm.polls.title` | Polls | Page heading + section `aria-label` |
 | `pm.polls.loading` | Loading polls… | `v-data-table` loading text |
 | `pm.polls.columns.project` | Project | Table column header |
-| `pm.polls.columns.version` | Version | Table column header (version chip) |
+| `pm.polls.columns.version` | Epoch | Table column header (epoch chip) |
 | `pm.polls.columns.responses` | Responses | Table column header |
 | `pm.polls.columns.expiresIn` | Expires in | Table column header |
 | `pm.polls.columns.created` | Created | Table column header |

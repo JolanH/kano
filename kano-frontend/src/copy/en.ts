@@ -8,9 +8,10 @@
  * restructuring. Values may contain `{name}` placeholders that `useCopy`
  * interpolates from a params object.
  *
- * Glossary rule (UX spec §Component Strategy): user-facing copy says "Version"
- * when referring to what the codebase / DB call `epoch`. Never put "Epoch"
- * into a value here.
+ * Glossary rule: the integer auto-incrementing snapshot counter (codebase / DB
+ * `epoch`, `current_epoch`) is user-facing "Epoch". The human-typed free-form
+ * release label (DB `version` string) stays user-facing "Version". Keep the two
+ * distinct so a PM can tell the snapshot number from the release label.
  */
 
 export const en = {
@@ -23,7 +24,7 @@ export const en = {
   'common.notFound.cta': 'Back to projects',
   'common.snackbar.success': 'Done.',
   'common.snackbar.error': 'Something went wrong. Please try again.',
-  'common.version': 'Version',
+  'common.version': 'Epoch',
 
   // PM layout chrome. `sidebar.aria` is the assistive-tech label for the
   // sidebar `<nav>` element — it describes the *role* of the landmark, not
@@ -129,7 +130,7 @@ export const en = {
   'pm.projects.newProject.cancel': 'Cancel',
   'pm.projects.col.name': 'Name',
   'pm.projects.col.version': 'Version',
-  'pm.projects.col.epoch': 'Current version',
+  'pm.projects.col.epoch': 'Current epoch',
   'pm.projects.col.featureCount': 'Features',
   'pm.projects.col.createdAt': 'Created',
   'pm.projects.empty.title': 'No projects yet',
@@ -144,6 +145,7 @@ export const en = {
     "This project doesn't exist (or no longer does).",
   'pm.projectDetail.notFound.cta': 'Back to projects',
   'pm.projectDetail.name.aria': 'Project name (click to edit)',
+  'pm.projectDetail.version.label': 'Version',
   'pm.projectDetail.version.aria': 'Project version label (click to edit)',
   'pm.projectDetail.features.title': 'Features',
   'pm.projectDetail.features.empty':
@@ -166,30 +168,28 @@ export const en = {
   'pm.features.editor.error.update': "We couldn't save that change. Please try again.",
   'pm.features.editor.error.delete': "We couldn't delete that feature. Please try again.",
 
-  // EpochBumpDialog + EpochBumpBanner (Story 2-11).
-  // Placeholder names deliberately avoid the substring "epoch": the
-  // useCopy regression test sweeps every value in this file for the literal
-  // string "epoch" (case-insensitive) to enforce the Version/Epoch glossary.
-  'pm.versionBump.dialog.title': 'Create Version {n}?',
+  // EpochBumpDialog + EpochBumpBanner (Story 2-11). Key names retain the
+  // `versionBump` prefix; the user-facing values say "Epoch" — these strings
+  // all denote the integer epoch counter.
+  'pm.versionBump.dialog.title': 'Create Epoch {n}?',
   'pm.versionBump.dialog.body.preserved':
-    'Existing responses on Version {current} will be preserved.',
-  'pm.versionBump.dialog.body.newPolls': 'New polls will use Version {next}.',
-  'pm.versionBump.dialog.confirm': 'Create Version {n}',
+    'Existing responses on Epoch {current} will be preserved.',
+  'pm.versionBump.dialog.body.newPolls': 'New polls will use Epoch {next}.',
+  'pm.versionBump.dialog.confirm': 'Create Epoch {n}',
   'pm.versionBump.dialog.cancel': 'Cancel',
-  'pm.versionBump.dialog.error': "We couldn't bump the version. Please try again.",
-  'pm.versionBump.dialog.processing': 'Creating new version…',
-  'pm.versionBump.banner.inPlace': 'Version {n} updated in place — no responses to preserve.',
+  'pm.versionBump.dialog.error': "We couldn't bump the epoch. Please try again.",
+  'pm.versionBump.dialog.processing': 'Creating new epoch…',
+  'pm.versionBump.banner.inPlace': 'Epoch {n} updated in place — no responses to preserve.',
   'pm.versionBump.banner.close': 'Dismiss',
-  'pm.versionBump.nowEditing': 'Now editing Version {n}',
+  'pm.versionBump.nowEditing': 'Now editing Epoch {n}',
 
-  // EpochSelector + past-epoch view (Story 2-12). Internal name retains
-  // "Epoch"; user-facing strings say "Version" (per Story 1-7 glossary).
-  // Placeholder name `current` deliberately avoids the substring "epoch".
-  'pm.versionSelector.trigger.aria': 'Switch version',
-  'pm.versionSelector.item.aria': 'View Version {n}',
+  // EpochSelector + past-epoch view (Story 2-12). Key names retain the
+  // `versionSelector` prefix; values say "Epoch" (the integer counter).
+  'pm.versionSelector.trigger.aria': 'Switch epoch',
+  'pm.versionSelector.item.aria': 'View Epoch {n}',
   'pm.versionSelector.item.current': 'Current',
   'pm.viewingPast.banner':
-    'Viewing Version {n} (read-only). Return to Version {current} to edit.',
+    'Viewing Epoch {n} (read-only). Return to Epoch {current} to edit.',
   'pm.viewingPast.returnCta': 'Return to current',
 
   // PollSharePanel (Story 3-5). Internal name retains "epoch" semantics in
@@ -226,7 +226,7 @@ export const en = {
   'pm.polls.title': 'Polls',
   'pm.polls.loading': 'Loading polls…',
   'pm.polls.columns.project': 'Project',
-  'pm.polls.columns.version': 'Version',
+  'pm.polls.columns.version': 'Epoch',
   'pm.polls.columns.responses': 'Responses',
   'pm.polls.columns.expiresIn': 'Expires in',
   'pm.polls.columns.created': 'Created',

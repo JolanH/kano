@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * EpochSelector — renders a static label at version 1, a v-menu dropdown
+ * EpochSelector — renders a static label at epoch 1, a v-menu dropdown
  * otherwise, and pushes a router query change on pick.
  */
 
@@ -66,7 +66,7 @@ describe('EpochSelector', () => {
 
     expect(wrapper.find('[data-testid="epoch-selector-static"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="epoch-selector-trigger"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Version 1')
+    expect(wrapper.text()).toContain('Epoch 1')
   })
 
   test('current epoch > 1 renders one list item per version, newest first', () => {

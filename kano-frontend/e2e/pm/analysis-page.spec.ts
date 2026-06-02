@@ -6,7 +6,7 @@
  * Mocks: csrf-token, /projects/:id, /polls/:pollId/analysis.
  *
  * Assertions:
- * - Populated payload → header (project name + Version chip + confidence
+ * - Populated payload → header (project name + Epoch chip + confidence
  *   beat) + one row per feature with the expected dominant %, CatBadges,
  *   distribution bar/table, and per-row n. Tie + single-dominant + all-
  *   same cases pinned by row.
@@ -166,7 +166,7 @@ test.describe('Story 5-5 — analysis page (populated)', () => {
 
     // Header surfaces.
     await expect(page.getByTestId('analysis-project-name')).toHaveText('Q3 Prioritization')
-    await expect(page.getByTestId('analysis-version-chip')).toContainText('Version 2')
+    await expect(page.getByTestId('analysis-version-chip')).toContainText('Epoch 2')
     await expect(page.getByTestId('analysis-confidence-beat')).toHaveText('20 responses')
 
     // Table renders one row per feature. Each row carries an

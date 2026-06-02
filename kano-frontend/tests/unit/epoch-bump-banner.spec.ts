@@ -61,7 +61,7 @@ describe('EpochBumpBanner', () => {
       global: { stubs: globalStubs },
     })
 
-    expect(wrapper.text()).toContain('Version 3 updated in place')
+    expect(wrapper.text()).toContain('Epoch 3 updated in place')
   })
 
   test('auto-dismisses after 4000ms', async () => {
