@@ -159,18 +159,14 @@ onMounted(() => {
             :to="{ name: 'project-detail', params: { id: projectId } }"
             class="analysis-title__link"
             data-testid="analysis-project-link"
-          >
-            {{ projectName }}
+          >{{ projectName }}<span
+            v-if="projectVersion"
+            class="analysis-title__version"
+            :aria-label="`${copy('pm.projectDetail.version.label')} ${projectVersion}`"
+            data-testid="analysis-project-version"
+          >{{ projectVersion }}</span>
           </RouterLink>
         </h1>
-        <div
-          v-if="projectVersion"
-          class="d-flex align-center ga-1 text-on-surface-variant analysis-version"
-          data-testid="analysis-project-version"
-        >
-          <span class="text-body-2">{{ copy('pm.projectDetail.version.label') }}:</span>
-          <span class="text-body-1">{{ projectVersion }}</span>
-        </div>
         <v-chip
           v-if="analysis"
           color="secondary"
@@ -291,8 +287,10 @@ onMounted(() => {
   text-decoration: underline;
 }
 
-.analysis-version {
-  white-space: nowrap;
+.analysis-title__version {
+  /* Reads as part of the title ("TMMS 18.2.0"): inherits text-h2 from the
+   * h1; only adds the inter-word space the adjacent markup omits. */
+  margin-inline-start: 0.4ch;
 }
 
 .confidence-beat {

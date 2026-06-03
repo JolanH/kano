@@ -324,18 +324,18 @@ describe('Analysis page — branching', () => {
     }
     const wrapper = await mountAnalysisPage()
     await flushPromises()
-    expect(wrapper.find('[data-testid="analysis-project-name"]').text()).toBe('Q3 Prioritization')
-    // The name is a link back to the project-detail route for this project.
+    // Only the project name is the link back to project-detail; the version
+    // sits beside it inside the same heading as plain text.
     const link = wrapper.find('[data-testid="analysis-project-link"]')
+    expect(link.text()).toBe('Q3 Prioritization')
     expect(JSON.parse(link.attributes('data-to') ?? '{}')).toEqual({
       name: 'project-detail',
       params: { id: 'proj-1' },
     })
-    // Release label ("Version") + the DB version string, distinct from epoch.
-    expect(wrapper.find('[data-testid="analysis-project-version"]').text()).toContain(
-      `${en['pm.projectDetail.version.label']}`,
-    )
-    expect(wrapper.find('[data-testid="analysis-project-version"]').text()).toContain('1.0')
+    // Version renders as the bare DB string — no "Version" prefix label.
+    const version = wrapper.find('[data-testid="analysis-project-version"]')
+    expect(version.text()).toBe('1.0')
+    expect(version.text()).not.toContain(en['pm.projectDetail.version.label'])
     // Epoch chip keeps the "Epoch N" terminology (common.version === "Epoch").
     expect(wrapper.find('[data-testid="analysis-version-chip"]').text()).toContain(
       `${en['common.version']} 2`,

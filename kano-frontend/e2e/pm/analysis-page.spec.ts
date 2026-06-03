@@ -164,8 +164,10 @@ test.describe('Story 5-5 — analysis page (populated)', () => {
 
     await page.goto(`/app/projects/${PROJECT_ID}/polls/${POLL_ID}/analysis`)
 
-    // Header surfaces.
-    await expect(page.getByTestId('analysis-project-name')).toHaveText('Q3 Prioritization')
+    // Header surfaces. The name is the link; the version sits beside it in
+    // the same heading as bare text (no "Version" prefix).
+    await expect(page.getByTestId('analysis-project-link')).toHaveText('Q3 Prioritization')
+    await expect(page.getByTestId('analysis-project-version')).toHaveText('1.0')
     await expect(page.getByTestId('analysis-version-chip')).toContainText('Epoch 2')
     await expect(page.getByTestId('analysis-confidence-beat')).toHaveText('20 responses')
 
