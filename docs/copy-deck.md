@@ -351,6 +351,10 @@ model); the empty-state copy is unparameterized for the same reason.
 | `analysis.error.load.title` | Couldn't load analysis | AnalysisErrorSurface 5xx/network alert title |
 | `analysis.error.load.body` | Please check your connection and try again. | AnalysisErrorSurface 5xx/network alert body |
 | `analysis.error.load.retry` | Retry | AnalysisErrorSurface 5xx/network alert retry button |
+| `analysis.export.button` | Export PDF | Analysis header "Export PDF" button — resting label |
+| `analysis.export.generating` | Generating PDF… | Same button — in-flight label while html2canvas/jsPDF run |
+| `analysis.export.ariaLabel` | Export this analysis as a PDF | `aria-label` for the Export PDF button |
+| `analysis.export.error` | Couldn't generate the PDF. Please try again. | Error snackbar when PDF capture/assembly fails |
 
 ## Analysis page — PerCategoryPanels secondary cross-index (Story 5-6)
 

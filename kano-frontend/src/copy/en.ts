@@ -357,6 +357,15 @@ export const en = {
   'analysis.error.load.body': 'Please check your connection and try again.',
   'analysis.error.load.retry': 'Retry',
 
+  // Export PDF (analysis header control). `button` is the resting label;
+  // `generating` is the in-flight label shown while html2canvas/jsPDF run;
+  // `ariaLabel` describes the action for assistive tech; `error` is the
+  // failure snackbar text when capture or PDF assembly throws.
+  'analysis.export.button': 'Export PDF',
+  'analysis.export.generating': 'Generating PDF…',
+  'analysis.export.ariaLabel': 'Export this analysis as a PDF',
+  'analysis.export.error': "Couldn't generate the PDF. Please try again.",
+
   // PerCategoryPanels (Story 5-6) — secondary cross-index below the table.
   // `heading` labels the whole panels block as an h2; per-category section
   // headers source their visible text from <CatBadge>'s existing

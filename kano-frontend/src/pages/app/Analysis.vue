@@ -37,6 +37,7 @@ import AnalysisTable from '@/components/AnalysisTable.vue'
 import EpochSelector from '@/components/EpochSelector.vue'
 import PerCategoryPanels from '@/components/PerCategoryPanels.vue'
 import { type PollAnalysis } from '@/api/types'
+import { useAnalysisPdf } from '@/composables/useAnalysisPdf'
 import { useApi } from '@/composables/useApi'
 import { useCopy } from '@/composables/useCopy'
 import { useProjectsStore } from '@/stores/projects'
@@ -45,6 +46,7 @@ const route = useRoute()
 const copy = useCopy()
 const api = useApi()
 const projectsStore = useProjectsStore()
+const { exporting, exportToPdf } = useAnalysisPdf()
 
 const projectId = computed(() => String(route.params.id ?? ''))
 const pollId = computed(() => String(route.params.pollId ?? ''))
@@ -97,6 +99,44 @@ const projectCurrentEpoch = computed(() => {
   return analysis.value?.epoch ?? 1
 })
 
+// Captured surface for "Export PDF": the whole `.analysis-page` section, so
+// the snapshot includes the header, the full feature table, the per-category
+// panels, and the standing Kano reference panels — but not the PmLayout
+// sidebar / app-bar, which live outside this element.
+const pageEl = ref<HTMLElement | null>(null)
+const exportError = ref(false)
+
+const pdfFilename = computed(() => {
+  const epoch = analysis.value?.epoch ?? projectCurrentEpoch.value
+  // `normalize('NFKD')` + diacritic strip keeps accented names readable in the
+  // slug ("Évaluation" → "evaluation") instead of dropping the letters; the
+  // 80-char cap guards against filesystem name-length limits on very long
+  // project names. CJK/Cyrillic still collapse to '' and fall back to epoch.
+  const slug = projectName.value
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '') // strip combining diacritical marks
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+    .replace(/-+$/g, '')
+  return slug
+    ? `kano-analysis-${slug}-epoch-${epoch}.pdf`
+    : `kano-analysis-epoch-${epoch}.pdf`
+})
+
+async function handleExportPdf(): Promise<void> {
+  if (!pageEl.value) return
+  exportError.value = false
+  try {
+    await exportToPdf(pageEl.value, pdfFilename.value)
+  } catch {
+    // html2canvas/jsPDF throw or a failed dynamic import lands here; the
+    // composable has already reset `exporting`, so we just flag the snackbar.
+    exportError.value = true
+  }
+}
+
 // In-flight guard, lifted out of the loading ref so a double-click on Retry
 // (or a re-mount that fires onMounted while the initial load is still
 // pending) doesn't race two parallel fetches into the same refs. Not
@@ -144,6 +184,7 @@ onMounted(() => {
 
 <template>
   <section
+    ref="pageEl"
     class="analysis-page"
     :aria-label="copy('analysis.page.aria')"
     data-testid="analysis-page"
@@ -218,6 +259,26 @@ onMounted(() => {
           :selected-epoch="analysis?.epoch ?? projectCurrentEpoch"
           :project-id="projectId"
         />
+        <!--
+          Export PDF — only meaningful once there's loaded analysis data to
+          capture, so it's gated to the same condition that renders the
+          table/panels below. `data-html2canvas-ignore` keeps the button out
+          of its own snapshot. `exporting` drives the in-flight loading state.
+        -->
+        <v-btn
+          v-if="analysis && !isEmpty && !loading && !loadError"
+          variant="tonal"
+          color="primary"
+          size="small"
+          prepend-icon="mdi-file-pdf-box"
+          :loading="exporting"
+          :aria-label="copy('analysis.export.ariaLabel')"
+          data-html2canvas-ignore="true"
+          data-testid="analysis-export-pdf"
+          @click="handleExportPdf"
+        >
+          {{ exporting ? copy('analysis.export.generating') : copy('analysis.export.button') }}
+        </v-btn>
       </div>
     </header>
 
@@ -238,6 +299,15 @@ onMounted(() => {
       <AnalysisTable :analysis="analysis" />
       <PerCategoryPanels :analysis="analysis" />
     </template>
+
+    <v-snackbar
+      v-model="exportError"
+      color="error"
+      data-html2canvas-ignore="true"
+      data-testid="analysis-export-error"
+    >
+      {{ copy('analysis.export.error') }}
+    </v-snackbar>
   </section>
 </template>
 

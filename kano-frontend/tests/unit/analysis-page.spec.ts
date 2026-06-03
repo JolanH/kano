@@ -57,6 +57,20 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
+// Mock the PDF composable so the page test never loads html2canvas/jsPDF;
+// `exportToPdfMock` lets us assert the (element, filename) the button passes,
+// and `pdfState.exporting` (a shared ref, assigned when the mock module first
+// loads) lets a test drive the in-flight loading state / "generating" label.
+const exportToPdfMock = vi.hoisted(() => vi.fn())
+const pdfState = vi.hoisted(() => ({ exporting: null as null | { value: boolean } }))
+vi.mock('@/composables/useAnalysisPdf', async () => {
+  const { ref } = await import('vue')
+  pdfState.exporting = ref(false)
+  return {
+    useAnalysisPdf: () => ({ exporting: pdfState.exporting, exportToPdf: exportToPdfMock }),
+  }
+})
+
 const SkeletonStub = defineComponent({
   setup(_, { attrs }) {
     return () => h('div', { 'data-testid': attrs['data-testid'] ?? 'skeleton' })
@@ -187,6 +201,38 @@ const RouterLinkStub = defineComponent({
   },
 })
 
+// `v-btn` stub: renders a real <button> so click/aria/testid pass through.
+// `loading` is surfaced as `data-loading` and the click handler is forwarded
+// from `attrs` (the production template binds `@click` without the stub
+// declaring an emit).
+const VBtnStub = defineComponent({
+  props: ['loading'],
+  setup(props, { slots, attrs }) {
+    return () =>
+      h(
+        'button',
+        {
+          'data-stub': 'v-btn',
+          'data-testid': attrs['data-testid'] ?? undefined,
+          'data-loading': props.loading ? 'true' : 'false',
+          'aria-label': attrs['aria-label'],
+          onClick: attrs.onClick as (() => void) | undefined,
+        },
+        slots.default?.(),
+      )
+  },
+})
+
+const VSnackbarStub = defineComponent({
+  props: ['modelValue'],
+  setup(props, { slots, attrs }) {
+    return () =>
+      props.modelValue
+        ? h('div', { 'data-testid': attrs['data-testid'] ?? undefined }, slots.default?.())
+        : null
+  },
+})
+
 const globalStubs = {
   'v-skeleton-loader': SkeletonStub,
   'v-chip': VChipStub,
@@ -199,6 +245,8 @@ const globalStubs = {
   PerCategoryPanels: PerCategoryPanelsStub,
   'v-tooltip': VTooltipStub,
   'v-icon': VIconStub,
+  'v-btn': VBtnStub,
+  'v-snackbar': VSnackbarStub,
 }
 
 function problem(overrides: Partial<ProblemDetails> = {}): ProblemDetails {
@@ -219,6 +267,8 @@ beforeEach(() => {
   apiSeed.error = null
   apiSeed.project = null
   apiGetMock.mockReset()
+  exportToPdfMock.mockReset()
+  if (pdfState.exporting) pdfState.exporting.value = false
   apiGetMock.mockImplementation(async (path: string) => {
     if (path.endsWith('/analysis')) {
       if (apiSeed.error) throw apiSeed.error
@@ -428,5 +478,99 @@ describe('Analysis page — branching', () => {
     ).length
     expect(callsAfter).toBe(2)
     expect(wrapper.find('[data-stub="AnalysisTable"]').exists()).toBe(true)
+  })
+})
+
+describe('Analysis page — Export PDF', () => {
+  test('renders the Export PDF button (with copy + aria) on a populated payload', async () => {
+    apiSeed.analysis = populated(5)
+    const wrapper = await mountAnalysisPage()
+    await flushPromises()
+    const btn = wrapper.find('[data-testid="analysis-export-pdf"]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.text()).toBe(en['analysis.export.button'])
+    expect(btn.attributes('aria-label')).toBe(en['analysis.export.ariaLabel'])
+  })
+
+  test('does not render the Export PDF button in the empty-state branch', async () => {
+    apiSeed.analysis = { ...populated(0), features: [] }
+    const wrapper = await mountAnalysisPage()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="analysis-export-pdf"]').exists()).toBe(false)
+  })
+
+  test('does not render the Export PDF button in the error branch', async () => {
+    apiSeed.error = new ServerError(problem({ status: 500 }), 500)
+    const wrapper = await mountAnalysisPage()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="analysis-export-pdf"]').exists()).toBe(false)
+  })
+
+  test('clicking Export PDF invokes the composable with the page element and an epoch-bearing filename', async () => {
+    apiSeed.analysis = populated(5) // epoch: 2
+    const store = useProjectsStore()
+    store.current = {
+      id: 'proj-1',
+      name: 'Q3 Prioritization',
+      version: '1.0',
+      current_epoch: 2,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      active_features: [],
+    }
+    const wrapper = await mountAnalysisPage()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="analysis-export-pdf"]').trigger('click')
+
+    expect(exportToPdfMock).toHaveBeenCalledTimes(1)
+    const [elArg, filenameArg] = exportToPdfMock.mock.calls[0]
+    // First arg is the captured `.analysis-page` section element.
+    expect((elArg as HTMLElement).getAttribute('data-testid')).toBe('analysis-page')
+    // Filename slugifies the project name and carries the analysis epoch.
+    expect(filenameArg).toBe('kano-analysis-q3-prioritization-epoch-2.pdf')
+  })
+
+  test('filename falls back to epoch-only when the project name is unknown', async () => {
+    // No projectsStore.current → projectName resolves to '' (direct-URL entry).
+    apiSeed.analysis = populated(5) // epoch: 2
+    const wrapper = await mountAnalysisPage()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="analysis-export-pdf"]').trigger('click')
+
+    expect(exportToPdfMock.mock.calls[0][1]).toBe('kano-analysis-epoch-2.pdf')
+  })
+
+  test('shows the generating label and loading state while an export is in flight', async () => {
+    apiSeed.analysis = populated(5)
+    const wrapper = await mountAnalysisPage()
+    await flushPromises()
+
+    // Resting state: action label, not loading.
+    let btn = wrapper.find('[data-testid="analysis-export-pdf"]')
+    expect(btn.text()).toBe(en['analysis.export.button'])
+    expect(btn.attributes('data-loading')).toBe('false')
+
+    // Flip the composable's `exporting` ref → button reflects the in-flight UI.
+    pdfState.exporting!.value = true
+    await wrapper.vm.$nextTick()
+    btn = wrapper.find('[data-testid="analysis-export-pdf"]')
+    expect(btn.text()).toBe(en['analysis.export.generating'])
+    expect(btn.attributes('data-loading')).toBe('true')
+  })
+
+  test('surfaces the error snackbar when the export rejects', async () => {
+    apiSeed.analysis = populated(5)
+    exportToPdfMock.mockRejectedValueOnce(new Error('boom'))
+    const wrapper = await mountAnalysisPage()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="analysis-export-pdf"]').trigger('click')
+    await flushPromises()
+
+    const snackbar = wrapper.find('[data-testid="analysis-export-error"]')
+    expect(snackbar.exists()).toBe(true)
+    expect(snackbar.text()).toBe(en['analysis.export.error'])
   })
 })
