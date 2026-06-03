@@ -73,6 +73,15 @@ const projectName = computed(() => {
   return ''
 })
 
+const projectVersion = computed(() => {
+  // Release label (DB `version` string) — distinct from the Epoch counter.
+  // Same store/id guard as projectName: render only when we actually hold
+  // this project, otherwise '' so the "Version:" display stays hidden.
+  const cur = projectsStore.current
+  if (cur && cur.id === projectId.value) return cur.version
+  return ''
+})
+
 const totalLabel = computed(() => {
   if (!analysis.value) return ''
   const n = analysis.value.total_submissions
@@ -146,8 +155,22 @@ onMounted(() => {
           class="text-h2 analysis-title"
           data-testid="analysis-project-name"
         >
-          {{ projectName }}
+          <RouterLink
+            :to="{ name: 'project-detail', params: { id: projectId } }"
+            class="analysis-title__link"
+            data-testid="analysis-project-link"
+          >
+            {{ projectName }}
+          </RouterLink>
         </h1>
+        <div
+          v-if="projectVersion"
+          class="d-flex align-center ga-1 text-on-surface-variant analysis-version"
+          data-testid="analysis-project-version"
+        >
+          <span class="text-body-2">{{ copy('pm.projectDetail.version.label') }}:</span>
+          <span class="text-body-1">{{ projectVersion }}</span>
+        </div>
         <v-chip
           v-if="analysis"
           color="secondary"
@@ -256,6 +279,20 @@ onMounted(() => {
 
 .analysis-title {
   margin: 0;
+}
+
+.analysis-title__link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.analysis-title__link:hover,
+.analysis-title__link:focus-visible {
+  text-decoration: underline;
+}
+
+.analysis-version {
+  white-space: nowrap;
 }
 
 .confidence-beat {

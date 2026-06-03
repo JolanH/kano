@@ -176,9 +176,21 @@ const EpochSelectorStub = defineComponent({
   },
 })
 
+// `vue-router` is fully mocked above (no real RouterLink), so stub it here:
+// render an <a> that serializes the `to` target into `data-to` so specs can
+// assert the navigation destination.
+const RouterLinkStub = defineComponent({
+  props: ['to'],
+  setup(props, { slots }) {
+    return () =>
+      h('a', { 'data-to': JSON.stringify(props.to) }, slots.default?.())
+  },
+})
+
 const globalStubs = {
   'v-skeleton-loader': SkeletonStub,
   'v-chip': VChipStub,
+  RouterLink: RouterLinkStub,
   'v-card': passthrough('v-card'),
   AnalysisTable: AnalysisTableStub,
   AnalysisEmptyState: AnalysisEmptyStateStub,
@@ -298,7 +310,7 @@ describe('Analysis page — branching', () => {
     )
   })
 
-  test('header surfaces project name from projectsStore + version chip', async () => {
+  test('header surfaces project name (linked) + version display + epoch chip', async () => {
     apiSeed.analysis = populated(5)
     const store = useProjectsStore()
     store.current = {
@@ -313,9 +325,38 @@ describe('Analysis page — branching', () => {
     const wrapper = await mountAnalysisPage()
     await flushPromises()
     expect(wrapper.find('[data-testid="analysis-project-name"]').text()).toBe('Q3 Prioritization')
+    // The name is a link back to the project-detail route for this project.
+    const link = wrapper.find('[data-testid="analysis-project-link"]')
+    expect(JSON.parse(link.attributes('data-to') ?? '{}')).toEqual({
+      name: 'project-detail',
+      params: { id: 'proj-1' },
+    })
+    // Release label ("Version") + the DB version string, distinct from epoch.
+    expect(wrapper.find('[data-testid="analysis-project-version"]').text()).toContain(
+      `${en['pm.projectDetail.version.label']}`,
+    )
+    expect(wrapper.find('[data-testid="analysis-project-version"]').text()).toContain('1.0')
+    // Epoch chip keeps the "Epoch N" terminology (common.version === "Epoch").
     expect(wrapper.find('[data-testid="analysis-version-chip"]').text()).toContain(
       `${en['common.version']} 2`,
     )
+  })
+
+  test('version display is hidden when the project version string is empty', async () => {
+    apiSeed.analysis = populated(5)
+    const store = useProjectsStore()
+    store.current = {
+      id: 'proj-1',
+      name: 'Q3 Prioritization',
+      version: '',
+      current_epoch: 2,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      active_features: [],
+    }
+    const wrapper = await mountAnalysisPage()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="analysis-project-version"]').exists()).toBe(false)
   })
 
   test('confidence-beat uses singular copy on 1 response, plural otherwise', async () => {
