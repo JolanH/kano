@@ -92,6 +92,8 @@ const VDataTableStub = defineComponent({
         { 'data-testid': attrs['data-testid'] ?? undefined },
         (props.items as PollSummaryWithProject[]).map((item) => {
           const rowProps = typeof props.rowProps === 'function' ? props.rowProps({ item }) : {}
+          const nameSlot = slots['item.project_name']
+          const versionSlot = slots['item.project_version']
           const actionsSlot = slots['item.actions']
           return h(
             'tr',
@@ -101,7 +103,8 @@ const VDataTableStub = defineComponent({
               onClick: (e: MouseEvent) => emit('click:row', e, { item }),
             },
             [
-              h('td', item.project_name),
+              h('td', nameSlot ? nameSlot({ item }) : item.project_name),
+              h('td', versionSlot ? versionSlot({ item }) : item.project_version),
               h('td', `v${item.epoch}`),
               h('td', String(item.response_count)),
               h(
@@ -126,6 +129,7 @@ const globalStubs = {
   'v-card-actions': passthrough('v-card-actions'),
   'v-chip': passthrough('v-chip'),
   'v-icon': passthrough('v-icon'),
+  'v-snackbar': passthrough('v-snackbar'),
   'v-btn': VBtnStub,
   'v-data-table': VDataTableStub,
 }
@@ -182,14 +186,30 @@ describe('Polls page', () => {
     expect(liveRow.classes()).not.toContain('polls-row--expired')
   })
 
-  test('row click routes to poll-share for live poll', async () => {
+  test('version column renders the free-form project_version', async () => {
+    apiSeed.value = [basePoll({ id: 'p-ver', project_version: 'v2.0-beta' })]
+    const wrapper = mountPolls()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="polls-row-p-ver"]').text()).toContain('v2.0-beta')
+  })
+
+  test('project name is plain text — no link to project detail', async () => {
+    apiSeed.value = [basePoll({ id: 'p-name', project_name: 'Solo' })]
+    const wrapper = mountPolls()
+    await flushPromises()
+    const row = wrapper.find('[data-testid="polls-row-p-name"]')
+    expect(row.find('[data-testid="polls-row-project-link"]').exists()).toBe(false)
+    expect(row.text()).toContain('Solo')
+  })
+
+  test('row click routes to poll-analysis for live poll', async () => {
     apiSeed.value = [basePoll({ id: 'live-1', project_id: 'proj-x', is_expired: false })]
     const wrapper = mountPolls()
     await flushPromises()
     await wrapper.find('[data-testid="polls-row-live-1"]').trigger('click')
     expect(pushMock).toHaveBeenCalledTimes(1)
     expect(pushMock).toHaveBeenCalledWith({
-      name: 'poll-share',
+      name: 'poll-analysis',
       params: { id: 'proj-x', pollId: 'live-1' },
     })
   })
@@ -205,38 +225,59 @@ describe('Polls page', () => {
     })
   })
 
-  test('view-analysis button renders only when response_count >= 1', async () => {
-    apiSeed.value = [
-      basePoll({ id: 'p-empty', response_count: 0 }),
-      basePoll({ id: 'p-one', response_count: 1 }),
-      basePoll({ id: 'p-many', response_count: 42 }),
-    ]
+  test('each row exposes open-in-tab and copy action buttons', async () => {
+    apiSeed.value = [basePoll({ id: 'p-act', response_count: 0 })]
     const wrapper = mountPolls()
     await flushPromises()
-    expect(
-      wrapper.find('[data-testid="polls-row-p-empty"] [data-testid="polls-row-view-analysis"]').exists(),
-    ).toBe(false)
-    expect(
-      wrapper.find('[data-testid="polls-row-p-one"] [data-testid="polls-row-view-analysis"]').exists(),
-    ).toBe(true)
-    expect(
-      wrapper.find('[data-testid="polls-row-p-many"] [data-testid="polls-row-view-analysis"]').exists(),
-    ).toBe(true)
+    const row = wrapper.find('[data-testid="polls-row-p-act"]')
+    expect(row.find('[data-testid="polls-row-open-url"]').exists()).toBe(true)
+    expect(row.find('[data-testid="polls-row-copy-url"]').exists()).toBe(true)
   })
 
-  test('view-analysis button routes to poll-analysis without firing row click', async () => {
-    apiSeed.value = [
-      basePoll({ id: 'live-resp', project_id: 'proj-z', is_expired: false, response_count: 3 }),
-    ]
+  test('copy button writes the respondent URL and does not fire row click', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    apiSeed.value = [basePoll({ id: 'copy-1' })]
     const wrapper = mountPolls()
     await flushPromises()
     await wrapper
-      .find('[data-testid="polls-row-live-resp"] [data-testid="polls-row-view-analysis"]')
+      .find('[data-testid="polls-row-copy-1"] [data-testid="polls-row-copy-url"]')
       .trigger('click')
-    expect(pushMock).toHaveBeenCalledTimes(1)
-    expect(pushMock).toHaveBeenCalledWith({
-      name: 'poll-analysis',
-      params: { id: 'proj-z', pollId: 'live-resp' },
-    })
+    await flushPromises()
+    expect(writeText).toHaveBeenCalledTimes(1)
+    expect(writeText.mock.calls[0][0]).toContain('/poll/copy-1')
+    expect(pushMock).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
+  })
+
+  test('copy button surfaces the failure message when the clipboard write rejects', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'))
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    apiSeed.value = [basePoll({ id: 'copy-fail' })]
+    const wrapper = mountPolls()
+    await flushPromises()
+    await wrapper
+      .find('[data-testid="polls-row-copy-fail"] [data-testid="polls-row-copy-url"]')
+      .trigger('click')
+    await flushPromises()
+    expect(writeText).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('[data-testid="polls-copy-snackbar"]').text()).toContain("couldn't copy")
+    vi.unstubAllGlobals()
+  })
+
+  test('open button opens the respondent URL in a new tab without firing row click', async () => {
+    const openSpy = vi.fn().mockReturnValue({ opener: null })
+    vi.stubGlobal('open', openSpy)
+    apiSeed.value = [basePoll({ id: 'open-1' })]
+    const wrapper = mountPolls()
+    await flushPromises()
+    await wrapper
+      .find('[data-testid="polls-row-open-1"] [data-testid="polls-row-open-url"]')
+      .trigger('click')
+    expect(openSpy).toHaveBeenCalledTimes(1)
+    expect(openSpy.mock.calls[0][0]).toContain('/poll/open-1')
+    expect(openSpy.mock.calls[0][1]).toBe('_blank')
+    expect(pushMock).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
   })
 })

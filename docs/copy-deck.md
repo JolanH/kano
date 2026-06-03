@@ -260,12 +260,17 @@ Card surface where the PM copies the poll URL and previews the QR code.
 | `pm.polls.title` | Polls | Page heading + section `aria-label` |
 | `pm.polls.loading` | Loading polls… | `v-data-table` loading text |
 | `pm.polls.columns.project` | Project | Table column header |
+| `pm.polls.columns.projectVersion` | Version | Table column header (free-form project version string) |
 | `pm.polls.columns.version` | Epoch | Table column header (epoch chip) |
 | `pm.polls.columns.responses` | Responses | Table column header |
 | `pm.polls.columns.expiresIn` | Expires in | Table column header |
 | `pm.polls.columns.created` | Created | Table column header |
 | `pm.polls.columns.actions` | Actions | Table column header for per-row action buttons |
 | `pm.polls.viewAnalysis.button` | View analysis | Row button that opens the poll's analysis page (only when response_count ≥ 1) |
+| `pm.polls.actions.open` | Open poll URL in new tab | Row icon button + `aria-label`/tooltip; opens the poll's respondent URL in a new tab |
+| `pm.polls.actions.copy` | Copy poll URL to clipboard | Row icon button + `aria-label`/tooltip; copies the poll's respondent URL |
+| `pm.polls.actions.copied` | Poll URL copied to clipboard | Snackbar on successful copy from the polls list |
+| `pm.polls.actions.copyFailed` | We couldn't copy the URL automatically. Please try again. | Snackbar when the clipboard write fails in the polls list |
 | `pm.polls.expired` | Expired | Token shown in the Expires-in column for closed polls |
 | `pm.polls.countdown.expiringNow` | expiring now | Countdown cell text when remaining < 1 minute |
 | `pm.polls.countdown.minutes` | {n} min | Countdown when remaining < 1 hour |

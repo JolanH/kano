@@ -38,14 +38,10 @@
       @click:row="onRowClick"
     >
       <template #item.project_name="{ item }">
-        <router-link
-          :to="{ name: 'project-detail', params: { id: item.project_id } }"
-          class="text-primary"
-          data-testid="polls-row-project-link"
-          @click.stop
-        >
-          {{ projectLabel(item) }}
-        </router-link>
+        {{ projectLabel(item) }}
+      </template>
+      <template #item.project_version="{ item }">
+        {{ item.project_version || '—' }}
       </template>
       <template #item.epoch="{ item }">
         <v-chip size="small" variant="flat">
@@ -62,31 +58,50 @@
         {{ formatDate(value as string) }}
       </template>
       <template #item.actions="{ item }">
-        <div
-          v-if="item.response_count >= 1"
-          data-no-row-click
-          class="d-flex justify-end"
-        >
+        <div data-no-row-click class="d-flex justify-end ga-1">
           <v-btn
+            icon="mdi-open-in-new"
             variant="text"
             size="small"
-            prepend-icon="mdi-chart-box-outline"
-            data-testid="polls-row-view-analysis"
-            :text="copy('pm.polls.viewAnalysis.button')"
-            @click.stop="onViewAnalysis(item)"
+            :aria-label="copy('pm.polls.actions.open')"
+            :title="copy('pm.polls.actions.open')"
+            data-testid="polls-row-open-url"
+            @click.stop="openPollUrl(item)"
+          />
+          <v-btn
+            icon="mdi-content-copy"
+            variant="text"
+            size="small"
+            :aria-label="copy('pm.polls.actions.copy')"
+            :title="copy('pm.polls.actions.copy')"
+            data-testid="polls-row-copy-url"
+            @click.stop="copyPollUrl(item)"
           />
         </div>
       </template>
     </v-data-table>
+
+    <v-snackbar
+      :model-value="snackbarOpen"
+      :timeout="2000"
+      location="bottom"
+      role="status"
+      aria-live="polite"
+      data-testid="polls-copy-snackbar"
+      @update:model-value="snackbarOpen = $event"
+    >
+      {{ snackbarMessage }}
+    </v-snackbar>
   </section>
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import type { PollSummaryWithProject } from '@/api/types'
 import { useCopy } from '@/composables/useCopy'
+import { buildPollUrl } from '@/lib/pollUrl'
 import { usePollsStore } from '@/stores/polls'
 import { useProjectsStore } from '@/stores/projects'
 
@@ -97,6 +112,7 @@ const projectsStore = useProjectsStore()
 
 const headers = computed(() => [
   { title: copy('pm.polls.columns.project'), key: 'project_name', sortable: true },
+  { title: copy('pm.polls.columns.projectVersion'), key: 'project_version', sortable: true },
   { title: copy('pm.polls.columns.version'), key: 'epoch', sortable: false },
   {
     title: copy('pm.polls.columns.responses'),
@@ -152,7 +168,10 @@ onMounted(() => {
 })
 
 function rowClassProps({ item }: { item: PollSummaryWithProject }) {
-  return item.is_expired ? { class: 'text-medium-emphasis polls-row--expired' } : {}
+  return {
+    'data-testid': `polls-row-${item.id}`,
+    ...(item.is_expired ? { class: 'text-medium-emphasis polls-row--expired' } : {}),
+  }
 }
 
 function onRowClick(
@@ -168,27 +187,52 @@ function onRowClick(
   if (target?.closest('a, button, [data-no-row-click]')) return
 
   const item = payload.item
-  if (item.is_expired) {
-    void router.push({
-      name: 'poll-analysis',
-      params: { id: item.project_id, pollId: item.id },
-    })
-    return
-  }
-  // Seed the share view's `currentPoll` from the cached row so PollShare
-  // doesn't redirect back to the project detail on store-miss.
-  pollsStore.selectPollById(item.id)
-  void router.push({
-    name: 'poll-share',
-    params: { id: item.project_id, pollId: item.id },
-  })
-}
-
-function onViewAnalysis(item: PollSummaryWithProject) {
   void router.push({
     name: 'poll-analysis',
     params: { id: item.project_id, pollId: item.id },
   })
+}
+
+const snackbarOpen = ref(false)
+const snackbarMessage = ref('')
+
+// Re-flash the snackbar so a second copy (same or different row) restarts the
+// timeout and re-triggers the aria-live announcement — toggling `model-value`
+// straight to `true` while it's already `true` is a no-op for Vuetify.
+function flashSnackbar(message: string) {
+  snackbarMessage.value = message
+  snackbarOpen.value = false
+  void nextTick(() => {
+    snackbarOpen.value = true
+  })
+}
+
+function openPollUrl(item: PollSummaryWithProject) {
+  // Sever the opener link manually so the new tab can't reach back into this
+  // SPA. When the popup is blocked `window.open` returns null — fall back to
+  // copying the URL (the link is known synchronously) so the button is never
+  // a dead end, mirroring ProjectDetail's go-to-poll handler.
+  const win = window.open(buildPollUrl(item.id), '_blank')
+  if (win) {
+    win.opener = null
+    return
+  }
+  void copyPollUrl(item)
+}
+
+async function copyPollUrl(item: PollSummaryWithProject) {
+  const url = buildPollUrl(item.id)
+  try {
+    const write =
+      typeof navigator !== 'undefined'
+        ? navigator.clipboard?.writeText?.bind(navigator.clipboard)
+        : undefined
+    if (!write) throw new Error('clipboard unavailable')
+    await write(url)
+    flashSnackbar(copy('pm.polls.actions.copied'))
+  } catch {
+    flashSnackbar(copy('pm.polls.actions.copyFailed'))
+  }
 }
 
 function projectLabel(item: PollSummaryWithProject): string {

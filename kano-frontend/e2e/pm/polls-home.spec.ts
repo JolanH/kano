@@ -4,7 +4,8 @@
  * Fetch-mocked the same way as a11y-paola.spec.ts / generate-poll.spec.ts.
  * Asserts: `/` redirects to `/app/polls`, empty-state CTA navigates to
  * `/app/projects`, populated table renders rows with expired styling, row
- * clicks route to share / analysis correctly, axe-core is clean.
+ * clicks route to the poll's analysis, per-row open/copy action buttons work,
+ * axe-core is clean.
  */
 
 import AxeBuilder from '@axe-core/playwright'
@@ -69,7 +70,7 @@ test.describe('Story 3-7 — PM polls home', () => {
     await expect(page).toHaveURL(/\/app\/projects$/)
   })
 
-  test('populated table renders rows; expired row is muted; row click routes correctly', async ({
+  test('populated table renders rows; expired row is muted; row click routes to analysis', async ({
     page,
   }) => {
     await mockCsrf(page)
@@ -87,10 +88,40 @@ test.describe('Story 3-7 — PM polls home', () => {
     await expect(deadRow).toBeVisible()
     // The expired row carries the muted CSS class we set in `rowClassProps`.
     await expect(deadRow).toHaveClass(/polls-row--expired/)
-    await deadRow.click()
+    // Clicking anywhere on a row body (live or expired) routes to that poll's
+    // analysis — never to project detail or the share page.
+    await liveRow.click()
     await expect(page).toHaveURL(
-      new RegExp(`/app/projects/${PROJECT_ID}/polls/${DEAD_POLL_ID}/analysis$`),
+      new RegExp(`/app/projects/${PROJECT_ID}/polls/${LIVE_POLL_ID}/analysis$`),
     )
+  })
+
+  test('per-row action buttons: open in new tab + copy respondent URL', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    await mockCsrf(page)
+    await page.route('**/api/v1/polls', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify([livePoll]),
+      }),
+    )
+    await page.goto('/app/polls')
+    const row = page.getByTestId(`polls-row-${LIVE_POLL_ID}`)
+    await expect(row.getByTestId('polls-row-open-url')).toBeVisible()
+    await expect(row.getByTestId('polls-row-copy-url')).toBeVisible()
+
+    // Open button spawns a new tab pointed at the respondent URL.
+    const popupPromise = context.waitForEvent('page')
+    await row.getByTestId('polls-row-open-url').click()
+    const popup = await popupPromise
+    await expect(popup).toHaveURL(new RegExp(`/poll/${LIVE_POLL_ID}$`))
+    await popup.close()
+
+    // Copy button writes the respondent URL and confirms via snackbar.
+    await row.getByTestId('polls-row-copy-url').click()
+    await expect(page.getByTestId('polls-copy-snackbar')).toBeVisible()
+    const clipboard = await page.evaluate(() => navigator.clipboard.readText())
+    expect(clipboard).toContain(`/poll/${LIVE_POLL_ID}`)
   })
 
   test('axe-core: zero violations on populated polls home', async ({ page }) => {
