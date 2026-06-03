@@ -44,7 +44,7 @@
         {{ item.project_version || '—' }}
       </template>
       <template #item.epoch="{ item }">
-        <v-chip size="small" variant="flat">
+        <v-chip size="small" variant="outlined">
           {{ copy('common.version') }} {{ item.epoch }}
         </v-chip>
       </template>
