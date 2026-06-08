@@ -21,7 +21,7 @@
     "@fontsource/inter": "^5.2.8",
     "@fontsource/roboto": "^5.2.10",
     "@mdi/font": "7.4.47",
-    "html2canvas": "^1.4.1",
+    "html2canvas-pro": "^2.0.4",
     "jspdf": "^4.2.1",
     "pinia": "^3.0.4",
     "qrcode": "^1.5.4",

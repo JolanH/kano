@@ -34,7 +34,13 @@ export function useAnalysisPdf(): AnalysisPdfController {
     if (exporting.value) return
     exporting.value = true
     try {
-      const { default: html2canvas } = await import('html2canvas')
+      // `html2canvas-pro` (not the stock `html2canvas`): the original is
+      // pinned at 1.4.1 (2022) and throws `unsupported color function
+      // "color"` because the browser resolves our theme's `color-mix()` into
+      // the modern `color(srgb …)` syntax it can't parse. The `-pro` fork is a
+      // drop-in with the same default-export API plus `color()`/`oklch`/`lab`
+      // support.
+      const { default: html2canvas } = await import('html2canvas-pro')
       const { jsPDF } = await import('jspdf')
 
       // White background so the captured surface isn't transparent (which

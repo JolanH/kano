@@ -143,3 +143,19 @@ Filename: build from project name (when `projectName` is non-empty) + epoch, e.g
   [`use-analysis-pdf.spec.ts:109`](../../kano-frontend/tests/unit/use-analysis-pdf.spec.ts#L109)
 - Page tests — button presence/gating, click args, filename, in-flight generating label, error snackbar.
   [`analysis-page.spec.ts:545`](../../kano-frontend/tests/unit/analysis-page.spec.ts#L545)
+
+## Spec Change Log
+
+- **2026-06-03 — post-merge fix: swapped `html2canvas` → `html2canvas-pro`.** In the
+  browser the export always failed with `Error: Attempting to parse an unsupported
+  color function "color"` (snackbar: "Couldn't generate the PDF"). Root cause: the
+  app's theme uses `color-mix()`, which the browser resolves to the modern
+  `color(srgb …)` syntax in computed styles; stock `html2canvas@1.4.1` (Feb 2022)
+  only understands `hsl/rgb/rgba` and throws. Replaced with the drop-in fork
+  `html2canvas-pro@^2.0.4` (same default-export API, adds `color()`/`oklch`/`lab`
+  support). Changed: `package.json` dep, the `await import()` specifier in
+  `useAnalysisPdf.ts`, and the `vi.mock()` target in `use-analysis-pdf.spec.ts`.
+  The unit-test mocks never exercised a real rasterization, so they passed against
+  the broken lib — verified the fix end-to-end with headless Chromium (valid
+  `%PDF-1.3`, multi-page download). Note: the dev Docker `web` container must be
+  rebuilt + its `node_modules` volume recreated for the new dep to resolve.

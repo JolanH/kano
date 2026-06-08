@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
   getHeight: vi.fn(() => 842),
 }))
 
-vi.mock('html2canvas', () => ({ default: mocks.html2canvas }))
+vi.mock('html2canvas-pro', () => ({ default: mocks.html2canvas }))
 vi.mock('jspdf', () => ({
   // A class (not an arrow-fn mock) so `new jsPDF(...)` is constructable.
   jsPDF: class {
