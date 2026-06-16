@@ -22,7 +22,9 @@ from typing import Any
 
 import httpx
 
-DEFAULT_BASE_URL = "http://localhost:5000/api/v1"
+# docker-compose maps the API container's port 5000 to host port 5001, so from the
+# host (where this MCP server runs) the API is reached at :5001.
+DEFAULT_BASE_URL = "http://localhost:5001/api/v1"
 
 
 class KanoApiError(Exception):
@@ -54,8 +56,14 @@ class KanoClient:
     def __init__(self, base_url: str | None = None):
         self.base_url = (base_url or os.environ.get("KANO_API_BASE", DEFAULT_BASE_URL)).rstrip("/")
         # One client => one cookie jar => the Flask session cookie persists across calls.
-        self._client = httpx.AsyncClient(base_url=self.base_url, timeout=30.0)
+        # We build full URLs ourselves (see `_url`) instead of using httpx's `base_url`
+        # join, because httpx treats a leading-slash path as absolute and would drop the
+        # `/api/v1` prefix. follow_redirects handles Flask's trailing-slash 308s.
+        self._client = httpx.AsyncClient(timeout=30.0, follow_redirects=True)
         self._csrf_token: str | None = None
+
+    def _url(self, path: str) -> str:
+        return f"{self.base_url}{path}"
 
     async def aclose(self) -> None:
         await self._client.aclose()
@@ -63,7 +71,7 @@ class KanoClient:
     async def _ensure_csrf(self) -> str:
         """Fetch (once) and cache the CSRF token; also seeds the session cookie."""
         if self._csrf_token is None:
-            resp = await self._client.get("/csrf-token")
+            resp = await self._client.get(self._url("/csrf-token"))
             resp.raise_for_status()
             self._csrf_token = resp.json()["csrf_token"]
         return self._csrf_token
@@ -73,7 +81,7 @@ class KanoClient:
         if method.upper() in {"POST", "PATCH", "PUT", "DELETE"}:
             headers["X-CSRF-Token"] = await self._ensure_csrf()
 
-        resp = await self._client.request(method, path, json=json, headers=headers)
+        resp = await self._client.request(method, self._url(path), json=json, headers=headers)
 
         if resp.is_success:
             # 204 No Content has an empty body.
@@ -90,7 +98,8 @@ class KanoClient:
     # ----- Reads (no CSRF needed) -------------------------------------------------
 
     async def list_projects(self) -> list[dict[str, Any]]:
-        return await self._request("GET", "/projects")
+        # Trailing slash: the Flask route is GET /api/v1/projects/.
+        return await self._request("GET", "/projects/")
 
     async def get_project(self, project_id: str) -> dict[str, Any]:
         return await self._request("GET", f"/projects/{project_id}")
@@ -101,7 +110,8 @@ class KanoClient:
     # ----- Writes (CSRF required) -------------------------------------------------
 
     async def create_project(self, name: str, version: str) -> dict[str, Any]:
-        return await self._request("POST", "/projects", json={"name": name, "version": version})
+        # Trailing slash: the Flask route is POST /api/v1/projects/.
+        return await self._request("POST", "/projects/", json={"name": name, "version": version})
 
     async def create_feature(
         self,

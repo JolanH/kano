@@ -131,8 +131,9 @@ Kano is a small Flask + Pydantic service for running Kano-model feature prioriti
 write operations we'll wrap are **create a project** and **create a feature**; we'll also add read
 operations. Here's everything our server needs to know.
 
-**Base URL:** `http://localhost:5000/api/v1` (the backend listens on port 5000; start it with
-`docker compose up --build` from the repo root, health check `GET /api/v1/health`).
+**Base URL:** `http://localhost:5001/api/v1`. Start the backend with `docker compose up --build` from the
+repo root; compose maps the API container's port 5000 to **host port 5001**, so from the host (where this
+MCP server runs) you reach it at `:5001` (health check `GET http://localhost:5001/api/v1/health`).
 
 ### Authentication: session cookie + CSRF token (no bearer tokens!)
 
@@ -268,12 +269,17 @@ The CSRF bootstrap and request helper:
 class KanoClient:
     def __init__(self, base_url: str | None = None):
         self.base_url = (base_url or os.environ.get("KANO_API_BASE", DEFAULT_BASE_URL)).rstrip("/")
-        self._client = httpx.AsyncClient(base_url=self.base_url, timeout=30.0)
+        # We build full URLs ourselves (see `_url`) and follow redirects — see the two
+        # gotchas below this code block.
+        self._client = httpx.AsyncClient(timeout=30.0, follow_redirects=True)
         self._csrf_token: str | None = None
+
+    def _url(self, path: str) -> str:
+        return f"{self.base_url}{path}"
 
     async def _ensure_csrf(self) -> str:
         if self._csrf_token is None:
-            resp = await self._client.get("/csrf-token")  # also sets the session cookie
+            resp = await self._client.get(self._url("/csrf-token"))  # also sets the session cookie
             resp.raise_for_status()
             self._csrf_token = resp.json()["csrf_token"]
         return self._csrf_token
@@ -282,7 +288,7 @@ class KanoClient:
         headers = {}
         if method.upper() in {"POST", "PATCH", "PUT", "DELETE"}:
             headers["X-CSRF-Token"] = await self._ensure_csrf()
-        resp = await self._client.request(method, path, json=json, headers=headers)
+        resp = await self._client.request(method, self._url(path), json=json, headers=headers)
         if resp.is_success:
             return resp.json() if resp.content else None
         try:
@@ -294,6 +300,20 @@ class KanoClient:
 
 The public methods are thin wrappers — see the full file for `list_projects`, `get_project`,
 `create_project`, `create_feature(..., acknowledged=False)`, and `list_features_at_epoch`.
+
+> ⚠️ **Two HTTP gotchas worth internalizing — both produce a confusing `404`:**
+>
+> 1. **Don't lean on httpx's `base_url` join with leading-slash paths.** httpx follows RFC 3986: a request
+>    path that starts with `/` is *absolute* and replaces the base URL's path entirely. So
+>    `base_url="http://host/api/v1"` + `"/projects"` resolves to `http://host/projects` — the `/api/v1`
+>    prefix silently vanishes and you get a 404. We sidestep this by composing the URL ourselves in `_url`.
+> 2. **Match trailing slashes.** Kano's collection routes are `GET/POST /api/v1/projects/` *with* a
+>    trailing slash. Requesting `/projects` (no slash) makes Flask issue a 308 redirect to `/projects/`,
+>    which httpx won't follow unless you set `follow_redirects=True`. We do both: send the exact path
+>    (`/projects/`) and follow redirects as a safety net.
+>
+> And mind your **port**: from the host, the dockerized API is on **5001** (`docker-compose` maps
+> `5001:5000`), not 5000.
 
 **Takeaway:** none of this is MCP-specific. Keeping your "domain client" separate from your MCP server is
 good practice — it's easy to test, and the MCP layer stays a thin adapter.
@@ -555,29 +575,159 @@ template.
 
 ## 7. Running and connecting your server
 
-### As a stdio server
+### Choosing a transport
 
-The bottom of `server.py`:
+We make the transport configurable via `KANO_MCP_TRANSPORT` (default `stdio`) so the same server can run
+either way:
 
 ```python
+TRANSPORT = os.environ.get("KANO_MCP_TRANSPORT", "stdio")
+HOST = os.environ.get("KANO_MCP_HOST", "127.0.0.1")
+PORT = int(os.environ.get("KANO_MCP_PORT", "8000"))
+
+mcp = FastMCP("kano", host=HOST, port=PORT)   # host/port used only by HTTP/SSE
+
 def main() -> None:
-    mcp.run(transport="stdio")
+    mcp.run(transport=TRANSPORT)              # "stdio" | "streamable-http" | "sse"
 
 if __name__ == "__main__":
     main()
 ```
 
-`pyproject.toml` also exposes a console script, so `uv run kano-mcp` starts it. A host launches this
-process and talks to it over stdin/stdout — you won't run it by hand often, but it's the entry point hosts
-use.
+`pyproject.toml` exposes a console script, so `uv run kano-mcp` starts it under whichever transport the
+env selects.
 
-### MCP Inspector (development)
+### As a stdio server (default)
+
+```bash
+uv run kano-mcp
+```
+
+A desktop host launches this process and talks to it over stdin/stdout — you won't run it by hand often,
+but it's the entry point hosts use.
+
+### As a Streamable HTTP server
+
+```bash
+KANO_MCP_TRANSPORT=streamable-http uv run kano-mcp
+# serves at http://127.0.0.1:8000/mcp  (set KANO_MCP_HOST / KANO_MCP_PORT to change)
+```
+
+Streamable HTTP is the transport for **remote** servers shared over the network. FastMCP mounts the
+endpoint at **`/mcp`**. Useful options on the `FastMCP(...)` constructor: `stateless_http=True` (no
+per-session state — easier to scale horizontally) and `json_response=True` (plain JSON responses instead
+of an SSE stream).
+
+### Configuration reference
+
+Everything is driven by environment variables (put them in `.env`, or prefix the command):
+
+| Variable | Default | Applies to | Meaning |
+| --- | --- | --- | --- |
+| `KANO_API_BASE` | `http://localhost:5001/api/v1` | both | Where the **Kano API** lives (host port 5001 under docker). |
+| `KANO_MCP_TRANSPORT` | `stdio` | both | How clients connect to **this server**: `stdio` \| `streamable-http` \| `sse`. |
+| `KANO_MCP_HOST` | `127.0.0.1` | HTTP/SSE only | Interface the HTTP server binds to. Use `0.0.0.0` to accept non-local clients. |
+| `KANO_MCP_PORT` | `8000` | HTTP/SSE only | Port the HTTP server listens on. Endpoint is `http://HOST:PORT/mcp`. |
+
+> Don't confuse the two URLs: `KANO_API_BASE` is **outbound** (server → Kano); `KANO_MCP_HOST/PORT` is
+> **inbound** (client → server, HTTP mode only).
+
+---
+
+## Exploring your server with the MCP Inspector
+
+The [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is a local web UI that speaks MCP
+to your server — the fastest way to list and run tools/resources/prompts without wiring up a full host.
+It works against **both** transports, but you launch it differently for each. Make sure the Kano backend
+is running first (`docker compose up --build`).
+
+### Mode A — stdio (Inspector launches the server)
+
+This is the default and the simplest: the Inspector starts your server as a subprocess and talks to it
+over stdin/stdout. Nothing binds a port.
 
 ```bash
 uv run mcp dev kano_mcp/server.py
 ```
 
-Your one-stop shop for testing tools, resources, and prompts during development.
+What happens:
+
+1. `mcp dev` boots a small **proxy** plus the Inspector web UI and prints a URL (and, in recent versions,
+   a one-time **session token** baked into that URL — see the gotcha below).
+2. Open the printed URL. The connection pane is **pre-filled** for stdio: Transport = `STDIO`,
+   Command = `uv …`. Click **Connect**, then **List Tools / Resources / Prompts**.
+
+**Passing configuration in stdio mode.** Because the Inspector spawns the process, the server inherits the
+environment of your shell — so just export what you need first:
+
+```bash
+KANO_API_BASE=http://localhost:5001/api/v1 uv run mcp dev kano_mcp/server.py
+```
+
+You can also type variables into the Inspector's **Environment Variables** field (in the connection pane)
+before connecting; they're injected into the spawned process. Note: `KANO_MCP_TRANSPORT` is **ignored**
+here — `mcp dev` always uses stdio regardless of the env var.
+
+### Mode B — Streamable HTTP (you run the server, Inspector attaches)
+
+`mcp dev` is stdio-only, so to exercise the HTTP path you start the server yourself and point a
+standalone Inspector at its URL.
+
+```bash
+# terminal 1 — run the server as an HTTP service
+KANO_MCP_TRANSPORT=streamable-http KANO_MCP_HOST=127.0.0.1 KANO_MCP_PORT=8000 uv run kano-mcp
+#   logs: "Serving Streamable HTTP at http://127.0.0.1:8000/mcp"
+
+# terminal 2 — launch the Inspector on its own
+npx @modelcontextprotocol/inspector
+```
+
+Then in the Inspector UI:
+
+| Field | Value |
+| --- | --- |
+| **Transport Type** | `Streamable HTTP` |
+| **URL** | `http://127.0.0.1:8000/mcp` |
+
+Click **Connect**. (For the legacy SSE transport, run the server with
+`KANO_MCP_TRANSPORT=sse`, choose **SSE** in the dropdown, and use `http://127.0.0.1:8000/sse`.)
+
+You can sanity-check the endpoint from the command line without the UI — a successful `initialize`
+returns the server info over an SSE stream:
+
+```bash
+curl -i -X POST http://127.0.0.1:8000/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{
+        "protocolVersion":"2025-06-18","capabilities":{},
+        "clientInfo":{"name":"curl","version":"0"}}}'
+# => 200, content-type: text/event-stream, mcp-session-id: ..., serverInfo {"name":"kano"}
+```
+
+### The gotcha that makes HTTP "not connect"
+
+Recent Inspector versions protect the local proxy with an **auth token**. When `mcp dev` auto-opens the
+browser it includes the token in the URL, so stdio "just works". But when you start the Inspector
+**separately** (Mode B) and connect manually, you must supply that token:
+
+- Copy the **pre-filled URL with `MCP_PROXY_AUTH_TOKEN=…`** that the Inspector prints on startup, **or**
+- paste the token into the Inspector's **Configuration → Proxy Auth Token** field, **or**
+- for local-only experimentation, disable it: `DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector`
+  (never do this on a shared machine).
+
+Other things to check if an HTTP connect fails:
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| "Connection error / failed to fetch" in the UI | Wrong URL or missing `/mcp` path | Use `http://HOST:PORT/mcp` exactly (not `/`). |
+| 401 / "Unauthorized" from the proxy | Missing Inspector proxy token | Supply the token (above). |
+| `406 Not Acceptable` when you GET `/mcp` | That's expected — Streamable HTTP needs a POST with `Accept: text/event-stream` | Let the Inspector drive it; the bare `GET` 406 is normal. |
+| Connection refused | Server not running / wrong port | Confirm terminal 1 logged the serving URL; match `KANO_MCP_PORT`. |
+| Can't reach from another machine | Bound to loopback | Start with `KANO_MCP_HOST=0.0.0.0` (and mind firewalls/auth). |
+
+> **Rule of thumb:** developing locally → **Mode A (stdio)**; verifying the deployed/remote shape or a
+> custom HTTP client → **Mode B (Streamable HTTP)**.
 
 ### Claude Code
 
@@ -614,7 +764,8 @@ the tools appear behind the tools/🔌 icon.
 | --- | --- | --- |
 | Server connects but immediately drops / "invalid JSON" | You wrote to **stdout** under stdio | Route all logging to **stderr**; remove stray `print()`. |
 | `403 csrf-validation-failed` on create | Token/cookie not flowing | Use **one** `httpx.AsyncClient` for the whole process (shared cookie jar) and send `X-CSRF-Token`. Don't recreate the client per call. |
-| `Connection refused` to `:5000` | Backend not up, or wrong base URL | `docker compose up --build`; check `GET /api/v1/health`; verify `KANO_API_BASE`. |
+| `404 Not Found` / `404 page not found` on every call | `/api/v1` prefix dropped by httpx, wrong port, or missing trailing slash | Build full URLs (don't rely on httpx `base_url` join); use host port **5001**; hit `/projects/` with the trailing slash. |
+| `Connection refused` / wrong host | Backend not up, or wrong base URL | `docker compose up --build`; check `GET http://localhost:5001/api/v1/health`; verify `KANO_API_BASE`. |
 | `409 epoch-bump-required` | A poll exists at the current epoch | Re-call `create_feature` with `acknowledge_epoch_bump=true`. |
 | Tools don't appear in the host | Bad config path / `uv` not found | Use absolute `--directory`; use the full path to `uv`; restart the host. |
 | CORS errors | You're hitting PM routes from a browser origin | Irrelevant for MCP (server-to-server); only affects the SPA. |

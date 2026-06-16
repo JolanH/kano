@@ -1,10 +1,17 @@
 """FastMCP server exposing the Kano API.
 
-Run it directly over stdio:
+The transport is selectable via the ``KANO_MCP_TRANSPORT`` env var
+(``stdio`` | ``streamable-http`` | ``sse``); it defaults to ``stdio``.
+
+Run it over stdio (the default a desktop host launches):
 
     uv run kano-mcp
 
-or explore it in the MCP Inspector:
+Run it as a Streamable HTTP service and connect a client to http://HOST:PORT/mcp:
+
+    KANO_MCP_TRANSPORT=streamable-http uv run kano-mcp
+
+Explore it in the MCP Inspector (the Inspector runs the server over stdio itself):
 
     uv run mcp dev kano_mcp/server.py
 
@@ -18,6 +25,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 from typing import Any
 
@@ -27,10 +35,19 @@ from kano_mcp.kano_client import KanoApiError, KanoClient
 
 # IMPORTANT (stdio transport): never write to stdout — it carries the JSON-RPC
 # stream and any stray bytes corrupt the protocol. Log to stderr instead.
+# (Under HTTP transports stdout is free, but logging to stderr is harmless there.)
 logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 logger = logging.getLogger("kano-mcp")
 
-mcp = FastMCP("kano")
+# Transport configuration. stdio is the default; set KANO_MCP_TRANSPORT to
+# "streamable-http" (recommended for HTTP) or "sse" to serve over the network.
+TRANSPORT = os.environ.get("KANO_MCP_TRANSPORT", "stdio")
+HOST = os.environ.get("KANO_MCP_HOST", "127.0.0.1")
+PORT = int(os.environ.get("KANO_MCP_PORT", "8000"))
+
+# host/port only matter for the HTTP/SSE transports; they're ignored under stdio.
+# Streamable HTTP is then served at http://HOST:PORT/mcp.
+mcp = FastMCP("kano", host=HOST, port=PORT)
 
 # A single shared client keeps one cookie jar (session) and one cached CSRF token
 # alive for the lifetime of the server process.
@@ -195,8 +212,12 @@ def kickoff_prioritization(project_name: str, version: str = "1.0") -> str:
 
 
 def main() -> None:
-    """Console-script entry point: run the server over stdio."""
-    mcp.run(transport="stdio")
+    """Console-script entry point: run the server over the configured transport."""
+    if TRANSPORT == "streamable-http":
+        logger.info("Serving Streamable HTTP at http://%s:%s/mcp", HOST, PORT)
+    elif TRANSPORT == "sse":
+        logger.info("Serving SSE at http://%s:%s/sse", HOST, PORT)
+    mcp.run(transport=TRANSPORT)
 
 
 if __name__ == "__main__":
