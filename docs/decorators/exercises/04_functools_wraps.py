@@ -20,6 +20,7 @@ def documented(func: Callable[[], None]) -> Callable[[], None]:
     """
 
     # TODO: add the @functools.wraps(func) decorator on the line below.
+    @functools.wraps(func)
     def wrapper() -> None:
         func()
 

@@ -26,7 +26,9 @@ def timed(func: Callable[[], None]) -> Callable[[], None]:
         #   1. record start with time.perf_counter()
         #   2. call func()
         #   3. set wrapper.last_duration to (perf_counter() - start)
-        raise NotImplementedError
+        start = time.perf_counter()
+        func()
+        wrapper.last_duration=time.perf_counter() - start
 
     return wrapper
 

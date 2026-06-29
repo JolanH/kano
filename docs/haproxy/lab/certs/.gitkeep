@@ -1,0 +1,5 @@
+# TLS certs for lesson 05 are generated here and are git-ignored.
+# Generate with:
+#   openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj "/CN=localhost" \
+#     -keyout localhost.key -out localhost.crt
+#   cat localhost.crt localhost.key > localhost.pem && chmod 600 localhost.pem

@@ -1,0 +1,3 @@
+# generated TLS material (lesson 05) — never commit keys
+certs/*
+!certs/.gitkeep

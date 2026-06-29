@@ -1,0 +1,46 @@
+name: haproxy-lab
+
+services:
+  haproxy:
+    image: haproxytech/haproxy-alpine:3.0
+    ports:
+      - "8080:8080"     # the proxied frontend
+      - "8404:8404"     # stats / metrics (lesson 07)
+      - "8405:8405"     # prometheus exporter (lesson 07)
+      - "8081:80"       # http (lesson 05 TLS redirect)
+      - "8443:443"      # https (lesson 05)
+      - "5432:5432"     # db write endpoint (lesson 09)
+      - "5433:5433"     # db read endpoint  (lesson 09)
+    volumes:
+      - ./haproxy:/usr/local/etc/haproxy:ro
+      - ./certs:/etc/haproxy/certs:ro
+    # -W master-worker (seamless reloads), -db run in foreground
+    command: ["haproxy", "-W", "-db", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+    depends_on: [app1, app2]
+
+  app1:
+    build: ./app
+    environment: { APP_NAME: app1 }
+  app2:
+    build: ./app
+    environment: { APP_NAME: app2 }
+
+  # --- database tier, used from lesson 09 (start with `--profile db`) ---
+  pg-primary:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: kano
+      POSTGRES_PASSWORD: change-me
+      POSTGRES_DB: kano
+    command: >
+      postgres -c wal_level=replica -c max_wal_senders=10
+               -c hot_standby=on
+    profiles: ["db"]
+
+  pg-replica:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: kano
+      POSTGRES_PASSWORD: change-me
+      POSTGRES_DB: kano
+    profiles: ["db"]
