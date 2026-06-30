@@ -293,4 +293,7 @@ TLS → routing → observability → HA → databases → security → a produc
 edge. Re-read the cheat sheets when you're configuring for real, and always
 `haproxy -c` before you reload.
 
-— End of course. Back to the [index](README.md).
+— End of the core course. Back to the [index](README.md).
+
+For an advanced add-on on running **more than one** HAProxy with synchronized
+state, see [12 — Distribution & synchronization](12-peers-sync.md).

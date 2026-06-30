@@ -1,0 +1,43 @@
+# Lesson 12 lab: TWO peered HAProxy nodes in front of the shared echo apps.
+#
+#   cd docs/haproxy/lab/peers
+#   docker compose -f docker-compose.peers.yml up -d --build
+#
+# Node A is on host :8090, node B on :8092. They replicate stick tables to each
+# other over the peers protocol (:10000, internal to the compose network).
+#
+# This is a SEPARATE compose project from the base lab. Stop the base lab first
+# if it's running, or just leave it — the host ports here (8090/8092) don't
+# collide with the base lab's 8080.
+name: haproxy-peers-lab
+
+services:
+  haproxy-a:
+    build: ../haproxy             # haproxy-alpine:3.0 + socat (shared with base lab)
+    hostname: haproxy-a            # <- identifies the local peer "haproxy-a"
+    environment: { NODE_NAME: haproxy-a }
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./haproxy-peers.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    command: ["haproxy", "-W", "-db", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+    depends_on: [app1, app2]
+
+  haproxy-b:
+    build: ../haproxy             # haproxy-alpine:3.0 + socat (shared with base lab)
+    hostname: haproxy-b            # <- identifies the local peer "haproxy-b"
+    environment: { NODE_NAME: haproxy-b }
+    ports:
+      - "8092:8080"
+    volumes:
+      - ./haproxy-peers.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    command: ["haproxy", "-W", "-db", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+    depends_on: [app1, app2]
+
+  # Reuse the same 30-line echo backend as the base lab (../app).
+  app1:
+    build: ../app
+    environment: { APP_NAME: app1 }
+  app2:
+    build: ../app
+    environment: { APP_NAME: app2 }

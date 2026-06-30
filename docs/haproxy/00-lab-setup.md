@@ -119,6 +119,9 @@ services:
 ```dockerfile
 # app/Dockerfile
 FROM python:3.12-slim
+# curl: hit /toggle, /health, /slow from inside the container (slim has no curl/wget)
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 COPY server.py /server.py
 ENV PORT=8080
 CMD ["python", "/server.py"]

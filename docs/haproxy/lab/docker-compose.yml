@@ -2,7 +2,7 @@ name: haproxy-lab
 
 services:
   haproxy:
-    image: haproxytech/haproxy-alpine:3.0
+    build: ./haproxy          # haproxy-alpine:3.0 + socat (for the runtime API)
     ports:
       - "8080:8080"     # the proxied frontend
       - "8404:8404"     # stats / metrics (lesson 07)

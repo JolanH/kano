@@ -51,6 +51,20 @@ docker compose exec -T haproxy sh -c "echo 'show stat'  | socat - /var/run/hapro
 docker compose exec -T haproxy sh -c "echo 'set server be_app/app1 state drain' | socat - /var/run/haproxy.sock"
 ```
 
+## Two-node peers tier (lesson 12)
+
+Lesson 12 needs **two** HAProxy nodes to demonstrate stick-table
+synchronization, so it has its own compose file under `peers/`:
+
+```bash
+cd docs/haproxy/lab/peers
+docker compose -f docker-compose.peers.yml up -d --build
+# node A → http://localhost:8090   node B → http://localhost:8092
+```
+
+Both nodes mount the same `haproxy-peers.cfg`; only their hostnames differ.
+See [lesson 12](../12-peers-sync.md) for the walkthrough.
+
 ## Database tier (lesson 09)
 
 Behind a Compose profile so it stays stopped for lessons 01–08:

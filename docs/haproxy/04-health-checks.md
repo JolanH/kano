@@ -194,9 +194,9 @@ Exercise all three: active, passive, and drain.
 1. **Active recovery.** Use the lesson 02 config. Toggle `app2` sick and watch
    it leave/rejoin:
    ```bash
-   docker compose exec app2 wget -qO- localhost:8080/toggle   # now /health → 503
+   docker compose exec app2 curl -s localhost:8080/toggle   # now /health → 503
    docker compose logs -f haproxy | grep -i 'is DOWN\|is UP' &
-   sleep 8 && docker compose exec app2 wget -qO- localhost:8080/toggle
+   sleep 8 && docker compose exec app2 curl -s localhost:8080/toggle
    ```
    You'll see `Server be_app/app2 is DOWN` then `... is UP` after `rise` checks.
 

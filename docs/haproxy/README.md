@@ -27,6 +27,7 @@ called out inline.
 | 09 | [Exposing databases (TCP mode)](09-databases.md) | Postgres R/W split, MySQL/Galera, Redis, the pitfalls |
 | 10 | [Security & traffic shaping](10-security.md) | Rate limiting, stick tables, abuse mitigation, hardening |
 | 11 | [Capstone: the Kano stack](11-capstone-kano.md) | Flask API + Postgres behind one HAProxy, end to end |
+| 12 | [Distribution & synchronization](12-peers-sync.md) | The `peers` protocol: replicating stick tables & rate limits across HAProxy nodes (advanced add-on) |
 
 ## How to use it
 

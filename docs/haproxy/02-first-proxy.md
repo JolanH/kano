@@ -55,7 +55,7 @@ Validate and run:
 
 ```bash
 cd docs/haproxy/lab
-docker compose exec haproxy haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg
+docker compose exec haproxy sh -c 'haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg'
 docker compose restart haproxy
 for i in $(seq 1 6); do curl -s localhost:8080/ | jq -c .; done
 ```
@@ -211,12 +211,12 @@ page and TCP database proxies (lessons 07, 09).
 Make `app2` sick and watch HAProxy route around it:
 
 ```bash
-# app2 starts returning 503 on /health
-docker compose exec app2 sh -c 'wget -qO- http://localhost:8080/toggle'
+# app2 starts returning 503 on /health (toggled from inside the app2 container)
+docker compose exec app2 curl -s localhost:8080/toggle
 # within a couple check intervals, all traffic goes to app1:
 for i in $(seq 1 6); do curl -s localhost:8080/ | jq -c .app; done
 # heal it
-docker compose exec app2 sh -c 'wget -qO- http://localhost:8080/toggle'
+docker compose exec app2 curl -s localhost:8080/toggle
 ```
 
 That automatic rerouting — with no client errors — is the entire point of a
