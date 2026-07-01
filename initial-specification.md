@@ -1,24 +1,24 @@
-I want to create a simple webapp, implementing the following functionalities :
+I want simple webapp with these features:
 
 # Functional Requirements
 
 ## I - create a project containing a list of features :
 
-- project is composed of a name and a version
-- each feature is composed of a name and a description
+- project = name + version
+- each feature = name + description
 
 ## II - generate a poll link for a given project
 
-the poll should ask 2 questions for each feature of the project :
+poll ask 2 questions per feature:
 
-- A (functional question) - how do you feel if this feature is present in the product : answer is the satisfactio level [ 1 - I love it; 2 - It is nice but expected; 3 - I am neutral; 4 - I dislike it but I can manage; 5 - I hate it ]
-- B (dysfonctional question) - how do you feel if this feature is absent from the product : answer is the satisfactio level [ 1 - I love it; 2 - It is nice but expected; 3 - I am neutral; 4 - I dislike it but I can manage; 5 - I hate it ]
+- A (functional question) - how feel if feature present: answer = satisfaction level [ 1 - I love it; 2 - It is nice but expected; 3 - I am neutral; 4 - I dislike it but I can manage; 5 - I hate it ]
+- B (dysfonctional question) - how feel if feature absent: answer = satisfaction level [ 1 - I love it; 2 - It is nice but expected; 3 - I am neutral; 4 - I dislike it but I can manage; 5 - I hate it ]
 
-The responses to the poll should be stored by the application for each poll response
+App store poll responses per response.
 
-Based on the poll's answers, we will categorize each feature according to responses to A and B
+From answers, categorize each feature by A and B responses.
 O
-the categories are : Mandatory (M); Linear (L); Exciter (E); Indifferent (I); Contradictory (C); Doubtful (D);
+categories: Mandatory (M); Linear (L); Exciter (E); Indifferent (I); Contradictory (C); Doubtful (D);
 
 > if response to A = 1 and B = 1 		-> D;
 >
@@ -39,54 +39,49 @@ the categories are : Mandatory (M); Linear (L); Exciter (E); Indifferent (I); Co
 > if response to A = 5 and B = 5		-> D;
 
 
-The resulting category of a feature should be stored alongside the poll response for this feature so that the poll answer will have 3 fields : FQ_ANSWER[1 to 5], QD_ANSWER[1 to 5], CATEGORY(M,L,E,I,C,D)
+Store feature category alongside poll response, so answer has 3 fields: FQ_ANSWER[1 to 5], QD_ANSWER[1 to 5], CATEGORY(M,L,E,I,C,D)
 
-NB: it must be possible to generate several polls for the same project, the responses should be linked only to the poll instance
+NB: must support many polls per project. Responses linked only to poll instance.
 
 
 ## III - Display analysis of a poll instance
 
-We want to display the analysis of a poll instance, based on the answers provided at the moment
+Display poll instance analysis from current answers.
 
-Here are the visualizations we want :
+Want these visualizations:
 
 ### Features categorization
 
-for each feature, we want to display an horizontal stacked bar displaying the categories repartition of the poll instance answers for this feature
+Per feature, show horizontal stacked bar = category repartition of poll instance answers for feature.
 
-all features should be displayed as a list, with the stacked bar on the right
+All features shown as list, stacked bar on right.
 
-The dominant category should be displayed on the left, alongside with the % value of this category for this feature
+Dominant category shown on left, plus % value of category for feature.
 
 ### Categories visualization
 
-For each feature category, we want to display a panel listing the features for which this category is dominant
+Per feature category, show panel listing features where category dominant.
 
-Each feature should be displayed with the % value of its dominant category alongside
+Each feature shown with % value of dominant category alongside.
 
 # Technical requirements
 
 ## Architecture
 
-The application should be implemented with separate REST API and frontend
+Separate REST API + frontend.
 
-The data storage should be performed with a single node PostgreSQL instance
+Data storage = single node PostgreSQL instance.
 
-The whole stack should be bootable with docker compose for local use
+Whole stack bootable via docker compose for local use.
 
 ## Languages and frameworks
 
-The backend should be implemented in python with Flask framework, using poetry for project setup
+Backend = python + Flask, use poetry for setup.
 
-The frontend should be implemented with vueJS 3, using composition API
+Frontend = vueJS 3, composition API.
 
 ## Testing & Logging
 
-The backend should have integration tests covering all the expected behaviour
+Backend needs integration tests covering all expected behavior.
 
-The logging should be clear and explanatory when there are errors
-
-
-
-
-
+Logging clear + explanatory on errors.
