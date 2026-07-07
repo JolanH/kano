@@ -91,3 +91,7 @@ pre-commit run --all-files
 - `kano-frontend/` — Vue 3.5 + Vuetify 4 + Vite 6 SPA
 - `_bmad/`, `_bmad-output/` — planning, architecture, and sprint artifacts
 - `docs/` — additional project documentation
+
+## License
+
+MIT — see [LICENSE](LICENSE).

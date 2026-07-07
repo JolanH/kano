@@ -6,6 +6,7 @@ authors = [
     { name = "Jolan Houvenaeghel", email = "jhouvenaeghel@tixeo.com" }
 ]
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12,<4.0"
 dependencies = [
     "flask (>=3.1,<4.0)",
